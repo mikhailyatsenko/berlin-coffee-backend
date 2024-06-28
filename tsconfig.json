@@ -1,0 +1,15 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",            // Целевая версия JavaScript
+    "module": "ESNext",            // Используем ESM для модулей
+    "moduleResolution": "node",    // Разрешение модулей для Node.js
+    "esModuleInterop": true,       // Включение интероперабельности для импорта/экспорта
+    "resolveJsonModule": true, 
+    "baseUrl": "./",
+    "outDir": "./dist",
+    "strict": true,
+    "forceConsistentCasingInFileNames": true
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules"]
+}

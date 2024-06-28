@@ -1,0 +1,22 @@
+type Place {
+  type: String!
+  geometry: Geometry!
+  properties: PlaceProperties!
+}
+
+type Geometry {
+  type: String!
+  coordinates: [Float!]!
+}
+
+type PlaceProperties {
+  name: String!
+  description: String!
+  address: String!
+  image: String!
+  instagram: String!
+}
+
+type Query {
+  places: [Place!]!
+}
