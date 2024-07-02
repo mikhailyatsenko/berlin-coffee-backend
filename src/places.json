@@ -1,91 +1,145 @@
 [
-    {
+  {
+    "type": "Feature",
+    "geometry": {
+      "type": "Point",
+      "coordinates": [
+        13.407563,
+        52.522813
+      ]
+    },
+    "properties": {
       "name": "19grams Alex – Roastery & Lab",
-      "location": {
-        "type": "Point",
-        "coordinates": [13.407563, 52.522813]
-      },
       "description": "Café & Roastery & Event Space, offering freshly roasted beans and Australian-inspired brunch, breakfast, and lunch. Free Wi-Fi, indoor/outdoor seating. Perfect for coffee enthusiasts and events. Open daily.",
       "address": "Karl-Liebknecht-Str. 13, 10178",
       "image": "19grams-alex.jpg",
       "instagram": "https://www.instagram.com/19grams.coffee/"
+    }
+  },
+
+  {
+    "type": "Feature",
+    "geometry": {
+      "type": "Point",
+      "coordinates": [
+        13.409063,
+        52.515313
+      ]
     },
-    {
+    "properties": {
       "name": "The Greens - Coffee & Plants",
-      "location": {
-        "type": "Point",
-        "coordinates": [13.409063, 52.515313]
-      },
       "description": "A cozy spot to relax, offering indoor and outdoor seating (plus a charming garden across the street for weekends). Delicious coffee and pastries. Not laptop-friendly; laptops allowed only outdoors.",
       "address": "Am Krögel 2, 10179",
       "image": "the-greens.jpg",
       "instagram": "https://www.instagram.com/thegreensberlin/"
+    }
+  },
+
+  {
+    "type": "Feature",
+    "geometry": {
+      "type": "Point",
+      "coordinates": [
+        13.397438,
+        52.529063
+      ]
     },
-    {
+    "properties": {
       "name": "Röststätte",
-      "location": {
-        "type": "Point",
-        "coordinates": [13.397438, 52.529063]
-      },
       "description": "Good coffee with plenty of outdoor seating. A relatively quiet corner of Berlin, perfect for relaxing and enjoying a cup after a long walk. They roast their own beans, so you can also buy their coffee to take home.",
       "address": "Ackerstraße 173, 10115",
       "image": "roststaette-ackerstrasse.jpg",
       "instagram": "https://www.instagram.com/roeststaetteberlin/"
+    }
+  },
+  
+  {
+    "type": "Feature",
+    "geometry": {
+      "type": "Point",
+      "coordinates": [
+        13.410312,
+        52.525312
+      ]
     },
-    {
+    "properties": {
       "name": "Coffee Circle",
-      "location": {
-        "type": "Point",
-        "coordinates": [13.410312, 52.525312]
-      },
       "description": "A charming and stylish café with delicious coffee, matcha, and desserts. There are spaces to work with your laptop and cozy spots to chat with friends. When it's warm, you can sit outside. Card payments only. They roast their own beans, so you can buy their coffee to take home.",
       "address": "Rosa-Luxemburg-Straße 19, 10178",
       "image": "coffeecircle-rosa.jpg",
       "instagram": "https://www.instagram.com/coffeecircle/"
+    }
+  },
+
+  {
+    "type": "Feature",
+    "geometry": {
+      "type": "Point",
+      "coordinates": [
+        13.398188,
+        52.527438
+      ]
     },
-    {
+    "properties": {
       "name": "The Barn Café",
-      "location": {
-        "type": "Point",
-        "coordinates": [13.398188, 52.527438]
-      },
       "description": "The first The Barn, opened in 2010, marked Germany's intro to the third wave coffee movement. Lovingly called \"Baby Barn\", it's perfect for cozying up with a book or chatting with friends. Skilled baristas offer weekly rotating filter choices for fresh coffee.",
       "address": "Auguststraße 58, 10119",
       "image": "the-little-barn.jpg",
       "instagram": "https://www.instagram.com/thebarnberlin/"
+    }
+  },
+
+  {
+    "type": "Feature",
+    "geometry": {
+      "type": "Point",
+      "coordinates": [
+        13.394938,
+        52.49281
+      ]
     },
-    {
+    "properties": {
       "name": "Cabana Coffee Roasters",
-      "location": {
-        "type": "Point",
-        "coordinates": [13.394938, 52.49281]
-      },
       "description": "A small family-run coffee shop and roastery in a cozy spot. Buy coffee beans to take home or enjoy a cup on-site. Friendly staff and a welcoming atmosphere. Open to visitors Friday to Sunday from 12 PM.",
       "address": "Zossener Str. 44, 10961",
       "image": "cabanacoffee.jpg",
       "instagram": "https://www.instagram.com/cabanacoffeeroasters/"
+    }
+  },
+
+  {
+    "type": "Feature",
+    "geometry": {
+      "type": "Point",
+      "coordinates": [
+        13.291062,
+        52.503812
+      ]
     },
-    {
+    "properties": {
       "name": "Kuno15",
-      "location": {
-        "type": "Point",
-        "coordinates": [13.291062, 52.503812]
-      },
       "description": "A cozy specialty coffee shop in picturesque Charlottenburg with the \"Weroastcoffee\" roastery on-site. Buy high-quality beans to take home or enjoy a fresh cup on the spot.",
       "address": "Kuno-Fischer-Straße 15, 14057",
       "image": "kuno15.jpg",
       "instagram": "https://www.instagram.com/weroastcoffeeberlin/"
+    }
+  },
+
+  {
+    "type": "Feature",
+    "geometry": {
+      "type": "Point",
+      "coordinates": [
+        13.387812,
+        52.517562
+      ]
     },
-    {
+    "properties": {
       "name": "Coffee Lab",
-      "location": {
-        "type": "Point",
-        "coordinates": [13.387812, 52.517562]
-      },
       "description": "A very cozy spot in the heart of Berlin, tucked away in a courtyard. It's the perfect place to sit and relax after a long day of exploring the city. The staff is also very friendly!",
       "address": "Unter den Linden 28a, 10117",
       "image": "coffeelab.jpg",
       "instagram": "https://www.instagram.com/coffee_lab_firstone/"
     }
-  ]
-  
+  }
+]

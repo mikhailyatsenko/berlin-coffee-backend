@@ -8,7 +8,7 @@ import { resolvers } from "./graphql/index.js";
 
 const app = express();
 
-const PORT = process.env.PORT || 4001;
+const PORT = process.env.PORT || 3000;
 
 const bootstrapServer = async () => {
   const server = new ApolloServer({
@@ -26,9 +26,12 @@ const bootstrapServer = async () => {
 
   app.listen(PORT, () => {
     console.log(
-      `Running a GraphQL API server at http://localhost:${PORT}/graphql`,
+      `Running a GraphQL API server at http://83.229.84.248:${PORT}/graphql`,
     );
   });
 };
 
-bootstrapServer();
+bootstrapServer().catch((error) => {
+  console.error("Failed to start the server:", error);
+  process.exit(1);
+});
