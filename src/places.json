@@ -141,5 +141,23 @@
       "image": "coffeelab.jpg",
       "instagram": "https://www.instagram.com/coffee_lab_firstone/"
     }
+  },
+
+  {
+    "type": "Feature",
+    "geometry": {
+      "type": "Point",
+      "coordinates": [
+        13.374313,
+        52.503937
+      ]
+    },
+    "properties": {
+      "name": "Elemenza Coffee Roasters",
+      "description": "A small coffee shop and roastery offering high-quality, freshly roasted coffee. They provide various brewing methods and sell their own roasted beans. Cozy atmosphere perfect for leisurely enjoyment, with outdoor seating and Wi-Fi available.",
+      "address": "Gabriele-Tergit-Promenade 21, 10963",
+      "image": "elemenza.jpg",
+      "instagram": "https://www.instagram.com/elemenzacoffee/"
+    }
   }
 ]
