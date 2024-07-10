@@ -1,0 +1,24 @@
+type User {
+    id: ID!
+    googleId: String!
+    displayName: String!
+    email: String!
+    avatar: String!
+  }
+
+  type Query {
+    currentUser: User
+  }
+
+  type Mutation {
+    loginWithGoogle(code: String!): AuthPayload
+    logout: LogoutResponse
+  }
+
+  type AuthPayload {
+    user: User!
+  }
+
+  type LogoutResponse {
+    message: String!
+  }

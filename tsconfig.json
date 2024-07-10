@@ -8,8 +8,9 @@
     "baseUrl": "./",
     "outDir": "./dist",
     "strict": true,
-    "forceConsistentCasingInFileNames": true
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
   },
-  "include": ["src/**/*"],
+  "include": ["src/**/*", "importPlaces.js"],
   "exclude": ["node_modules"]
 }

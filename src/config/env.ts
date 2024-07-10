@@ -9,9 +9,8 @@ export const {
   MONGO_URI,
   PORT,
   NODE_ENV,
+  CLIENT_URL,
 } = process.env;
-
-console.log(NODE_ENV);
 
 const requiredEnvVars = [
   "GOOGLE_CLIENT_ID",
@@ -19,7 +18,9 @@ const requiredEnvVars = [
   "JWT_SECRET",
   "MONGO_URI",
   "NODE_ENV",
+  "CLIENT_URL",
 ];
+
 for (const envVar of requiredEnvVars) {
   if (!process.env[envVar]) {
     throw new Error(`Missing required environment variable: ${envVar}`);

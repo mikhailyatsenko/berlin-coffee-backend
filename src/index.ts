@@ -5,35 +5,65 @@ import { expressMiddleware } from "@apollo/server/express4";
 import cors from "cors";
 import { typeDefs } from "./graphql/index.js";
 import { resolvers } from "./graphql/index.js";
-import authRouter from "./routes/authRouter.js";
+// import authRouter from "./routes/authRouter.js";
 import { connectDatabase } from "./config/database.js";
 import cookieParser from "cookie-parser";
+// import { getUserFromToken } from "./utils/getUserFromToken.js";
+import User, { IUser } from "./models/User.js";
+import http from "http";
+import { ApolloServerPluginDrainHttpServer } from "@apollo/server/plugin/drainHttpServer";
+import jwt from "jsonwebtoken";
+
+interface Context {
+  user?: IUser;
+}
 
 const app = express();
+const httpServer = http.createServer(app);
 
 const PORT = 3000;
 
 const bootstrapServer = async () => {
-  app.use(
-    cors({
-      origin: "http://localhost:5173", // URL вашего фронтенда
-      credentials: true,
-    }),
-  );
-  app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
-  app.use(cookieParser());
 
-  const server = new ApolloServer({
+  const server = new ApolloServer<Context>({
     typeDefs,
     resolvers,
+    plugins: [ApolloServerPluginDrainHttpServer({ httpServer })],
   });
 
   await server.start();
 
-  app.use("/graphql", expressMiddleware(server));
+  app.use(cookieParser());
 
-  app.use("/auth", authRouter);
+  app.use(
+    "/graphql",
+    cors<cors.CorsRequest>({
+      origin: "http://localhost:5173",
+      credentials: true,
+    }),
+    express.json(),
+    expressMiddleware(server, {
+      context: async ({ req, res }) => {
+        const token = req.cookies.jwt;
+        if (token) {
+          try {
+            const decoded = jwt.verify(token, process.env.JWT_SECRET!) as {
+              userId: string;
+            };
+            const user = await User.findById(decoded.userId);
+            return { user, res };
+          } catch (e) {
+            console.error("Error verifying token:", e);
+            res.clearCookie("jwt");
+          }
+        }
+        return { res };
+      },
+    }),
+  );
+
+  // app.use("/auth", authRouter);
 
   await connectDatabase();
 
