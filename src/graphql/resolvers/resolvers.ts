@@ -21,16 +21,16 @@ export const resolvers = {
     places: async () => await Place.find(),
 
     currentUser: async (_: never, __: never, { user }: { user: IUser }) => {
-      if (!user) {
-        throw new GraphQLError(
-          "You must be logged in to access this resource",
-          {
-            extensions: {
-              code: "UNAUTHENTICATED",
-            },
-          },
-        );
-      }
+      // if (!user) {
+      //   throw new GraphQLError(
+      //     "You must be logged in to access this resource",
+      //     {
+      //       extensions: {
+      //         code: "UNAUTHENTICATED",
+      //       },
+      //     },
+      //   );
+      // }
       return user;
     },
   },
@@ -96,6 +96,11 @@ export const resolvers = {
           },
         });
       }
+    },
+
+    logout: (_: never, __: never, { res }: { res: Response }) => {
+      res.clearCookie("jwt");
+      return { message: "Logged out successfully" };
     },
   },
 };

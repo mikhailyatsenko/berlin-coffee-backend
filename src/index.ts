@@ -49,9 +49,9 @@ const bootstrapServer = async () => {
         if (token) {
           try {
             const decoded = jwt.verify(token, process.env.JWT_SECRET!) as {
-              userId: string;
+              id: string;
             };
-            const user = await User.findById(decoded.userId);
+            const user = await User.findById(decoded.id);
             return { user, res };
           } catch (e) {
             console.error("Error verifying token:", e);
