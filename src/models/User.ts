@@ -1,30 +1,28 @@
 import mongoose, { Document, Schema } from "mongoose";
 
+interface IRatedPlace {
+  place: mongoose.Types.ObjectId | Schema.Types.ObjectId;
+  rating: number;
+}
+
 export interface IUser extends Document {
   _id: mongoose.Types.ObjectId;
+  googleId: string;
   email: string;
-  password: string;
   displayName: string;
   avatar: string;
-  favorites: mongoose.Types.ObjectId[];
-  reviews: {
-    cafe: mongoose.Types.ObjectId;
-    rating?: number;
-    comment?: string;
-  }[];
+  ratedPlaces: IRatedPlace[];
 }
 
 const UserSchema: Schema = new Schema({
+  googleId: { type: String, required: true, unique: true },
   email: { type: String, required: true, unique: true },
-  password: { type: String, required: true },
   displayName: { type: String, required: true },
   avatar: { type: String },
-  favorites: [{ type: mongoose.Schema.Types.ObjectId, ref: "Place" }],
-  reviews: [
+  ratedPlaces: [
     {
-      cafe: { type: mongoose.Schema.Types.ObjectId, ref: "Place" },
-      rating: { type: Number, min: 1, max: 5 },
-      comment: { type: String },
+      place: { type: Schema.Types.ObjectId, ref: "Place" },
+      rating: { type: Number, required: true, min: 1, max: 5 },
     },
   ],
 });

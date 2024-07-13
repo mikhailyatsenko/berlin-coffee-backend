@@ -1,12 +1,5 @@
 import mongoose, { Document, Schema } from "mongoose";
 
-interface IReview {
-  user: mongoose.Types.ObjectId;
-  rating: number;
-  comment: string;
-  createdAt: Date;
-}
-
 interface IPlace extends Document {
   _id: mongoose.Types.ObjectId;
   type: string;
@@ -21,16 +14,9 @@ interface IPlace extends Document {
     image: string;
     instagram: string;
     averageRating: number;
-    reviews: IReview[];
+    ratingCount: number;
   };
 }
-
-const ReviewSchema = new Schema({
-  user: { type: Schema.Types.ObjectId, ref: "User", required: true },
-  rating: { type: Number, required: true, min: 1, max: 5 },
-  comment: { type: String, required: true },
-  createdAt: { type: Date, default: Date.now },
-});
 
 const PlaceSchema: Schema = new Schema({
   type: { type: String, default: "Feature" },
@@ -45,10 +31,8 @@ const PlaceSchema: Schema = new Schema({
     image: { type: String, required: true },
     instagram: { type: String, required: true },
     averageRating: { type: Number, default: 0 },
-    reviews: [ReviewSchema],
+    ratingCount: { type: Number, default: 0 },
   },
 });
-
-PlaceSchema.index({ "properties.averageRating": -1 });
 
 export default mongoose.model<IPlace>("Place", PlaceSchema);
