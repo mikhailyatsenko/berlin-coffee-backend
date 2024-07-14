@@ -1,6 +1,6 @@
-import mongoose, { Document, Schema } from "mongoose";
+import mongoose, { Document } from "mongoose";
 
-interface IPlace extends Document {
+export interface IPlace extends Document {
   _id: mongoose.Types.ObjectId;
   type: string;
   geometry: {
@@ -13,12 +13,10 @@ interface IPlace extends Document {
     address: string;
     image: string;
     instagram: string;
-    averageRating: number;
-    ratingCount: number;
   };
 }
 
-const PlaceSchema: Schema = new Schema({
+const PlaceSchema = new mongoose.Schema({
   type: { type: String, default: "Feature" },
   geometry: {
     type: { type: String, default: "Point" },
@@ -30,8 +28,6 @@ const PlaceSchema: Schema = new Schema({
     address: { type: String, required: true },
     image: { type: String, required: true },
     instagram: { type: String, required: true },
-    averageRating: { type: Number, default: 0 },
-    ratingCount: { type: Number, default: 0 },
   },
 });
 

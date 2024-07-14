@@ -7,17 +7,21 @@ type User {
   displayName: String!
   email: String!
   avatar: String!
-
-
   ratedPlaces: [Place!]
 }
 
 # Place types
+
 type Place {
   id: ID!
   type: String!
   geometry: Geometry!
   properties: PlaceProperties!
+  averageRating: Float
+  ratingCount: Int!
+  favoriteCount: Int!
+  userRating: Float 
+  isFavorite: Boolean!
 }
 
 type Geometry {
@@ -31,8 +35,6 @@ type PlaceProperties {
   address: String!
   image: String!
   instagram: String!
-  ratingCount: Int!
-  averageRating: Float!
 }
 
 # Queries
@@ -45,8 +47,30 @@ type Query {
 type Mutation {
   loginWithGoogle(code: String!): AuthPayload
   logout: LogoutResponse
-  ratePlace(placeId: ID!, userRate: Int!): RatePlaceResponse
+  ratePlace(placeId: ID!, rating: Int!): Place
+  addReview(placeId: ID!, text: String!): ReviewResult
+  toggleFavorite(placeId: ID!): FavoriteActionResult!
 }
+
+type ReviewResult {
+  id: ID!
+  userId: ID!
+  placeId: ID!
+  rating: Float
+  review: String
+  isFavorite: Boolean!
+  date: String!
+}
+
+type FavoriteActionSuccess {
+  place: Place!
+}
+
+type AuthenticationRequired {
+  message: String!
+}
+
+union FavoriteActionResult = FavoriteActionSuccess | AuthenticationRequired
 
 type AuthPayload {
   user: User!

@@ -1,11 +1,15 @@
-import Place from "../../models/Place.js";
+// import Place from "../../models/Place.js";
 import { Response } from "express";
 import { GraphQLError } from "graphql";
 import { OAuth2Client } from "google-auth-library";
 import User from "../../models/User.js";
 import { IUser } from "../../models/User.js";
 import { createJWT } from "../../utils/jwt.js";
-import mongoose from "mongoose";
+// import mongoose from "mongoose";
+import { getAllPlacesResolver } from "./getAllPlacesResolver/getAllPlacesResolver.js";
+import { ratePlaceResolver } from "./ratePlaceResolver/ratePlaceResolver.js";
+import { addReviewResolver } from "./addReviewResolver/addReviewResolver.js";
+import { toggleFavoriteResolver } from "./toggleFavoriteResolver/toggleFavoriteResolver.js";
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID!;
 
@@ -19,7 +23,7 @@ const client = new OAuth2Client(
 
 export const resolvers = {
   Query: {
-    places: async () => await Place.find(),
+    places: getAllPlacesResolver,
 
     currentUser: async (_: never, __: never, { user }: { user: IUser }) => {
       return user;
@@ -93,77 +97,8 @@ export const resolvers = {
       res.clearCookie("jwt");
       return { message: "Logged out successfully" };
     },
-    ratePlace: async (
-      _: never,
-      { placeId, userRate }: { placeId: string; userRate: number },
-      { user }: { user: IUser },
-    ) => {
-      if (!user) {
-        throw new GraphQLError("You must be logged in to rate a place");
-      }
-
-      try {
-        const place = await Place.findById(placeId);
-        if (!place) {
-          throw new GraphQLError(`Place with ID ${placeId} not found`);
-        }
-
-        // Проверка, оценивал ли пользователь это место ранее
-        const existingRating = user.ratedPlaces.find(
-          (ratedPlace) => ratedPlace.place.toString() === placeId,
-        );
-
-        if (existingRating) {
-          // Если пользователь уже оценивал это место, обновляем рейтинг
-          const oldRating = existingRating.rating;
-
-          // Обновление рейтинга пользователя
-          await User.updateOne(
-            {
-              _id: user._id,
-              "ratedPlaces.place": new mongoose.Types.ObjectId(placeId),
-            },
-            { $set: { "ratedPlaces.$.rating": userRate } },
-          );
-
-          // Обновление среднего рейтинга места
-          place.properties.averageRating =
-            (place.properties.averageRating * place.properties.ratingCount -
-              oldRating +
-              userRate) /
-            place.properties.ratingCount;
-        } else {
-          // Если пользователь не оценивал это место ранее, добавляем новую оценку
-          await User.updateOne(
-            { _id: user._id },
-            {
-              $push: {
-                ratedPlaces: {
-                  place: new mongoose.Types.ObjectId(placeId),
-                  rating: userRate,
-                },
-              },
-            },
-          );
-
-          // Обновление среднего рейтинга места
-          place.properties.averageRating =
-            (place.properties.averageRating * place.properties.ratingCount +
-              userRate) /
-            (place.properties.ratingCount + 1);
-          place.properties.ratingCount += 1;
-        }
-
-        // Округление среднего рейтинга до одного знака после запятой
-        place.properties.averageRating =
-          Math.round(place.properties.averageRating * 10) / 10;
-        await place.save();
-
-        return { success: true };
-      } catch (error) {
-        console.error("Error rating place:", error);
-        return { success: false };
-      }
-    },
+    ratePlace: ratePlaceResolver,
+    addReview: addReviewResolver,
+    toggleFavorite: toggleFavoriteResolver,
   },
 };
