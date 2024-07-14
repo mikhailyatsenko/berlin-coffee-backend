@@ -62,15 +62,12 @@ type ReviewResult {
   date: String!
 }
 
-type FavoriteActionSuccess {
-  place: Place!
+type FavoriteActionResult {
+  success: Boolean!
+  message: String
+  requiresAuth: Boolean!
+  place: Place
 }
-
-type AuthenticationRequired {
-  message: String!
-}
-
-union FavoriteActionResult = FavoriteActionSuccess | AuthenticationRequired
 
 type AuthPayload {
   user: User!

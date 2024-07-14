@@ -9,8 +9,10 @@ export async function toggleFavoriteResolver(
 ) {
   if (!user) {
     return {
-      __typename: "AuthenticationRequired",
+      success: false, // Важно: устанавливаем success в false, а не null
       message: "You must be logged in to toggle favorite",
+      requiresAuth: true,
+      place: null,
     };
   }
 
@@ -47,17 +49,22 @@ export async function toggleFavoriteResolver(
     });
 
     return {
-      id: place._id,
-      isFavorite: updatedInteraction.isFavorite,
-      favoriteCount,
+      success: true,
+      message: "Favorite toggled successfully",
+      requiresAuth: false,
+      place: {
+        id: place._id,
+        isFavorite: updatedInteraction.isFavorite,
+        favoriteCount,
+      },
     };
   } catch (error) {
     console.error("Error toggling favorite:", error);
-    throw new GraphQLError("Error toggling favorite", {
-      extensions: {
-        code: "INTERNAL_SERVER_ERROR",
-        error: error instanceof Error ? error.message : String(error),
-      },
-    });
+    return {
+      success: false,
+      message: "Error toggling favorite",
+      requiresAuth: false,
+      place: null,
+    };
   }
 }
