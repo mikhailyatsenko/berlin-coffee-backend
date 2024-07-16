@@ -4,7 +4,10 @@ import User from "../../../models/User.js";
 import { IUser } from "../../../models/User.js";
 
 interface UserMap {
-  [key: string]: string;
+  [key: string]: {
+    name: string;
+    avatar: string;
+  };
 }
 
 export async function placeReviewsResolver(
@@ -24,9 +27,10 @@ export async function placeReviewsResolver(
     const users = await User.find({ _id: { $in: userIds } }).lean();
 
     const userMap: UserMap = users.reduce((acc: UserMap, user) => {
-      if (user._id) {
-        acc[user._id.toString()] = user.displayName;
-      }
+      acc[user._id.toString()] = {
+        name: user.displayName,
+        avatar: user.avatar,
+      };
       return acc;
     }, {});
 
@@ -34,7 +38,8 @@ export async function placeReviewsResolver(
       id: review._id.toString(),
       text: review.review,
       userId: review.userId.toString(),
-      userName: userMap[review.userId.toString()] || "Unknown User",
+      userName: userMap[review.userId.toString()].name || "Unknown User",
+      userAvatar: userMap[review.userId.toString()]?.avatar || "",
       placeId: review.placeId.toString(),
       createdAt: review.date.toISOString(),
       isOwnReview: context.user

@@ -61,6 +61,7 @@ type DeleteReviewResult {
 type Review {
   id: ID!
   userName: String!
+  userAvatar:String!
   text: String!
   userId: ID!
   placeId: ID!
