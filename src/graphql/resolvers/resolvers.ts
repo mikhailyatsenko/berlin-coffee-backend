@@ -10,6 +10,8 @@ import { getAllPlacesResolver } from "./getAllPlacesResolver/getAllPlacesResolve
 import { ratePlaceResolver } from "./ratePlaceResolver/ratePlaceResolver.js";
 import { addReviewResolver } from "./addReviewResolver/addReviewResolver.js";
 import { toggleFavoriteResolver } from "./toggleFavoriteResolver/toggleFavoriteResolver.js";
+import { placeReviewsResolver } from "./placeReviewsResolver/placeReviewsResolver.js";
+import { deleteReviewResolver } from "./deleteReviewResolver/deleteReviewResolver.js";
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID!;
 
@@ -28,6 +30,7 @@ export const resolvers = {
     currentUser: async (_: never, __: never, { user }: { user: IUser }) => {
       return user;
     },
+    placeReviews: placeReviewsResolver,
   },
   Mutation: {
     loginWithGoogle: async (
@@ -100,5 +103,6 @@ export const resolvers = {
     ratePlace: ratePlaceResolver,
     addReview: addReviewResolver,
     toggleFavorite: toggleFavoriteResolver,
+    deleteReview: deleteReviewResolver,
   },
 };

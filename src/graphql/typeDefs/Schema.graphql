@@ -1,5 +1,3 @@
-# schema.graphql
-
 # User types
 type User {
   id: ID!
@@ -13,15 +11,9 @@ type User {
 # Place types
 
 type Place {
-  id: ID!
   type: String!
   geometry: Geometry!
   properties: PlaceProperties!
-  averageRating: Float
-  ratingCount: Int!
-  favoriteCount: Int!
-  userRating: Float 
-  isFavorite: Boolean!
 }
 
 type Geometry {
@@ -30,36 +22,50 @@ type Geometry {
 }
 
 type PlaceProperties {
+  id: ID!
   name: String!
   description: String!
   address: String!
   image: String!
   instagram: String!
+  averageRating: Float
+  ratingCount: Int!
+  favoriteCount: Int!
+  userRating: Float 
+  isFavorite: Boolean!
+  reviews: [Review!]!
 }
 
 # Queries
 type Query {
   currentUser: User
   places: [Place!]!
+  placeReviews(placeId: ID!): [Review!]!
 }
 
 # Mutations
 type Mutation {
   loginWithGoogle(code: String!): AuthPayload
   logout: LogoutResponse
-  ratePlace(placeId: ID!, rating: Int!): Place
-  addReview(placeId: ID!, text: String!): ReviewResult
+  ratePlace(placeId: ID!, rating: Int!): PlaceProperties
+  addReview(placeId: ID!, text: String!): Review
   toggleFavorite(placeId: ID!): FavoriteActionResult!
+  deleteReview(reviewId: ID!): DeleteReviewResult!
 }
 
-type ReviewResult {
+type DeleteReviewResult {
+  success: Boolean!
+  message: String
+}
+
+type Review {
   id: ID!
+  userName: String!
+  text: String!
   userId: ID!
   placeId: ID!
-  rating: Float
-  review: String
-  isFavorite: Boolean!
-  date: String!
+  isOwnReview: Boolean!
+  createdAt: String!
 }
 
 type FavoriteActionResult {

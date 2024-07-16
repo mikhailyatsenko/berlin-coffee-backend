@@ -46,14 +46,17 @@ export async function getAllPlacesResolver(
           : false;
 
         return {
-          id: place._id.toString(),
           ...place,
-          averageRating:
-            averageRating !== null ? Number(averageRating.toFixed(2)) : null,
-          ratingCount: ratings.length,
-          favoriteCount,
-          isFavorite,
-          reviews,
+          properties: {
+            id: place._id.toString(),
+            ...place.properties,
+            averageRating:
+              averageRating !== null ? Number(averageRating.toFixed(2)) : null,
+            ratingCount: ratings.length,
+            favoriteCount,
+            isFavorite,
+            reviews,
+          },
         };
       }),
     );

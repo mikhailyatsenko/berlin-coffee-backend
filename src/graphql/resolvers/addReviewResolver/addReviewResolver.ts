@@ -11,7 +11,6 @@ export async function addReviewResolver(
   if (!context.user) {
     throw new GraphQLError("You must be logged in to add a review");
   }
-
   try {
     const place = await Place.findById(placeId);
     if (!place) {
@@ -37,15 +36,16 @@ export async function addReviewResolver(
       });
       await interaction.save();
     }
+    console.log("in review before return", placeId, text);
 
     return {
       id: interaction._id.toString(),
       userId: interaction.userId.toString(),
       placeId: interaction.placeId.toString(),
       rating: interaction.rating,
-      review: interaction.review,
+      text: interaction.review,
       isFavorite: interaction.isFavorite,
-      date: interaction.date.toISOString(),
+      createdAt: interaction.date.toISOString(),
     };
   } catch (error) {
     console.error("Error adding review:", error);
