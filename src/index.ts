@@ -17,6 +17,7 @@ interface Context {
 }
 
 const app = express();
+app.set("trust proxy", 1);
 const httpServer = http.createServer(app);
 
 const PORT = 3000;
@@ -27,6 +28,7 @@ const bootstrapServer = async () => {
   const server = new ApolloServer<Context>({
     typeDefs,
     resolvers,
+    introspection: process.env.NODE_ENV !== "production",
     plugins: [ApolloServerPluginDrainHttpServer({ httpServer })],
   });
 
@@ -35,15 +37,21 @@ const bootstrapServer = async () => {
   app.use(cookieParser());
 
   app.use(
-    "/graphql",
+    "/coffee",
     cors<cors.CorsRequest>({
-      origin: "http://localhost:5173",
+      origin:
+        process.env.NODE_ENV === "production"
+          ? "https://3welle.com"
+          : "http://localhost:5173",
       credentials: true,
+      allowedHeaders: ["Content-Type", "Authorization"],
+      methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     }),
     express.json(),
     expressMiddleware(server, {
       context: async ({ req, res }) => {
         const token = req.cookies.jwt;
+
         if (token) {
           try {
             const decoded = jwt.verify(token, process.env.JWT_SECRET!) as {
@@ -60,8 +68,6 @@ const bootstrapServer = async () => {
       },
     }),
   );
-
-  // app.use("/auth", authRouter);
 
   await connectDatabase();
 

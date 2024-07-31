@@ -18,7 +18,10 @@ export async function placeReviewsResolver(
   try {
     const reviews = await Interaction.find({
       placeId,
-      review: { $exists: true, $ne: null },
+      $or: [
+        { review: { $exists: true, $ne: null } },
+        { rating: { $exists: true, $ne: null } },
+      ],
     })
       .sort({ date: -1 })
       .lean();
@@ -33,15 +36,15 @@ export async function placeReviewsResolver(
       };
       return acc;
     }, {});
-
     return reviews.map((review) => ({
       id: review._id.toString(),
       text: review.review,
       userId: review.userId.toString(),
       userName: userMap[review.userId.toString()].name || "Unknown User",
+      userRating: review.rating || null,
       userAvatar: userMap[review.userId.toString()]?.avatar || "",
-      placeId: review.placeId.toString(),
       createdAt: review.date.toISOString(),
+      placeId: review.placeId.toString(),
       isOwnReview: context.user
         ? review.userId.toString() === context.user.id
         : false,

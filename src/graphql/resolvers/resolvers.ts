@@ -7,11 +7,11 @@ import { IUser } from "../../models/User.js";
 import { createJWT } from "../../utils/jwt.js";
 // import mongoose from "mongoose";
 import { getAllPlacesResolver } from "./getAllPlacesResolver/getAllPlacesResolver.js";
-import { ratePlaceResolver } from "./ratePlaceResolver/ratePlaceResolver.js";
 import { addReviewResolver } from "./addReviewResolver/addReviewResolver.js";
 import { toggleFavoriteResolver } from "./toggleFavoriteResolver/toggleFavoriteResolver.js";
-import { placeReviewsResolver } from "./placeReviewsResolver/placeReviewsResolver.js";
+// import { placeReviewsResolver } from "./placeReviewsResolver/placeReviewsResolver.js";
 import { deleteReviewResolver } from "./deleteReviewResolver/deleteReviewResolver.js";
+import { placeDetailsResolver } from "./placeDetails/placeDetailsResolver.js";
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID!;
 
@@ -20,7 +20,9 @@ const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
 const client = new OAuth2Client(
   GOOGLE_CLIENT_ID,
   GOOGLE_CLIENT_SECRET,
-  "http://localhost:5173",
+  process.env.NODE_ENV === "production"
+    ? "https://3welle.com"
+    : "http://localhost:5173",
 );
 
 export const resolvers = {
@@ -30,7 +32,8 @@ export const resolvers = {
     currentUser: async (_: never, __: never, { user }: { user: IUser }) => {
       return user;
     },
-    placeReviews: placeReviewsResolver,
+    // placeReviews: placeReviewsResolver,
+    placeDetails: placeDetailsResolver,
   },
   Mutation: {
     loginWithGoogle: async (
@@ -41,7 +44,10 @@ export const resolvers = {
       try {
         const { tokens } = await client.getToken({
           code,
-          redirect_uri: "http://localhost:5173",
+          redirect_uri:
+            process.env.NODE_ENV === "production"
+              ? "https://3welle.com"
+              : "http://localhost:5173",
         });
         const idToken = tokens.id_token;
 
@@ -80,9 +86,22 @@ export const resolvers = {
         res.cookie("jwt", token, {
           httpOnly: true,
           secure: process.env.NODE_ENV === "production",
-          sameSite: "strict",
+          sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+          domain:
+            process.env.NODE_ENV === "production"
+              ? "yatsenko.site"
+              : "localhost",
+          path: "/",
           maxAge: 24 * 60 * 60 * 1000 * 2, // 2 days
         });
+
+        res.setHeader("Access-Control-Allow-Credentials", "true");
+        res.setHeader(
+          "Access-Control-Allow-Origin",
+          process.env.NODE_ENV === "production"
+            ? "https://3welle.com"
+            : "http://localhost:5173",
+        );
 
         return { user };
       } catch (error) {
@@ -97,10 +116,30 @@ export const resolvers = {
     },
 
     logout: (_: never, __: never, { res }: { res: Response }) => {
-      res.clearCookie("jwt");
-      return { message: "Logged out successfully" };
+      try {
+        res.clearCookie("jwt", {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === "production",
+          sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+          domain:
+            process.env.NODE_ENV === "production"
+              ? "yatsenko.site"
+              : "localhost",
+          path: "/",
+        });
+        console.log("Cookie cleared");
+        return { message: "Logged out successfully" };
+      } catch (error) {
+        console.error("Error clearing cookie:", error);
+        throw new GraphQLError("Error logging out", {
+          extensions: {
+            code: "INTERNAL_SERVER_ERROR",
+            error: error instanceof Error ? error.message : String(error),
+          },
+        });
+      }
     },
-    ratePlace: ratePlaceResolver,
+    // ratePlace: ratePlaceResolver,
     addReview: addReviewResolver,
     toggleFavorite: toggleFavoriteResolver,
     deleteReview: deleteReviewResolver,

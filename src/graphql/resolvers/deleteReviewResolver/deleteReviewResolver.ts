@@ -13,23 +13,21 @@ export async function deleteReviewResolver(
   }
 
   try {
-    const review = await Interaction.findOne({
+    const result = await Interaction.findOneAndDelete({
       _id: reviewId,
       userId: context.user.id,
     });
 
-    if (!review) {
+    if (!result) {
       return {
         success: false,
         message: "Review not found or you don't have permission to delete it",
       };
     }
 
-    await Interaction.findByIdAndUpdate(reviewId, { $unset: { review: 1 } });
-
     return {
       success: true,
-      message: "Review deleted successfully",
+      message: "Review and rating deleted successfully",
     };
   } catch (error) {
     console.error("Error deleting review:", error);

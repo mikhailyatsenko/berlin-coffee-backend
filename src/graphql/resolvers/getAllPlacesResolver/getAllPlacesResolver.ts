@@ -1,5 +1,5 @@
 import Place, { IPlace } from "../../../models/Place.js";
-import Interaction, { IInteraction } from "../../../models/Interaction.js";
+import Interaction from "../../../models/Interaction.js";
 import { GraphQLError } from "graphql";
 
 export async function getAllPlacesResolver(
@@ -14,17 +14,26 @@ export async function getAllPlacesResolver(
       places.map(async (place: IPlace) => {
         const interactions = await Interaction.find({ placeId: place._id });
 
-        const ratings = interactions
-          .filter(
-            (i): i is IInteraction & { rating: number } =>
-              i.rating != null && typeof i.rating === "number",
-          )
-          .map((i) => i.rating);
+        const aggregationResult = await Interaction.aggregate([
+          {
+            $match: {
+              placeId: place._id,
+              rating: { $exists: true, $ne: null },
+            },
+          },
+          {
+            $group: {
+              _id: null,
+              averageRating: { $avg: "$rating" },
+              ratingCount: { $sum: 1 },
+            },
+          },
+        ]);
 
-        const averageRating =
-          ratings.length > 0
-            ? ratings.reduce((a, b) => a + b, 0) / ratings.length
-            : null;
+        const stats = aggregationResult[0] || {
+          averageRating: 0,
+          ratingCount: 0,
+        };
 
         const reviews = interactions
           .filter((i) => i.review)
@@ -46,13 +55,16 @@ export async function getAllPlacesResolver(
           : false;
 
         return {
+          id: place._id.toString(),
           ...place,
           properties: {
             id: place._id.toString(),
             ...place.properties,
             averageRating:
-              averageRating !== null ? Number(averageRating.toFixed(2)) : null,
-            ratingCount: ratings.length,
+              stats.averageRating !== null
+                ? Number(stats.averageRating.toFixed(2))
+                : null,
+            ratingCount: stats.ratingCount,
             favoriteCount,
             isFavorite,
             reviews,

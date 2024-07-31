@@ -18,25 +18,24 @@ export async function ratePlaceResolver(
       throw new GraphQLError("Place not found");
     }
 
-    let interaction = await Interaction.findOne({ userId: user.id, placeId });
-
-    if (interaction) {
-      // Обновляем существующий рейтинг
-      interaction.rating = rating;
-      await interaction.save();
-    } else {
-      // Создаем новый рейтинг
-      interaction = new Interaction({
-        userId: user.id,
-        placeId,
-        rating,
-      });
-      await interaction.save();
-    }
+    // Обновляем или создаем взаимодействие
+    await Interaction.findOneAndUpdate(
+      { userId: user.id, placeId },
+      {
+        $set: { rating, date: new Date() },
+        $setOnInsert: { userId: user.id, placeId },
+      },
+      { upsert: true, new: true },
+    );
 
     // Пересчитываем средний рейтинг и количество оценок
     const aggregationResult = await Interaction.aggregate([
-      { $match: { placeId: new mongoose.Types.ObjectId(placeId) } },
+      {
+        $match: {
+          placeId: new mongoose.Types.ObjectId(placeId),
+          rating: { $exists: true, $ne: null },
+        },
+      },
       {
         $group: {
           _id: null,
@@ -48,12 +47,7 @@ export async function ratePlaceResolver(
 
     const stats = aggregationResult[0] || { averageRating: 0, ratingCount: 0 };
 
-    // Обновляем статистику места
-    await Place.findByIdAndUpdate(placeId, {
-      averageRating: stats.averageRating,
-      ratingCount: stats.ratingCount,
-    });
-
+    // Возвращаем результат без обновления документа Place
     return {
       id: place._id.toString(),
       averageRating: stats.averageRating,

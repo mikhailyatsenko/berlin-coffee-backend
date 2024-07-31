@@ -11,6 +11,7 @@ type User {
 # Place types
 
 type Place {
+  id: ID! 
   type: String!
   geometry: Geometry!
   properties: PlaceProperties!
@@ -22,7 +23,7 @@ type Geometry {
 }
 
 type PlaceProperties {
-  id: ID!
+  id: ID
   name: String!
   description: String!
   address: String!
@@ -31,26 +32,37 @@ type PlaceProperties {
   averageRating: Float
   ratingCount: Int!
   favoriteCount: Int!
-  userRating: Float 
+  userRating: Int 
   isFavorite: Boolean!
   reviews: [Review!]!
+}
+
+type PlaceDetails {
+  reviews: [Review!]!
+  favoriteCount: Int!
+  isFavorite: Boolean!
 }
 
 # Queries
 type Query {
   currentUser: User
   places: [Place!]!
-  placeReviews(placeId: ID!): [Review!]!
+  placeDetails(placeId: ID!): PlaceDetails!
 }
 
 # Mutations
 type Mutation {
   loginWithGoogle(code: String!): AuthPayload
   logout: LogoutResponse
-  ratePlace(placeId: ID!, rating: Int!): PlaceProperties
-  addReview(placeId: ID!, text: String!): Review
+  addReview(placeId: ID!, text: String, rating: Float): AddReviewResponse!
   toggleFavorite(placeId: ID!): FavoriteActionResult!
   deleteReview(reviewId: ID!): DeleteReviewResult!
+}
+
+type AddReviewResponse {
+  review: Review!
+  averageRating: Float!
+  ratingCount: Int!
 }
 
 type DeleteReviewResult {
@@ -60,13 +72,22 @@ type DeleteReviewResult {
 
 type Review {
   id: ID!
-  userName: String!
-  userAvatar:String!
   text: String!
   userId: ID!
+  userName: String!
+  userAvatar: String!
   placeId: ID!
-  isOwnReview: Boolean!
   createdAt: String!
+  isOwnReview: Boolean!
+  userRating: Float
+}
+
+type PlaceRating {
+  id: ID!
+  averageRating: Float!
+  ratingCount: Int!
+  userRating: Float!
+  userId: ID!
 }
 
 type FavoriteActionResult {
@@ -82,8 +103,4 @@ type AuthPayload {
 
 type LogoutResponse {
   message: String!
-}
-
-type RatePlaceResponse {
-  success: Boolean!
 }
