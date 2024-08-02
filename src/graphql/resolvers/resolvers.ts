@@ -32,7 +32,6 @@ export const resolvers = {
     currentUser: async (_: never, __: never, { user }: { user: IUser }) => {
       return user;
     },
-    // placeReviews: placeReviewsResolver,
     placeDetails: placeDetailsResolver,
   },
   Mutation: {
