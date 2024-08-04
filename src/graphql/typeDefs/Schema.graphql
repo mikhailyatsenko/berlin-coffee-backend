@@ -32,7 +32,7 @@ type PlaceProperties {
   averageRating: Float
   ratingCount: Int!
   favoriteCount: Int!
-  userRating: Int 
+
   isFavorite: Boolean!
   reviews: [Review!]!
 }

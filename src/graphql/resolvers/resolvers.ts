@@ -11,7 +11,7 @@ import { addReviewResolver } from "./addReviewResolver/addReviewResolver.js";
 import { toggleFavoriteResolver } from "./toggleFavoriteResolver/toggleFavoriteResolver.js";
 // import { placeReviewsResolver } from "./placeReviewsResolver/placeReviewsResolver.js";
 import { deleteReviewResolver } from "./deleteReviewResolver/deleteReviewResolver.js";
-import { placeDetailsResolver } from "./placeDetails/placeDetailsResolver.js";
+import { placeDetailsResolver } from "./placeDetailsResolver/placeDetailsResolver.js";
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID!;
 
