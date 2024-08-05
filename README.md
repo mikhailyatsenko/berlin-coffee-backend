@@ -1,19 +1,10 @@
-# 3welle.com - Berlin Coffee Shop Finder
+# Backend for 3welle.com
 
 ## Overview
 3welle.com is a web application designed to help Berlin residents and visitors discover the best specialty coffee shops in the city. Users can explore a map of coffee shops, read reviews, and find essential information about each location.
 
 ## Technologies Used
 
-### Frontend
-- **Vite**
-- **React**
-- **TypeScript**
-- **Apollo Client**
-- **React Router**
-- **SCSS**
-
-### Backend
 - **Express**
 - **Apollo Server**
 - **GraphQL**
@@ -27,10 +18,7 @@
 - **Rating System**: Rate your favorite coffee shops.
 - **Responsive Design**: Optimized for both desktop and mobile devices.
 
-## Architecture
-The application on frontend follows the "Feature-Sliced Design" methodology. For more information on Feature-Sliced Design, visit [feature-sliced.design](https://feature-sliced.design/).
-
-The backend is built with Express and Mongoose for MongoDB integration.
+The backend is built with Express, GraphQL, Apollo Server and Mongoose for MongoDB integration.
 
 
 ## Source

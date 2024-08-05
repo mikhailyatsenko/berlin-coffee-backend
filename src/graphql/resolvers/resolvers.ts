@@ -126,7 +126,7 @@ export const resolvers = {
               : "localhost",
           path: "/",
         });
-        console.log("Cookie cleared");
+
         return { message: "Logged out successfully" };
       } catch (error) {
         console.error("Error clearing cookie:", error);
