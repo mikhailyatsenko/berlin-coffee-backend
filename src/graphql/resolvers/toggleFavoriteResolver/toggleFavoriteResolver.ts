@@ -8,12 +8,12 @@ export async function toggleFavoriteResolver(
   { user }: { user: { id: string } },
 ) {
   if (!user) {
-    return {
-      success: false, // Важно: устанавливаем success в false, а не null
-      message: "You must be logged in to toggle favorite",
-      requiresAuth: true,
-      place: null,
-    };
+    throw new GraphQLError("Authentication required", {
+      extensions: {
+        code: "UNAUTHENTICATED",
+        requiresLogin: true,
+      },
+    });
   }
 
   try {
@@ -27,44 +27,23 @@ export async function toggleFavoriteResolver(
       placeId,
     });
 
-    let updatedInteraction;
-
     if (existingInteraction) {
       // Если взаимодействие существует, просто обновляем isFavorite
       existingInteraction.isFavorite = !existingInteraction.isFavorite;
-      updatedInteraction = await existingInteraction.save();
+      await existingInteraction.save();
     } else {
       // Если взаимодействия нет, создаем новое
-      updatedInteraction = await Interaction.create({
+      await Interaction.create({
         userId: user.id,
         placeId,
         isFavorite: true,
       });
     }
 
-    // Пересчитываем количество избранных для места
-    const favoriteCount = await Interaction.countDocuments({
-      placeId,
-      isFavorite: true,
-    });
-
-    return {
-      success: true,
-      message: "Favorite toggled successfully",
-      requiresAuth: false,
-      place: {
-        id: place._id,
-        isFavorite: updatedInteraction.isFavorite,
-        favoriteCount,
-      },
-    };
+    // Обновляем кэш для запроса GET_ALL_PLACES (это нужно будет сделать на фронте)
+    return true; // Возвращаем true для успешного выполнения
   } catch (error) {
     console.error("Error toggling favorite:", error);
-    return {
-      success: false,
-      message: "Error toggling favorite",
-      requiresAuth: false,
-      place: null,
-    };
+    return false; // Возвращаем false в случае ошибки
   }
 }

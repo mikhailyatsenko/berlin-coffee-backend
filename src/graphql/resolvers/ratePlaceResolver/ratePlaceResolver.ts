@@ -18,7 +18,6 @@ export async function ratePlaceResolver(
       throw new GraphQLError("Place not found");
     }
 
-    // Обновляем или создаем взаимодействие
     await Interaction.findOneAndUpdate(
       { userId: user.id, placeId },
       {
@@ -28,7 +27,6 @@ export async function ratePlaceResolver(
       { upsert: true, new: true },
     );
 
-    // Пересчитываем средний рейтинг и количество оценок
     const aggregationResult = await Interaction.aggregate([
       {
         $match: {
@@ -47,7 +45,6 @@ export async function ratePlaceResolver(
 
     const stats = aggregationResult[0] || { averageRating: 0, ratingCount: 0 };
 
-    // Возвращаем результат без обновления документа Place
     return {
       id: place._id.toString(),
       averageRating: stats.averageRating,

@@ -26,6 +26,7 @@ export async function deleteReviewResolver(
     }
 
     return {
+      reviewId: reviewId,
       success: true,
       message: "Review and rating deleted successfully",
     };

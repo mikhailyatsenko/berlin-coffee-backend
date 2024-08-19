@@ -18,7 +18,9 @@ export async function placeDetailsResolver(
     const interactions = await Interaction.find({ placeId })
       .sort({ date: -1 })
       .lean();
-    const userIds = interactions.map((interaction) => interaction.userId);
+    const userIds = interactions
+      .filter((interaction) => interaction.review || interaction.rating)
+      .map((interaction) => interaction.userId);
     const users = await User.find({ _id: { $in: userIds } }).lean();
 
     const userMap: UserMap = users.reduce((acc: UserMap, user) => {
@@ -29,19 +31,22 @@ export async function placeDetailsResolver(
       return acc;
     }, {});
 
-    const reviews = interactions.map((interaction) => ({
-      id: interaction._id.toString(),
-      text: interaction.review || "",
-      userId: interaction.userId.toString(),
-      userName: userMap[interaction.userId.toString()]?.name || "Unknown User",
-      userAvatar: userMap[interaction.userId.toString()]?.avatar || "",
-      placeId: interaction.placeId.toString(),
-      createdAt: interaction.date.toISOString(),
-      isOwnReview: context.user
-        ? interaction.userId.toString() === context.user.id
-        : false,
-      userRating: interaction.rating || null,
-    }));
+    const reviews = interactions
+      .filter((interaction) => interaction.review || interaction.rating)
+      .map((interaction) => ({
+        id: interaction._id.toString(),
+        text: interaction.review || "",
+        userId: interaction.userId.toString(),
+        userName:
+          userMap[interaction.userId.toString()]?.name || "Unknown User",
+        userAvatar: userMap[interaction.userId.toString()]?.avatar || "",
+        placeId: interaction.placeId.toString(),
+        createdAt: interaction.date.toISOString(),
+        isOwnReview: context.user
+          ? interaction.userId.toString() === context.user.id
+          : false,
+        userRating: interaction.rating || null,
+      }));
 
     const favoriteCount = interactions.filter(
       (interaction) => interaction.isFavorite,
@@ -56,6 +61,7 @@ export async function placeDetailsResolver(
       : false;
 
     return {
+      id: placeId,
       reviews,
       favoriteCount,
       isFavorite,

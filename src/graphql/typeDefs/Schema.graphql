@@ -23,7 +23,7 @@ type Geometry {
 }
 
 type PlaceProperties {
-  id: ID
+  id: ID!
   name: String!
   description: String!
   address: String!
@@ -32,12 +32,12 @@ type PlaceProperties {
   averageRating: Float
   ratingCount: Int!
   favoriteCount: Int!
-
   isFavorite: Boolean!
   reviews: [Review!]!
 }
 
 type PlaceDetails {
+  id: ID!
   reviews: [Review!]!
   favoriteCount: Int!
   isFavorite: Boolean!
@@ -55,7 +55,7 @@ type Mutation {
   loginWithGoogle(code: String!): AuthPayload
   logout: LogoutResponse
   addReview(placeId: ID!, text: String, rating: Float): AddReviewResponse!
-  toggleFavorite(placeId: ID!): FavoriteActionResult!
+  toggleFavorite(placeId: ID!): Boolean!
   deleteReview(reviewId: ID!): DeleteReviewResult!
 }
 
@@ -66,8 +66,9 @@ type AddReviewResponse {
 }
 
 type DeleteReviewResult {
+  reviewId: ID!
   success: Boolean!
-  message: String
+  message: String!
 }
 
 type Review {
@@ -82,13 +83,6 @@ type Review {
   userRating: Float
 }
 
-type PlaceRating {
-  id: ID!
-  averageRating: Float!
-  ratingCount: Int!
-  userRating: Float!
-  userId: ID!
-}
 
 type FavoriteActionResult {
   success: Boolean!
