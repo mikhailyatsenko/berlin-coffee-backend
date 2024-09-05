@@ -109,7 +109,7 @@ export async function addReviewResolver(
 
     return {
       review,
-      averageRating: stats.averageRating,
+      averageRating: stats.averageRating.toFixed(1),
       ratingCount: stats.ratingCount,
     };
   } catch (error) {

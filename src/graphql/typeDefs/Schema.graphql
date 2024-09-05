@@ -67,8 +67,8 @@ type AddReviewResponse {
 
 type DeleteReviewResult {
   reviewId: ID!
-  success: Boolean!
-  message: String!
+  averageRating: Float!
+  ratingCount: Int!
 }
 
 type Review {

@@ -62,7 +62,7 @@ export async function getAllPlacesResolver(
             ...place.properties,
             averageRating:
               stats.averageRating !== null
-                ? Number(stats.averageRating.toFixed(2))
+                ? Number(stats.averageRating.toFixed(1))
                 : null,
             ratingCount: stats.ratingCount,
             favoriteCount,
