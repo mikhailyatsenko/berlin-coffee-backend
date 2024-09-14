@@ -1,10 +1,10 @@
 # User types
 type User {
   id: ID!
-  googleId: String!
+  googleId: String
   displayName: String!
   email: String!
-  avatar: String!
+  avatar: String
   ratedPlaces: [Place!]
 }
 
@@ -53,11 +53,17 @@ type Query {
 # Mutations
 type Mutation {
   loginWithGoogle(code: String!): AuthPayload
+  signInWithEmail(email: String!, password: String!): AuthPayload!
+
+  registerUser(email: String!, displayName: String!, password: String!): AuthPayload!
+
   logout: LogoutResponse
+
   addReview(placeId: ID!, text: String, rating: Float): AddReviewResponse!
   toggleFavorite(placeId: ID!): Boolean!
   deleteReview(reviewId: ID!): DeleteReviewResult!
 }
+
 
 type AddReviewResponse {
   review: Review!

@@ -47,24 +47,6 @@ export async function deleteReviewResolver(
 
     const stats = aggregationResult[0] || { averageRating: 0, ratingCount: 0 };
 
-    // const result = await Interaction.findOneAndDelete({
-    //   _id: reviewId,
-    //   userId: context.user.id,
-    // });
-
-    // if (!result) {
-    //   return {
-    //     success: false,
-    //     message: "Review not found or you don't have permission to delete it",
-    //   };
-    // }
-
-    // return {
-    //   reviewId: reviewId,
-    //   success: true,
-    //   message: "Review and rating deleted successfully",
-    // };
-
     return {
       reviewId: reviewId,
       averageRating: stats.averageRating.toFixed(1),

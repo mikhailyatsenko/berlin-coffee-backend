@@ -12,6 +12,8 @@ import { toggleFavoriteResolver } from "./toggleFavoriteResolver/toggleFavoriteR
 // import { placeReviewsResolver } from "./placeReviewsResolver/placeReviewsResolver.js";
 import { deleteReviewResolver } from "./deleteReviewResolver/deleteReviewResolver.js";
 import { placeDetailsResolver } from "./placeDetailsResolver/placeDetailsResolver.js";
+import { registerUserResolver } from "./registerUserResolver/registerUserResolver.js";
+import { signInWithEmailResolver } from "./signInWithEmailResolver/signInWithEmailResolver.js";
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID!;
 
@@ -30,7 +32,10 @@ export const resolvers = {
     places: getAllPlacesResolver,
 
     currentUser: async (_: never, __: never, { user }: { user: IUser }) => {
-      return user;
+      if (user) {
+        return user;
+      }
+      return null;
     },
     placeDetails: placeDetailsResolver,
   },
@@ -113,6 +118,10 @@ export const resolvers = {
         });
       }
     },
+
+    registerUser: registerUserResolver,
+
+    signInWithEmail: signInWithEmailResolver,
 
     logout: (_: never, __: never, { res }: { res: Response }) => {
       try {

@@ -5,7 +5,7 @@ import { GraphQLError } from "graphql";
 interface UserMap {
   [key: string]: {
     name: string;
-    avatar: string;
+    avatar?: string;
   };
 }
 
@@ -26,7 +26,7 @@ export async function placeDetailsResolver(
     const userMap: UserMap = users.reduce((acc: UserMap, user) => {
       acc[user._id.toString()] = {
         name: user.displayName,
-        avatar: user.avatar,
+        avatar: user?.avatar,
       };
       return acc;
     }, {});
