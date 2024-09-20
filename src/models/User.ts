@@ -9,7 +9,7 @@ export interface IUser extends Document {
   avatar?: string;
 }
 const UserSchema = new mongoose.Schema({
-  googleId: { type: String, unique: true },
+  googleId: { type: String, unique: true, sparse: true },
   email: { type: String, required: true, unique: true },
   password: { type: String },
   displayName: { type: String, required: true },
