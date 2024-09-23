@@ -51,7 +51,9 @@ export async function loginWithGoogleResolver(
 
     let user = await User.findOne({ googleId: payload.sub });
 
-    if (!user) {
+    const isFirstLogin = !user;
+
+    if (isFirstLogin) {
       user = new User({
         googleId: payload.sub,
         email: payload.email,
@@ -61,7 +63,7 @@ export async function loginWithGoogleResolver(
       await user.save();
     }
 
-    const token = createJWT(user.id);
+    const token = createJWT(user?.id);
 
     res.cookie("jwt", token, {
       httpOnly: true,
@@ -81,7 +83,7 @@ export async function loginWithGoogleResolver(
         : "http://localhost:5173",
     );
 
-    return { user };
+    return { user, isFirstLogin };
   } catch (error) {
     console.error("Error in loginWithGoogle:", error);
     throw new GraphQLError("Error authenticating with Google", {

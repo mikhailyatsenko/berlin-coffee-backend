@@ -8,6 +8,15 @@ type User {
   ratedPlaces: [Place!]
 }
 
+type UserProfile {
+  id: ID! 
+  name: String!
+  avatar: String     
+  email: String!
+  reviewedLocations: [UserPlace!]!
+}
+
+
 # Place types
 
 type Place {
@@ -43,11 +52,17 @@ type PlaceDetails {
   isFavorite: Boolean!
 }
 
+type UserPlace {
+  id: ID!          # Уникальный идентификатор места
+  name: String!    # Название места
+}
+
 # Queries
 type Query {
   currentUser: User
   places: [Place!]!
   placeDetails(placeId: ID!): PlaceDetails!
+  getUserProfile(userId: ID!): UserProfile! 
 }
 
 # Mutations
@@ -89,7 +104,6 @@ type Review {
   userRating: Float
 }
 
-
 type FavoriteActionResult {
   success: Boolean!
   message: String
@@ -99,6 +113,7 @@ type FavoriteActionResult {
 
 type AuthPayload {
   user: User!
+  isFirstLogin: Boolean
 }
 
 type LogoutResponse {

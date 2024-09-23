@@ -8,12 +8,14 @@ import { signInWithEmailResolver } from "./signInWithEmailResolver/signInWithEma
 import { loginWithGoogleResolver } from "./loginWithGoogleResolver/loginWithGoogleResolver.js";
 import { currentUserResolver } from "./currentUserResolver/currentUserResolver.js";
 import { logoutResolver } from "./logoutReslover/logoutReslover.js";
+import { getUserProfileResolver } from "./getUserProfileResolver/getUserProfileResolver.js";
 
 export const resolvers = {
   Query: {
     places: getAllPlacesResolver,
     currentUser: currentUserResolver,
     placeDetails: placeDetailsResolver,
+    getUserProfile: getUserProfileResolver,
   },
 
   Mutation: {
