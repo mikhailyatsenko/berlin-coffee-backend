@@ -15,7 +15,6 @@ export async function signInWithEmailResolver(
   { res }: { res: Response },
 ) {
   try {
-    // Найдите пользователя по email
     const user = await User.findOne({ email });
     if (!user) {
       throw new GraphQLError("Invalid e-mail or password", {
@@ -74,9 +73,12 @@ export async function signInWithEmailResolver(
 
     return {
       user: {
-        id: user._id,
-        email: user.email,
+        id: user.id,
         displayName: user.displayName,
+        email: user.email,
+        avatar: user.avatar,
+        createdAt: user.createdAt ? user.createdAt.toISOString() : null,
+        isGoogleUserUserWithoutPassword: false,
       },
     };
   } catch (error) {

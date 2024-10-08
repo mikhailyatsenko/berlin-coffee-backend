@@ -1,11 +1,11 @@
 # User types
 type User {
   id: ID!
-  googleId: String
-  displayName: String!
   email: String!
+  displayName: String!
   avatar: String
-  ratedPlaces: [Place!]
+  createdAt: String
+  isGoogleUserUserWithoutPassword: Boolean!
 }
 
 type UserProfile {
@@ -13,6 +13,7 @@ type UserProfile {
   name: String!
   avatar: String     
   email: String!
+  favoriteLocations: [UserPlace!]!
   reviewedLocations: [UserPlace!]!
 }
 
@@ -53,8 +54,8 @@ type PlaceDetails {
 }
 
 type UserPlace {
-  id: ID!          # Уникальный идентификатор места
-  name: String!    # Название места
+  id: ID!        
+  name: String!   
 }
 
 # Queries
@@ -63,22 +64,35 @@ type Query {
   places: [Place!]!
   placeDetails(placeId: ID!): PlaceDetails!
   getUserProfile(userId: ID!): UserProfile! 
+  getUserReviewActivity: [UserReviewActivity!]!
 }
 
 # Mutations
 type Mutation {
   loginWithGoogle(code: String!): AuthPayload
   signInWithEmail(email: String!, password: String!): AuthPayload!
-
   registerUser(email: String!, displayName: String!, password: String!): AuthPayload!
+
+
+  updatePersonalData(userId: ID!, displayName: String, email: String): UpdatePersonalDataResponse!
+  setNewPassword(userId: ID!, oldPassword: String, newPassword: String!): SetNewPasswordResponse!
 
   logout: LogoutResponse
 
+  uploadAvatar(userId: ID!, fileUrl: String!): UploadAvatarResponse!
   addReview(placeId: ID!, text: String, rating: Float): AddReviewResponse!
   toggleFavorite(placeId: ID!): Boolean!
   deleteReview(reviewId: ID!): DeleteReviewResult!
 }
 
+
+type SetNewPasswordResponse {
+  success: Boolean!
+}
+
+type UpdatePersonalDataResponse {
+  success: Boolean!
+}
 
 type AddReviewResponse {
   review: Review!
@@ -104,11 +118,13 @@ type Review {
   userRating: Float
 }
 
-type FavoriteActionResult {
-  success: Boolean!
-  message: String
-  requiresAuth: Boolean!
-  place: Place
+type UserReviewActivity {
+  rating: Int
+  review: String
+  placeId: ID!
+  placeName: String!
+  averageRating: Float
+  createdAt: String!
 }
 
 type AuthPayload {
@@ -118,4 +134,8 @@ type AuthPayload {
 
 type LogoutResponse {
   message: String!
+}
+
+type UploadAvatarResponse {
+  success: Boolean!
 }

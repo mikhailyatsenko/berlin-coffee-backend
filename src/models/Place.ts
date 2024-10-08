@@ -26,13 +26,11 @@ const PlaceSchema = new mongoose.Schema({
     name: { type: String, required: true },
     description: {
       type: String,
-      // required: [true, "Path `properties.description` is required."],
       default: "",
     },
     address: { type: String, required: true },
     image: {
       type: String,
-      // required: [true, "Path `properties.image` is required."],
       default: "",
     },
     instagram: { type: String, required: true },

@@ -11,6 +11,15 @@ import User, { IUser } from "./models/User.js";
 import http from "http";
 import { ApolloServerPluginDrainHttpServer } from "@apollo/server/plugin/drainHttpServer";
 import jwt from "jsonwebtoken";
+import { avatarUpload } from "./utils/avatarUpload.js";
+import path from "path";
+
+import { fileURLToPath } from "url";
+import { dirname } from "path";
+// import multer from "multer";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 interface Context {
   user?: IUser;
@@ -44,7 +53,7 @@ const bootstrapServer = async () => {
           ? "https://3welle.com"
           : "http://localhost:5173",
       credentials: true,
-      allowedHeaders: ["Content-Type", "Authorization"],
+      allowedHeaders: ["Content-Type", "Authorization", "Content-Length"],
       methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     }),
     express.json(),
@@ -70,6 +79,48 @@ const bootstrapServer = async () => {
   );
 
   await connectDatabase();
+
+  app.post(
+    "/upload-avatar",
+    cors({
+      origin:
+        process.env.NODE_ENV === "production"
+          ? "https://3welle.com"
+          : "http://localhost:5173",
+      credentials: true,
+    }),
+    (req, res, next) => {
+      const token = req.cookies.jwt;
+
+      if (!token) {
+        return res.status(401).json({ error: "User not authenticated." });
+      }
+
+      next();
+    },
+
+    (req, res, next) => {
+      avatarUpload.single("avatar")(req, res, (err) => {
+        if (err) {
+          res.status(400).json({ error: err.message });
+        }
+        next();
+      });
+    },
+
+    (req, res) => {
+      if (!req.file) {
+        return res.status(400).send("No file uploaded.");
+      }
+
+      const fileUrl = `${req.protocol}://${req.get("host")}/uploads/user-${req.body.userId}/avatar/${req.file.filename}`;
+
+      res.json({ fileUrl });
+    },
+  );
+
+  // Статическая папка для загруженных файлов
+  app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 
   app.listen(PORT, "127.0.0.1", () => {
     console.log(`Running server at ${PORT}`);

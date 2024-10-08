@@ -47,7 +47,6 @@ export async function getAllPlacesResolver(
 
         const favoriteCount = interactions.filter((i) => i.isFavorite).length;
 
-        // Проверяем, добавлено ли место в избранное текущим пользователем
         const isFavorite = user
           ? interactions.some(
               (i) => i.userId.toString() === user.id && i.isFavorite,

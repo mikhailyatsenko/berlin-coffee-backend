@@ -8,14 +8,17 @@ import { signInWithEmailResolver } from "./signInWithEmailResolver/signInWithEma
 import { loginWithGoogleResolver } from "./loginWithGoogleResolver/loginWithGoogleResolver.js";
 import { currentUserResolver } from "./currentUserResolver/currentUserResolver.js";
 import { logoutResolver } from "./logoutReslover/logoutReslover.js";
-import { getUserProfileResolver } from "./getUserProfileResolver/getUserProfileResolver.js";
+import { getUserReviewActivityResolver } from "./getUserReviewActivityResolver/getUserReviewActivityResolver.js";
+import { setNewPasswordResolver } from "./setNewPasswordResolver/setNewPasswordResolver.js";
+import { updatePersonalDataResolver } from "./updatePersonalDataResolver/updatePersonalDataResolver.js";
+import { uploadAvatarResolver } from "./uploadAvatarResolver/uploadAvatarResolver.js";
 
 export const resolvers = {
   Query: {
     places: getAllPlacesResolver,
     currentUser: currentUserResolver,
     placeDetails: placeDetailsResolver,
-    getUserProfile: getUserProfileResolver,
+    getUserReviewActivity: getUserReviewActivityResolver,
   },
 
   Mutation: {
@@ -23,7 +26,12 @@ export const resolvers = {
     loginWithGoogle: loginWithGoogleResolver,
     signInWithEmail: signInWithEmailResolver,
 
+    updatePersonalData: updatePersonalDataResolver,
+    setNewPassword: setNewPasswordResolver,
+
     logout: logoutResolver,
+
+    uploadAvatar: uploadAvatarResolver,
 
     addReview: addReviewResolver,
     toggleFavorite: toggleFavoriteResolver,

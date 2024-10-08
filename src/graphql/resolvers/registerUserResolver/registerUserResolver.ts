@@ -67,6 +67,9 @@ export async function registerUserResolver(
         id: newUser._id,
         email: newUser.email,
         displayName: newUser.displayName,
+        avatar: newUser.avatar,
+        createdAt: newUser.createdAt.toISOString(),
+        isGoogleUserUserWithoutPassword: false,
       },
     };
   } catch (error) {

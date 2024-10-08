@@ -1,9 +1,10 @@
 import mongoose, { Document } from "mongoose";
+import { IPlace } from "./Place";
 
 export interface IInteraction extends Document {
   _id: mongoose.Types.ObjectId;
   userId: mongoose.Types.ObjectId;
-  placeId: mongoose.Types.ObjectId;
+  placeId: IPlace["_id"];
   rating?: number;
   review?: string;
   isFavorite: boolean;

@@ -53,7 +53,7 @@ export async function loginWithGoogleResolver(
 
     const isFirstLogin = !user;
 
-    if (isFirstLogin) {
+    if (!user) {
       user = new User({
         googleId: payload.sub,
         email: payload.email,
@@ -83,7 +83,17 @@ export async function loginWithGoogleResolver(
         : "http://localhost:5173",
     );
 
-    return { user, isFirstLogin };
+    return {
+      user: {
+        id: user.id,
+        displayName: user.displayName,
+        email: user.email,
+        avatar: user.avatar,
+        createdAt: user.createdAt ? user.createdAt.toISOString() : null,
+        isGoogleUserUserWithoutPassword: !!user.googleId && !user.password,
+      },
+      isFirstLogin,
+    };
   } catch (error) {
     console.error("Error in loginWithGoogle:", error);
     throw new GraphQLError("Error authenticating with Google", {

@@ -6,7 +6,14 @@ export async function currentUserResolver(
   { user }: { user: IUser },
 ) {
   if (user) {
-    return user;
+    return {
+      id: user.id,
+      displayName: user.displayName,
+      email: user.email,
+      avatar: user.avatar,
+      createdAt: user.createdAt ? user.createdAt.toISOString() : null,
+      isGoogleUserUserWithoutPassword: !!user.googleId && !user.password,
+    };
   }
   return null;
 }
