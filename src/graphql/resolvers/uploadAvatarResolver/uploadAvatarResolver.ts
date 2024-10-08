@@ -1,12 +1,18 @@
 import { GraphQLError } from "graphql";
 import User, { IUser } from "../../../models/User.js";
 
+import fs from "fs";
+import path, { dirname } from "path";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
 export async function uploadAvatarResolver(
   _: never,
   { userId, fileUrl }: { userId: string; fileUrl: string },
   context: { user?: IUser },
 ) {
-  console.log("inside upload resolver");
   try {
     // Проверяем соответствие userId в контексте
     if (!context.user || context.user.id !== userId) {
@@ -28,7 +34,26 @@ export async function uploadAvatarResolver(
       });
     }
 
-    user.avatar = fileUrl; // Сохраняем путь к новому аватару
+    if (user.avatar) {
+      const oldAvatarPath = path.join(
+        __dirname,
+        "../../../../uploads",
+        `user-${user.id}`,
+        "avatar",
+        path.basename(user.avatar),
+      );
+      console.log(oldAvatarPath);
+      if (fs.existsSync(oldAvatarPath)) {
+        try {
+          fs.unlinkSync(oldAvatarPath);
+        } catch (err) {
+          throw new GraphQLError("Error deleting old avatar:");
+        }
+      }
+    }
+
+    user.avatar = fileUrl;
+
     await user.save();
 
     return {

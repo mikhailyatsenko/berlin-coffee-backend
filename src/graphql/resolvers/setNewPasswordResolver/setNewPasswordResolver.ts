@@ -56,19 +56,6 @@ export async function setNewPasswordResolver(
 
     user.password = hashedNewPassword;
     await user.save();
-    // Удаляем старый файл, если он существует (если передано старое имя файла)
-    // if (req.body.oldFileName) {
-    //   const oldAvatarPath = path.join(
-    //     __dirname,
-    //     "uploads",
-    //     `user-${req.body.userId}`,
-    //     "avatar",
-    //     req.body.oldFileName,
-    //   );
-    //   if (fs.existsSync(oldAvatarPath)) {
-    //     fs.unlinkSync(oldAvatarPath);
-    //   }
-    // }
 
     return {
       success: true,

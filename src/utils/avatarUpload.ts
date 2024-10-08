@@ -12,8 +12,6 @@ const __dirname = dirname(__filename);
 // Настройка хранилища multer
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    console.log("mutler", req.body);
-
     const decoded = verifyToken(req.cookies.jwt, req.body.userId);
     if (!decoded) {
       return cb(new Error("Invalid or expired token."), "");

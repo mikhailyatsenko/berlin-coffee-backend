@@ -4,7 +4,7 @@ import { toggleFavoriteResolver } from "./toggleFavoriteResolver/toggleFavoriteR
 import { deleteReviewResolver } from "./deleteReviewResolver/deleteReviewResolver.js";
 import { placeDetailsResolver } from "./placeDetailsResolver/placeDetailsResolver.js";
 import { registerUserResolver } from "./registerUserResolver/registerUserResolver.js";
-import { signInWithEmailResolver } from "./signInWithEmailResolver/signInWithEmailResolver.js";
+import { signInWithEmailResolver } from "./signInWithEmailResolver/gnInWithEmailResolver.js";
 import { loginWithGoogleResolver } from "./loginWithGoogleResolver/loginWithGoogleResolver.js";
 import { currentUserResolver } from "./currentUserResolver/currentUserResolver.js";
 import { logoutResolver } from "./logoutReslover/logoutReslover.js";
