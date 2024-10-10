@@ -102,7 +102,7 @@ const bootstrapServer = async () => {
     (req, res, next) => {
       avatarUpload.single("avatar")(req, res, (err) => {
         if (err) {
-          res.status(400).json({ error: err.message });
+          return res.status(400).json({ error: err.message });
         }
         next();
       });
@@ -120,7 +120,7 @@ const bootstrapServer = async () => {
   );
 
   // Статическая папка для загруженных файлов
-  app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
+  app.use("/uploads", express.static(path.join(__dirname, "./uploads")));
 
   app.listen(PORT, "127.0.0.1", () => {
     console.log(`Running server at ${PORT}`);

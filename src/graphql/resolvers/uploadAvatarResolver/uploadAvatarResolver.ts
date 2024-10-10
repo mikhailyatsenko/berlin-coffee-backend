@@ -37,12 +37,11 @@ export async function uploadAvatarResolver(
     if (user.avatar) {
       const oldAvatarPath = path.join(
         __dirname,
-        "../../../../uploads",
+        "../../../uploads",
         `user-${user.id}`,
         "avatar",
         path.basename(user.avatar),
       );
-      console.log(oldAvatarPath);
       if (fs.existsSync(oldAvatarPath)) {
         try {
           fs.unlinkSync(oldAvatarPath);

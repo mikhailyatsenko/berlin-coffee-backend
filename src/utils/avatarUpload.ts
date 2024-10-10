@@ -18,12 +18,7 @@ const storage = multer.diskStorage({
     }
 
     const userId = req.body.userId;
-    const dir = path.join(
-      __dirname,
-      "../../uploads",
-      `user-${userId}`,
-      "avatar",
-    );
+    const dir = path.join(__dirname, "../uploads", `user-${userId}`, "avatar");
 
     // Создаем директорию, если она не существует
     fs.mkdirSync(dir, { recursive: true });
