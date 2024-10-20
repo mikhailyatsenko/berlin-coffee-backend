@@ -8,18 +8,7 @@ type User {
   isGoogleUserUserWithoutPassword: Boolean!
 }
 
-type UserProfile {
-  id: ID! 
-  name: String!
-  avatar: String     
-  email: String!
-  favoriteLocations: [UserPlace!]!
-  reviewedLocations: [UserPlace!]!
-}
-
-
 # Place types
-
 type Place {
   id: ID! 
   type: String!
@@ -53,59 +42,7 @@ type PlaceDetails {
   isFavorite: Boolean!
 }
 
-type UserPlace {
-  id: ID!        
-  name: String!   
-}
-
-# Queries
-type Query {
-  currentUser: User
-  places: [Place!]!
-  placeDetails(placeId: ID!): PlaceDetails!
-  getUserProfile(userId: ID!): UserProfile! 
-  getUserReviewActivity: [UserReviewActivity!]!
-}
-
-# Mutations
-type Mutation {
-  loginWithGoogle(code: String!): AuthPayload
-  signInWithEmail(email: String!, password: String!): AuthPayload!
-  registerUser(email: String!, displayName: String!, password: String!): AuthPayload!
-
-
-  updatePersonalData(userId: ID!, displayName: String, email: String): UpdatePersonalDataResponse!
-  setNewPassword(userId: ID!, oldPassword: String, newPassword: String!): SetNewPasswordResponse!
-
-  logout: LogoutResponse
-
-  uploadAvatar(userId: ID!, fileUrl: String!): UploadAvatarResponse!
-  addReview(placeId: ID!, text: String, rating: Float): AddReviewResponse!
-  toggleFavorite(placeId: ID!): Boolean!
-  deleteReview(reviewId: ID!): DeleteReviewResult!
-}
-
-
-type SetNewPasswordResponse {
-  success: Boolean!
-}
-
-type UpdatePersonalDataResponse {
-  success: Boolean!
-}
-
-type AddReviewResponse {
-  review: Review!
-  averageRating: Float!
-  ratingCount: Int!
-}
-
-type DeleteReviewResult {
-  reviewId: ID!
-  averageRating: Float!
-  ratingCount: Int!
-}
-
+# Review types
 type Review {
   id: ID!
   text: String!
@@ -118,6 +55,7 @@ type Review {
   userRating: Float
 }
 
+# User activity types
 type UserReviewActivity {
   rating: Int
   review: String
@@ -127,6 +65,7 @@ type UserReviewActivity {
   createdAt: String!
 }
 
+# Auth types
 type AuthPayload {
   user: User!
   isFirstLogin: Boolean
@@ -136,6 +75,60 @@ type LogoutResponse {
   message: String!
 }
 
-type UploadAvatarResponse {
+# Response types for mutations
+type SuccessResponse {
   success: Boolean!
+}
+
+# Queries
+type Query {
+  currentUser: User
+  places: [Place!]!
+  placeDetails(placeId: ID!): PlaceDetails!
+  getUserReviewActivity: [UserReviewActivity!]!
+}
+
+# Mutations
+type Mutation {
+  loginWithGoogle(code: String!): AuthPayload
+  signInWithEmail(email: String!, password: String!): AuthPayload!
+  registerUser(email: String!, displayName: String!, password: String!): AuthPayload!
+
+  updatePersonalData(userId: ID!, displayName: String, email: String): UpdatePersonalDataResponse!
+
+  setNewPassword(userId: ID!, oldPassword: String, newPassword: String!): SetNewPasswordResponse!
+
+  logout: LogoutResponse
+
+  uploadAvatar(userId: ID!, fileUrl: String!): SuccessResponse!
+
+  deleteAvatar: SuccessResponse!
+
+  addReview(placeId: ID!, text: String, rating: Float): AddReviewResponse!
+
+  toggleFavorite(placeId: ID!): Boolean!
+
+  deleteReview(reviewId: ID!): DeleteReviewResult!
+
+}
+
+# Responses for updates and actions
+type SetNewPasswordResponse {
+    success : Boolean!
+}
+
+type UpdatePersonalDataResponse {
+    success : Boolean!
+}
+
+type AddReviewResponse {
+    review : Review!
+    averageRating : Float!
+    ratingCount : Int!
+}
+
+type DeleteReviewResult {
+    reviewId : ID!
+    averageRating : Float!
+    ratingCount : Int!
 }

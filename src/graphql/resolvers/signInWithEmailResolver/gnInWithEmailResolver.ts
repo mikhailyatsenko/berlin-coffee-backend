@@ -24,7 +24,6 @@ export async function signInWithEmailResolver(
       });
     }
 
-    // Проверка, зарегистрирован ли пользователь через Google
     if (user.googleId && !user.password) {
       throw new GraphQLError(
         "This email is associated with a Google account and does not have a password",
@@ -36,7 +35,6 @@ export async function signInWithEmailResolver(
       );
     }
 
-    // Сравните хэшированный пароль с введенным паролем
     if (user.password) {
       const isPasswordValid = await bcrypt.compare(password, user.password);
       if (!isPasswordValid) {
@@ -54,7 +52,6 @@ export async function signInWithEmailResolver(
       });
     }
 
-    // Создание токена
     const token = jwt.sign(
       { id: user._id, email: user.email },
       process.env.JWT_SECRET!,
@@ -68,7 +65,6 @@ export async function signInWithEmailResolver(
       domain:
         process.env.NODE_ENV === "production" ? "yatsenko.site" : "localhost",
       path: "/",
-      maxAge: 24 * 60 * 60 * 1000 * 2, // 2 days
     });
 
     return {

@@ -1,5 +1,5 @@
 import { GraphQLError } from "graphql";
-import User, { IUser } from "../../../models/User.js"; // Импорт модели пользователя
+import User, { IUser } from "../../../models/User.js";
 
 export async function updatePersonalDataResolver(
   _: never,

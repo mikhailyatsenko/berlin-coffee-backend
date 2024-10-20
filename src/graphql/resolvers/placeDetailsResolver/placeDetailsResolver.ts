@@ -5,7 +5,7 @@ import { GraphQLError } from "graphql";
 interface UserMap {
   [key: string]: {
     name: string;
-    avatar?: string;
+    avatar?: string | null;
   };
 }
 

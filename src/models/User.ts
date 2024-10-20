@@ -2,11 +2,11 @@ import mongoose, { Document } from "mongoose";
 
 export interface IUser extends Document {
   _id: mongoose.Types.ObjectId;
-  googleId?: string;
+  googleId?: string | null;
   email: string;
-  password?: string;
+  password?: string | null;
   displayName: string;
-  avatar?: string;
+  avatar?: string | null;
   createdAt: Date;
 }
 const UserSchema = new mongoose.Schema({

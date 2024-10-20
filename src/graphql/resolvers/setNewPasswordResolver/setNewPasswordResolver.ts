@@ -1,6 +1,6 @@
 import { GraphQLError } from "graphql";
-import User, { IUser } from "../../../models/User.js"; // Импорт модели пользователя
-import bcrypt from "bcrypt"; // Импорт библиотеки для хеширования паролей
+import User, { IUser } from "../../../models/User.js";
+import bcrypt from "bcrypt";
 
 export async function setNewPasswordResolver(
   _: never,

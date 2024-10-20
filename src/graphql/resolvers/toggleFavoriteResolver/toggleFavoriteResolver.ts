@@ -28,11 +28,9 @@ export async function toggleFavoriteResolver(
     });
 
     if (existingInteraction) {
-      // Если взаимодействие существует, просто обновляем isFavorite
       existingInteraction.isFavorite = !existingInteraction.isFavorite;
       await existingInteraction.save();
     } else {
-      // Если взаимодействия нет, создаем новое
       await Interaction.create({
         userId: user.id,
         placeId,
@@ -40,10 +38,9 @@ export async function toggleFavoriteResolver(
       });
     }
 
-    // Обновляем кэш для запроса GET_ALL_PLACES (это нужно будет сделать на фронте)
-    return true; // Возвращаем true для успешного выполнения
+    return true;
   } catch (error) {
     console.error("Error toggling favorite:", error);
-    return false; // Возвращаем false в случае ошибки
+    return false;
   }
 }

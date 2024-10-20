@@ -44,14 +44,12 @@ export async function registerUserResolver(
 
     await newUser.save();
 
-    // Создание токена
     const token = jwt.sign(
       { id: newUser._id, email: newUser.email },
       process.env.JWT_SECRET!,
       { expiresIn: "2d" },
     );
 
-    // Сохранение токена в куках
     res.cookie("jwt", token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",

@@ -9,7 +9,6 @@ import verifyToken from "./verifyToken.js";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-// Настройка хранилища multer
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     const decoded = verifyToken(req.cookies.jwt, req.body.userId);
@@ -20,7 +19,6 @@ const storage = multer.diskStorage({
     const userId = req.body.userId;
     const dir = path.join(__dirname, "../uploads", `user-${userId}`, "avatar");
 
-    // Создаем директорию, если она не существует
     fs.mkdirSync(dir, { recursive: true });
     cb(null, dir);
   },
@@ -31,7 +29,6 @@ const storage = multer.diskStorage({
   },
 });
 
-// Фильтр для проверки типа и размера файла
 const fileFilter = (
   req: Express.Request,
   file: Express.Multer.File,
@@ -46,7 +43,6 @@ const fileFilter = (
   }
 };
 
-// Экспортируем настроенный multer
 const avatarUpload = multer({
   storage,
   fileFilter,

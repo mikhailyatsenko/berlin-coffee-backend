@@ -35,25 +35,21 @@ export async function addReviewResolver(
       throw new GraphQLError("Place not found");
     }
 
-    // Находим существующее взаимодействие
     let interaction:
       | (mongoose.FlattenMaps<IInteraction> & { _id: mongoose.Types.ObjectId })
       | null = await Interaction.findOne({ userId: user.id, placeId }).lean();
 
-    // Подготавливаем данные для обновления
     const updateData: Partial<IInteraction> = { date: new Date() };
     if (rating !== undefined) updateData.rating = rating;
     if (text !== undefined) updateData.review = text;
 
     if (interaction) {
-      // Обновляем существующее взаимодействие
       interaction = await Interaction.findOneAndUpdate(
         { userId: user.id, placeId },
         { $set: updateData },
         { new: true, lean: true },
       );
     } else {
-      // Создаем новое взаимодействие
       const newInteraction = await Interaction.create({
         userId: user.id,
         placeId,
@@ -66,7 +62,6 @@ export async function addReviewResolver(
       throw new GraphQLError("Failed to create or update interaction");
     }
 
-    // Пересчитываем средний рейтинг и количество оценок
     const aggregationResult = await Interaction.aggregate([
       {
         $match: {
@@ -85,7 +80,6 @@ export async function addReviewResolver(
 
     const stats = aggregationResult[0] || { averageRating: 0, ratingCount: 0 };
 
-    // Получаем информацию о пользователе
     const userDoc = await User.findById(user.id).lean();
     const userMap: UserMap = {
       [user.id]: {
@@ -94,7 +88,6 @@ export async function addReviewResolver(
       },
     };
 
-    // Формируем отзыв
     const review = {
       id: interaction._id.toString(),
       text: interaction.review || "",

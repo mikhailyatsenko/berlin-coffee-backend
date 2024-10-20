@@ -12,6 +12,7 @@ import { getUserReviewActivityResolver } from "./getUserReviewActivityResolver/g
 import { setNewPasswordResolver } from "./setNewPasswordResolver/setNewPasswordResolver.js";
 import { updatePersonalDataResolver } from "./updatePersonalDataResolver/updatePersonalDataResolver.js";
 import { uploadAvatarResolver } from "./uploadAvatarResolver/uploadAvatarResolver.js";
+import { deleteAvatarResolver } from "./deleteAvatarResolver/deleteAvatarResolver.js";
 
 export const resolvers = {
   Query: {
@@ -32,6 +33,7 @@ export const resolvers = {
     logout: logoutResolver,
 
     uploadAvatar: uploadAvatarResolver,
+    deleteAvatar: deleteAvatarResolver,
 
     addReview: addReviewResolver,
     toggleFavorite: toggleFavoriteResolver,

@@ -32,7 +32,7 @@ export async function deleteReviewResolver(
     const aggregationResult = await Interaction.aggregate([
       {
         $match: {
-          placeId: new mongoose.Types.ObjectId(interaction.placeId), // Используем placeId из удаляемого отзыва
+          placeId: new mongoose.Types.ObjectId(interaction.placeId),
           rating: { $exists: true, $ne: null },
         },
       },
