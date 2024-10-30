@@ -2,6 +2,21 @@ import Place, { IPlace } from "../../../models/Place.js";
 import Interaction from "../../../models/Interaction.js";
 import { GraphQLError } from "graphql";
 
+interface CharacteristicData {
+  pressed: boolean;
+  count: number;
+}
+
+interface ICharacteristicCounts {
+  tastyFilterCoffee: CharacteristicData;
+  pleasantAtmosphere: CharacteristicData;
+  friendlyStaff: CharacteristicData;
+  tastyDesserts: CharacteristicData;
+  greatFood: CharacteristicData;
+  reasonablePrices: CharacteristicData;
+  hasWifi: CharacteristicData;
+}
+
 export async function getAllPlacesResolver(
   _: never,
   __: never,
@@ -14,6 +29,45 @@ export async function getAllPlacesResolver(
       places.map(async (place: IPlace) => {
         const interactions = await Interaction.find({ placeId: place._id });
 
+        const characteristicCounts: ICharacteristicCounts = {
+          tastyFilterCoffee: { pressed: false, count: 0 },
+          pleasantAtmosphere: { pressed: false, count: 0 },
+          friendlyStaff: { pressed: false, count: 0 },
+          tastyDesserts: { pressed: false, count: 0 },
+          greatFood: { pressed: false, count: 0 },
+          reasonablePrices: { pressed: false, count: 0 },
+          hasWifi: { pressed: false, count: 0 },
+        };
+
+        interactions.forEach((interaction) => {
+          for (const key in interaction.characteristics) {
+            if (
+              key in characteristicCounts &&
+              interaction.characteristics[key as keyof ICharacteristicCounts]
+            ) {
+              characteristicCounts[key as keyof ICharacteristicCounts].pressed =
+                true; // Устанавливаем состояние нажатия
+              characteristicCounts[key as keyof ICharacteristicCounts].count +=
+                1; // Увеличиваем счетчик нажатий
+            }
+          }
+
+          // Проверяем состояние характеристик для текущего пользователя
+          if (user && interaction.userId.toString() === user.id) {
+            for (const key in characteristicCounts) {
+              if (key in interaction.characteristics) {
+                characteristicCounts[
+                  key as keyof ICharacteristicCounts
+                ].pressed =
+                  interaction.characteristics[
+                    key as keyof ICharacteristicCounts
+                  ]; // Устанавливаем состояние нажатия для текущего пользователя
+              }
+            }
+          }
+        });
+
+        // Агрегация для averageRating и ratingCount
         const aggregationResult = await Interaction.aggregate([
           {
             $match: {
@@ -35,23 +89,7 @@ export async function getAllPlacesResolver(
           ratingCount: 0,
         };
 
-        const reviews = interactions
-          .filter((i) => i.review)
-          .map((i) => ({
-            id: i._id.toString(),
-            text: i.review!,
-            userId: i.userId.toString(),
-            placeId: i.placeId.toString(),
-            createdAt: i.date.toISOString(),
-          }));
-
         const favoriteCount = interactions.filter((i) => i.isFavorite).length;
-
-        const isFavorite = user
-          ? interactions.some(
-              (i) => i.userId.toString() === user.id && i.isFavorite,
-            )
-          : false;
 
         return {
           id: place._id.toString(),
@@ -64,9 +102,13 @@ export async function getAllPlacesResolver(
                 ? Number(stats.averageRating.toFixed(1))
                 : null,
             ratingCount: stats.ratingCount,
+            characteristicCounts,
             favoriteCount,
-            isFavorite,
-            reviews,
+            isFavorite: user
+              ? interactions.some(
+                  (i) => i.userId.toString() === user.id && i.isFavorite,
+                )
+              : false,
           },
         };
       }),

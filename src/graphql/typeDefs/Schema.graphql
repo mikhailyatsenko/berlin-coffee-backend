@@ -21,6 +21,21 @@ type Geometry {
   coordinates: [Float!]!
 }
 
+type CharacteristicData {
+  pressed: Boolean!
+  count: Int!     
+}
+
+type CharacteristicCounts {
+  tastyFilterCoffee: CharacteristicData!
+  pleasantAtmosphere: CharacteristicData!
+  friendlyStaff: CharacteristicData!
+  tastyDesserts: CharacteristicData!
+  greatFood: CharacteristicData!
+  reasonablePrices: CharacteristicData!
+  hasWifi: CharacteristicData!
+}
+
 type PlaceProperties {
   id: ID!
   name: String!
@@ -33,6 +48,7 @@ type PlaceProperties {
   favoriteCount: Int!
   isFavorite: Boolean!
   reviews: [Review!]!
+  characteristicCounts: CharacteristicCounts!
 }
 
 type PlaceDetails {
@@ -88,6 +104,16 @@ type Query {
   getUserReviewActivity: [UserReviewActivity!]!
 }
 
+enum Characteristic {
+  tastyFilterCoffee
+  pleasantAtmosphere
+  friendlyStaff
+  tastyDesserts
+  greatFood
+  reasonablePrices
+  hasWifi
+}
+
 # Mutations
 type Mutation {
   loginWithGoogle(code: String!): AuthPayload
@@ -109,6 +135,8 @@ type Mutation {
   toggleFavorite(placeId: ID!): Boolean!
 
   deleteReview(reviewId: ID!): DeleteReviewResult!
+
+  toggleCharacteristic(placeId: ID!, characteristic: Characteristic!): SuccessResponse!
 
 }
 
