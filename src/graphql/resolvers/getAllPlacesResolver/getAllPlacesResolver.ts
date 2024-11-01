@@ -8,13 +8,13 @@ interface CharacteristicData {
 }
 
 interface ICharacteristicCounts {
-  tastyFilterCoffee: CharacteristicData;
+  deliciousFilterCoffee: CharacteristicData;
   pleasantAtmosphere: CharacteristicData;
   friendlyStaff: CharacteristicData;
-  tastyDesserts: CharacteristicData;
-  greatFood: CharacteristicData;
-  reasonablePrices: CharacteristicData;
-  hasWifi: CharacteristicData;
+  deliciousDesserts: CharacteristicData;
+  excellentFood: CharacteristicData;
+  affordablePrices: CharacteristicData;
+  freeWifi: CharacteristicData;
 }
 
 export async function getAllPlacesResolver(
@@ -30,13 +30,13 @@ export async function getAllPlacesResolver(
         const interactions = await Interaction.find({ placeId: place._id });
 
         const characteristicCounts: ICharacteristicCounts = {
-          tastyFilterCoffee: { pressed: false, count: 0 },
+          deliciousFilterCoffee: { pressed: false, count: 0 },
           pleasantAtmosphere: { pressed: false, count: 0 },
           friendlyStaff: { pressed: false, count: 0 },
-          tastyDesserts: { pressed: false, count: 0 },
-          greatFood: { pressed: false, count: 0 },
-          reasonablePrices: { pressed: false, count: 0 },
-          hasWifi: { pressed: false, count: 0 },
+          deliciousDesserts: { pressed: false, count: 0 },
+          excellentFood: { pressed: false, count: 0 },
+          affordablePrices: { pressed: false, count: 0 },
+          freeWifi: { pressed: false, count: 0 },
         };
 
         interactions.forEach((interaction) => {

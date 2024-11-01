@@ -13,6 +13,7 @@ import { setNewPasswordResolver } from "./setNewPasswordResolver/setNewPasswordR
 import { updatePersonalDataResolver } from "./updatePersonalDataResolver/updatePersonalDataResolver.js";
 import { uploadAvatarResolver } from "./uploadAvatarResolver/uploadAvatarResolver.js";
 import { deleteAvatarResolver } from "./deleteAvatarResolver/deleteAvatarResolver.js";
+import { toggleCharacteristicResolver } from "./toggleCharacteristicResolver/toggleCharacteristicResolver.js";
 
 export const resolvers = {
   Query: {
@@ -38,5 +39,6 @@ export const resolvers = {
     addReview: addReviewResolver,
     toggleFavorite: toggleFavoriteResolver,
     deleteReview: deleteReviewResolver,
+    toggleCharacteristic: toggleCharacteristicResolver,
   },
 };

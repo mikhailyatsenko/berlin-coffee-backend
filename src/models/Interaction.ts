@@ -9,13 +9,13 @@ export interface IInteraction extends Document {
   review?: string;
   isFavorite: boolean;
   characteristics: {
-    tastyFilterCoffee: boolean; // true или false
+    deliciousFilterCoffee: boolean;
     pleasantAtmosphere: boolean;
     friendlyStaff: boolean;
-    tastyDesserts: boolean;
-    greatFood: boolean;
-    reasonablePrices: boolean;
-    hasWifi: boolean;
+    deliciousDesserts: boolean;
+    excellentFood: boolean;
+    affordablePrices: boolean;
+    freeWifi: boolean;
   };
   date: Date;
 }
@@ -31,14 +31,15 @@ const InteractionSchema = new mongoose.Schema({
   review: { type: String },
   isFavorite: { type: Boolean, default: false },
   characteristics: {
-    tastyFilterCoffee: { type: Boolean, default: false },
+    deliciousFilterCoffee: { type: Boolean, default: false },
     pleasantAtmosphere: { type: Boolean, default: false },
     friendlyStaff: { type: Boolean, default: false },
-    tastyDesserts: { type: Boolean, default: false },
-    greatFood: { type: Boolean, default: false },
-    reasonablePrices: { type: Boolean, default: false },
-    hasWifi: { type: Boolean, default: false },
+    deliciousDesserts: { type: Boolean, default: false },
+    excellentFood: { type: Boolean, default: false },
+    affordablePrices: { type: Boolean, default: false },
+    freeWifi: { type: Boolean, default: false },
   },
+
   date: { type: Date, default: Date.now },
 });
 

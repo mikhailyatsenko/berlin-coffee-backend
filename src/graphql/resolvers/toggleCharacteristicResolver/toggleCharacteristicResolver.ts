@@ -2,15 +2,14 @@ import { GraphQLError } from "graphql";
 import Interaction from "../../../models/Interaction.js";
 import Place from "../../../models/Place.js";
 
-export enum Characteristic {
-  TastyFilterCoffee = "tastyFilterCoffee",
-  PleasantAtmosphere = "pleasantAtmosphere",
-  FriendlyStaff = "friendlyStaff",
-  TastyDesserts = "tastyDesserts",
-  GreatFood = "greatFood",
-  ReasonablePrices = "reasonablePrices",
-  HasWifi = "hasWifi",
-}
+export type Characteristic =
+  | "deliciousFilterCoffee"
+  | "pleasantAtmosphere"
+  | "friendlyStaff"
+  | "deliciousDesserts"
+  | "excellentFood"
+  | "affordablePrices"
+  | "freeWifi";
 
 export async function toggleCharacteristicResolver(
   _: never,
@@ -34,7 +33,6 @@ export async function toggleCharacteristicResolver(
     if (!place) {
       throw new GraphQLError("Place not found");
     }
-
     const existingInteraction = await Interaction.findOne({
       userId: user.id,
       placeId,
@@ -55,7 +53,9 @@ export async function toggleCharacteristicResolver(
       await newInteraction.save();
     }
 
-    return true;
+    return {
+      success: true,
+    };
   } catch (error) {
     console.error("Error toggling characteristic:", error);
     return false;
