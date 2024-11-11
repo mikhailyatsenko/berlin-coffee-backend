@@ -3,13 +3,14 @@ import Interaction from "../../../models/Interaction.js";
 import Place from "../../../models/Place.js";
 
 export type Characteristic =
-  | "deliciousFilterCoffee"
+  | "affordablePrices"
   | "pleasantAtmosphere"
   | "friendlyStaff"
-  | "deliciousDesserts"
-  | "excellentFood"
-  | "affordablePrices"
-  | "freeWifi";
+  | "freeWifi"
+  | "yummyEats"
+  | "deliciousFilterCoffee"
+  | "petFriendly"
+  | "outdoorSeating";
 
 export async function toggleCharacteristicResolver(
   _: never,

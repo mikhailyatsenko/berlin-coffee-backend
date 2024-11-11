@@ -11,10 +11,11 @@ interface ICharacteristicCounts {
   deliciousFilterCoffee: CharacteristicData;
   pleasantAtmosphere: CharacteristicData;
   friendlyStaff: CharacteristicData;
-  deliciousDesserts: CharacteristicData;
-  excellentFood: CharacteristicData;
-  affordablePrices: CharacteristicData;
   freeWifi: CharacteristicData;
+  yummyEats: CharacteristicData;
+  affordablePrices: CharacteristicData;
+  petFriendly: CharacteristicData;
+  outdoorSeating: CharacteristicData;
 }
 
 export async function getAllPlacesResolver(
@@ -30,13 +31,14 @@ export async function getAllPlacesResolver(
         const interactions = await Interaction.find({ placeId: place._id });
 
         const characteristicCounts: ICharacteristicCounts = {
-          deliciousFilterCoffee: { pressed: false, count: 0 },
           pleasantAtmosphere: { pressed: false, count: 0 },
           friendlyStaff: { pressed: false, count: 0 },
-          deliciousDesserts: { pressed: false, count: 0 },
-          excellentFood: { pressed: false, count: 0 },
           affordablePrices: { pressed: false, count: 0 },
+          yummyEats: { pressed: false, count: 0 },
+          deliciousFilterCoffee: { pressed: false, count: 0 },
           freeWifi: { pressed: false, count: 0 },
+          petFriendly: { pressed: false, count: 0 },
+          outdoorSeating: { pressed: false, count: 0 },
         };
 
         interactions.forEach((interaction) => {
@@ -45,14 +47,11 @@ export async function getAllPlacesResolver(
               key in characteristicCounts &&
               interaction.characteristics[key as keyof ICharacteristicCounts]
             ) {
-              characteristicCounts[key as keyof ICharacteristicCounts].pressed =
-                true; // Устанавливаем состояние нажатия
               characteristicCounts[key as keyof ICharacteristicCounts].count +=
-                1; // Увеличиваем счетчик нажатий
+                1;
             }
           }
 
-          // Проверяем состояние характеристик для текущего пользователя
           if (user && interaction.userId.toString() === user.id) {
             for (const key in characteristicCounts) {
               if (key in interaction.characteristics) {
@@ -61,13 +60,12 @@ export async function getAllPlacesResolver(
                 ].pressed =
                   interaction.characteristics[
                     key as keyof ICharacteristicCounts
-                  ]; // Устанавливаем состояние нажатия для текущего пользователя
+                  ];
               }
             }
           }
         });
 
-        // Агрегация для averageRating и ratingCount
         const aggregationResult = await Interaction.aggregate([
           {
             $match: {
@@ -113,7 +111,6 @@ export async function getAllPlacesResolver(
         };
       }),
     );
-
     return placesWithStats;
   } catch (error) {
     console.error("Error fetching places:", error);

@@ -30,10 +30,11 @@ type CharacteristicCounts {
   deliciousFilterCoffee: CharacteristicData!
   pleasantAtmosphere: CharacteristicData!
   friendlyStaff: CharacteristicData!
-  deliciousDesserts: CharacteristicData!
-  excellentFood: CharacteristicData!
+  yummyEats: CharacteristicData!   
   affordablePrices: CharacteristicData!
   freeWifi: CharacteristicData!
+  petFriendly: CharacteristicData!  
+  outdoorSeating: CharacteristicData!
 }
 
 type PlaceProperties {
@@ -105,13 +106,14 @@ type Query {
 }
 
 enum Characteristic {
-deliciousFilterCoffee
-pleasantAtmosphere
-friendlyStaff
-deliciousDesserts
-excellentFood
-affordablePrices
-freeWifi
+  deliciousFilterCoffee
+  pleasantAtmosphere
+  friendlyStaff
+  yummyEats    
+  affordablePrices
+  freeWifi
+  petFriendly  
+  outdoorSeating
 }
 
 # Mutations

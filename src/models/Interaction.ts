@@ -12,10 +12,11 @@ export interface IInteraction extends Document {
     deliciousFilterCoffee: boolean;
     pleasantAtmosphere: boolean;
     friendlyStaff: boolean;
-    deliciousDesserts: boolean;
-    excellentFood: boolean;
-    affordablePrices: boolean;
     freeWifi: boolean;
+    yummyEats: boolean;
+    affordablePrices: boolean;
+    petFriendly: boolean;
+    outdoorSeating: boolean;
   };
   date: Date;
 }
@@ -34,12 +35,12 @@ const InteractionSchema = new mongoose.Schema({
     deliciousFilterCoffee: { type: Boolean, default: false },
     pleasantAtmosphere: { type: Boolean, default: false },
     friendlyStaff: { type: Boolean, default: false },
-    deliciousDesserts: { type: Boolean, default: false },
-    excellentFood: { type: Boolean, default: false },
+    yummyEats: { type: Boolean, default: false },
     affordablePrices: { type: Boolean, default: false },
     freeWifi: { type: Boolean, default: false },
+    petFriendly: { type: Boolean, default: false },
+    outdoorSeating: { type: Boolean, default: false },
   },
-
   date: { type: Date, default: Date.now },
 });
 
