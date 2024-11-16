@@ -52,14 +52,12 @@ type PlaceProperties {
   characteristicCounts: CharacteristicCounts!
 }
 
-type PlaceDetails {
+type PlaceReviews {
   id: ID!
   reviews: [Review!]!
-  favoriteCount: Int!
-  isFavorite: Boolean!
 }
 
-# Review types
+
 type Review {
   id: ID!
   text: String!
@@ -69,10 +67,9 @@ type Review {
   placeId: ID!
   createdAt: String!
   isOwnReview: Boolean!
-  userRating: Float
 }
 
-# User activity types
+
 type UserReviewActivity {
   rating: Int
   review: String
@@ -101,7 +98,7 @@ type SuccessResponse {
 type Query {
   currentUser: User
   places: [Place!]!
-  placeDetails(placeId: ID!): PlaceDetails!
+  placeReviews(placeId: ID!): PlaceReviews!
   getUserReviewActivity: [UserReviewActivity!]!
 }
 
@@ -122,9 +119,9 @@ type Mutation {
   signInWithEmail(email: String!, password: String!): AuthPayload!
   registerUser(email: String!, displayName: String!, password: String!): AuthPayload!
 
-  updatePersonalData(userId: ID!, displayName: String, email: String): UpdatePersonalDataResponse!
+  updatePersonalData(userId: ID!, displayName: String, email: String): SuccessResponse!
 
-  setNewPassword(userId: ID!, oldPassword: String, newPassword: String!): SetNewPasswordResponse!
+  setNewPassword(userId: ID!, oldPassword: String, newPassword: String!): SuccessResponse!
 
   logout: LogoutResponse
 
@@ -132,7 +129,9 @@ type Mutation {
 
   deleteAvatar: SuccessResponse!
 
-  addReview(placeId: ID!, text: String, rating: Float): AddReviewResponse!
+  addRating(placeId: ID!, rating: Float!): AddRatingResponse!
+
+  addTextReview(placeId: ID!, text: String!): AddTextReviewResponse!
 
   toggleFavorite(placeId: ID!): Boolean!
 
@@ -142,20 +141,15 @@ type Mutation {
 
 }
 
-# Responses for updates and actions
-type SetNewPasswordResponse {
-    success : Boolean!
-}
-
-type UpdatePersonalDataResponse {
-    success : Boolean!
-}
-
-type AddReviewResponse {
+type AddTextReviewResponse {
     review : Review!
+}
+
+type AddRatingResponse {
     averageRating : Float!
     ratingCount : Int!
 }
+
 
 type DeleteReviewResult {
     reviewId : ID!
