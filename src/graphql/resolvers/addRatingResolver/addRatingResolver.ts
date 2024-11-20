@@ -28,7 +28,10 @@ export async function addRatingResolver(
       userId: user.id,
       placeId,
     }).lean();
+
     const updateData = { date: new Date(), rating };
+
+    let reviewId: string | null = null;
 
     if (interaction) {
       await Interaction.findOneAndUpdate(
@@ -36,15 +39,16 @@ export async function addRatingResolver(
         { $set: updateData },
         { new: true, lean: true },
       );
+      reviewId = interaction._id.toString();
     } else {
-      await Interaction.create({
+      const newInteraction = await Interaction.create({
         userId: user.id,
         placeId,
         ...updateData,
       });
+      reviewId = newInteraction._id.toString();
     }
 
-    // Выполняем агрегацию для получения среднего рейтинга и количества оценок
     const aggregationResult = await Interaction.aggregate([
       {
         $match: {
@@ -66,6 +70,8 @@ export async function addRatingResolver(
     return {
       averageRating: parseFloat(stats.averageRating.toFixed(1)),
       ratingCount: stats.ratingCount,
+      reviewId,
+      userRating: rating,
     };
   } catch (error) {
     console.error("Error adding rating:", error);

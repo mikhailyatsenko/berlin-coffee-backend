@@ -67,6 +67,7 @@ type Review {
   placeId: ID!
   createdAt: String!
   isOwnReview: Boolean!
+  userRating: Float
 }
 
 
@@ -135,7 +136,7 @@ type Mutation {
 
   toggleFavorite(placeId: ID!): Boolean!
 
-  deleteReview(reviewId: ID!): DeleteReviewResult!
+  deleteReview(reviewId: ID!, deleteOptions: String!): DeleteReviewResult!
 
   toggleCharacteristic(placeId: ID!, characteristic: Characteristic!): SuccessResponse!
 
@@ -148,6 +149,8 @@ type AddTextReviewResponse {
 type AddRatingResponse {
     averageRating : Float!
     ratingCount : Int!
+    reviewId: String!
+    userRating: Int!
 }
 
 

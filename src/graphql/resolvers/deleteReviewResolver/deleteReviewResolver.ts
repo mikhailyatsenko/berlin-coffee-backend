@@ -4,7 +4,13 @@ import { GraphQLError } from "graphql";
 
 export async function deleteReviewResolver(
   _: never,
-  { reviewId }: { reviewId: string },
+  {
+    reviewId,
+    deleteOptions,
+  }: {
+    reviewId: string;
+    deleteOptions: "deleteReviewText" | "deleteRating" | "deleteAll";
+  },
   context: { user: { id: string } },
 ) {
   if (!context.user) {
@@ -24,10 +30,16 @@ export async function deleteReviewResolver(
       };
     }
 
-    await Interaction.findOneAndDelete({
-      _id: reviewId,
-      userId: context.user.id,
-    });
+    if (deleteOptions === "deleteReviewText") {
+      interaction.review = undefined;
+    } else if (deleteOptions === "deleteRating") {
+      interaction.rating = undefined;
+    } else if (deleteOptions === "deleteAll") {
+      interaction.review = undefined;
+      interaction.rating = undefined;
+    }
+
+    await interaction.save();
 
     const aggregationResult = await Interaction.aggregate([
       {
@@ -54,6 +66,6 @@ export async function deleteReviewResolver(
     };
   } catch (error) {
     console.error("Error deleting review:", error);
-    throw new GraphQLError("Error adding review or rating place");
+    throw new GraphQLError("Error processing review deletion or rating update");
   }
 }

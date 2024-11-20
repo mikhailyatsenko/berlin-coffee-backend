@@ -21,21 +21,21 @@ export async function getUserReviewActivityResolver(
         },
         {
           $lookup: {
-            from: "places", // Имя коллекции мест
+            from: "places",
             localField: "placeId",
             foreignField: "_id",
             as: "place",
           },
         },
         {
-          $unwind: "$place", // Разворачиваем массив мест
+          $unwind: "$place",
         },
         {
           $group: {
             _id: "$place._id",
-            placeName: { $first: "$place.properties.name" }, // Название места
-            averageRating: { $avg: "$rating" }, // Средний рейтинг текущего пользователя (неправильно)
-            allRatings: { $push: "$rating" }, // Все рейтинги для дальнейшей обработки
+            placeName: { $first: "$place.properties.name" },
+            averageRating: { $avg: "$rating" },
+            allRatings: { $push: "$rating" },
             reviews: {
               $push: {
                 id: "$_id",
@@ -48,7 +48,7 @@ export async function getUserReviewActivityResolver(
         },
         {
           $lookup: {
-            from: "interactions", // Имя коллекции интеракций
+            from: "interactions",
             localField: "_id",
             foreignField: "placeId",
             as: "allInteractions",
@@ -57,13 +57,13 @@ export async function getUserReviewActivityResolver(
         {
           $addFields: {
             averageRating: {
-              $avg: "$allInteractions.rating", // Вычисляем общий средний рейтинг
+              $avg: "$allInteractions.rating",
             },
           },
         },
         {
           $sort: {
-            "reviews.date": -1, // Сортировка по дате после группировки
+            "reviews.date": -1,
           },
         },
       ]);
