@@ -1,15 +1,6 @@
-import Interaction, { IInteraction } from "../../../models/Interaction.js";
-import User from "../../../models/User.js";
-import Place from "../../../models/Place.js";
+import Interaction from "../../../models/Interaction.js";
 import { GraphQLError } from "graphql";
 import { IUser } from "src/models/User.js";
-
-interface UserMap {
-  [key: string]: {
-    name: string;
-    avatar: string;
-  };
-}
 
 export async function addTextReviewResolver(
   _: never,
@@ -24,21 +15,16 @@ export async function addTextReviewResolver(
       },
     });
   }
-  try {
-    const place = await Place.findById(placeId);
-    if (!place) {
-      throw new GraphQLError("Place not found");
-    }
 
+  try {
     const interaction = await Interaction.findOne({
       userId: user.id,
       placeId,
     }).lean();
 
-    const updateData: Partial<IInteraction> = {
-      date: new Date(),
-      review: text,
-    };
+    const updateData = { date: new Date(), text };
+
+    let reviewId: string | null = null;
 
     if (interaction) {
       await Interaction.findOneAndUpdate(
@@ -46,45 +32,19 @@ export async function addTextReviewResolver(
         { $set: updateData },
         { new: true, lean: true },
       );
+      reviewId = interaction._id.toString();
     } else {
-      await Interaction.create({
+      const newInteraction = await Interaction.create({
         userId: user.id,
         placeId,
         ...updateData,
       });
+      reviewId = newInteraction._id.toString();
     }
-
-    const updatedInteraction = await Interaction.findOne({
-      userId: user.id,
-      placeId,
-    }).lean();
-
-    if (!updatedInteraction) {
-      throw new GraphQLError("Failed to create or update interaction");
-    }
-
-    const userDoc = await User.findById(user.id).lean();
-    const userMap: UserMap = {
-      [user.id]: {
-        name: userDoc?.displayName || "Unknown User",
-        avatar: userDoc?.avatar || "",
-      },
-    };
-
-    const review = {
-      id: updatedInteraction._id.toString(),
-      text: updatedInteraction.review || "",
-      userId: updatedInteraction.userId.toString(),
-      userName:
-        userMap[updatedInteraction.userId.toString()]?.name || "Unknown User",
-      userAvatar: userMap[updatedInteraction.userId.toString()]?.avatar || "",
-      placeId: updatedInteraction.placeId.toString(),
-      createdAt: updatedInteraction.date.toISOString(),
-      isOwnReview: true,
-    };
 
     return {
-      review,
+      reviewId,
+      text,
     };
   } catch (error) {
     console.error("Error adding review or rating place:", error);

@@ -1,5 +1,4 @@
 import Interaction from "../../../models/Interaction.js";
-import Place from "../../../models/Place.js";
 import { GraphQLError } from "graphql";
 import mongoose from "mongoose";
 import { IUser } from "src/models/User.js";
@@ -19,11 +18,6 @@ export async function addRatingResolver(
   }
 
   try {
-    const place = await Place.findById(placeId);
-    if (!place) {
-      throw new GraphQLError("Place not found");
-    }
-
     const interaction = await Interaction.findOne({
       userId: user.id,
       placeId,
