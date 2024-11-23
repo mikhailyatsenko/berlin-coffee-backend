@@ -118,7 +118,7 @@ const bootstrapServer = async () => {
     },
   );
 
-  // Статическая папка для загруженных файлов
+  // Static folder for uploaded images
   app.use("/uploads", express.static(path.join(__dirname, "./uploads")));
 
   app.listen(PORT, "127.0.0.1", () => {

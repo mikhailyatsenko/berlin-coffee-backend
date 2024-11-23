@@ -1,7 +1,7 @@
 import { getAllPlacesResolver } from "./getAllPlacesResolver/getAllPlacesResolver.js";
 import { toggleFavoriteResolver } from "./toggleFavoriteResolver/toggleFavoriteResolver.js";
 import { deleteReviewResolver } from "./deleteReviewResolver/deleteReviewResolver.js";
-import { placeReviewssResolver } from "./placeDetailsResolver/placeReviewssResolver.js";
+import { placeReviewsResolver } from "./placeReviewsResolver/placeReviewsResolver.js";
 import { registerUserResolver } from "./registerUserResolver/registerUserResolver.js";
 import { signInWithEmailResolver } from "./signInWithEmailResolver/gnInWithEmailResolver.js";
 import { loginWithGoogleResolver } from "./loginWithGoogleResolver/loginWithGoogleResolver.js";
@@ -20,7 +20,7 @@ export const resolvers = {
   Query: {
     places: getAllPlacesResolver,
     currentUser: currentUserResolver,
-    placeReviews: placeReviewssResolver,
+    placeReviews: placeReviewsResolver,
     getUserReviewActivity: getUserReviewActivityResolver,
   },
 

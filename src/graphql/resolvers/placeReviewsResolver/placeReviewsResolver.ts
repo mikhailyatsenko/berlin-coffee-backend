@@ -9,7 +9,7 @@ interface UserMap {
   };
 }
 
-export async function placeReviewssResolver(
+export async function placeReviewsResolver(
   _: never,
   { placeId }: { placeId: string },
   context: { user?: { id: string } },
