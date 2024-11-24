@@ -1,8 +1,7 @@
 import { getAllPlacesResolver } from "./getAllPlacesResolver/getAllPlacesResolver.js";
-import { addReviewResolver } from "./addReviewResolver/addReviewResolver.js";
 import { toggleFavoriteResolver } from "./toggleFavoriteResolver/toggleFavoriteResolver.js";
 import { deleteReviewResolver } from "./deleteReviewResolver/deleteReviewResolver.js";
-import { placeDetailsResolver } from "./placeDetailsResolver/placeDetailsResolver.js";
+import { placeReviewsResolver } from "./placeReviewsResolver/placeReviewsResolver.js";
 import { registerUserResolver } from "./registerUserResolver/registerUserResolver.js";
 import { signInWithEmailResolver } from "./signInWithEmailResolver/gnInWithEmailResolver.js";
 import { loginWithGoogleResolver } from "./loginWithGoogleResolver/loginWithGoogleResolver.js";
@@ -13,12 +12,15 @@ import { setNewPasswordResolver } from "./setNewPasswordResolver/setNewPasswordR
 import { updatePersonalDataResolver } from "./updatePersonalDataResolver/updatePersonalDataResolver.js";
 import { uploadAvatarResolver } from "./uploadAvatarResolver/uploadAvatarResolver.js";
 import { deleteAvatarResolver } from "./deleteAvatarResolver/deleteAvatarResolver.js";
+import { toggleCharacteristicResolver } from "./toggleCharacteristicResolver/toggleCharacteristicResolver.js";
+import { addTextReviewResolver } from "./addTextReviewResolver/addTextReviewResolver.js";
+import { addRatingResolver } from "./addRatingResolver/addRatingResolver.js";
 
 export const resolvers = {
   Query: {
     places: getAllPlacesResolver,
     currentUser: currentUserResolver,
-    placeDetails: placeDetailsResolver,
+    placeReviews: placeReviewsResolver,
     getUserReviewActivity: getUserReviewActivityResolver,
   },
 
@@ -26,17 +28,17 @@ export const resolvers = {
     registerUser: registerUserResolver,
     loginWithGoogle: loginWithGoogleResolver,
     signInWithEmail: signInWithEmailResolver,
+    logout: logoutResolver,
 
     updatePersonalData: updatePersonalDataResolver,
     setNewPassword: setNewPasswordResolver,
-
-    logout: logoutResolver,
-
     uploadAvatar: uploadAvatarResolver,
     deleteAvatar: deleteAvatarResolver,
 
-    addReview: addReviewResolver,
+    addRating: addRatingResolver,
+    addTextReview: addTextReviewResolver,
     toggleFavorite: toggleFavoriteResolver,
     deleteReview: deleteReviewResolver,
+    toggleCharacteristic: toggleCharacteristicResolver,
   },
 };

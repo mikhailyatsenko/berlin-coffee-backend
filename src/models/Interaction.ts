@@ -8,6 +8,16 @@ export interface IInteraction extends Document {
   rating?: number;
   review?: string;
   isFavorite: boolean;
+  characteristics: {
+    deliciousFilterCoffee: boolean;
+    pleasantAtmosphere: boolean;
+    friendlyStaff: boolean;
+    freeWifi: boolean;
+    yummyEats: boolean;
+    affordablePrices: boolean;
+    petFriendly: boolean;
+    outdoorSeating: boolean;
+  };
   date: Date;
 }
 
@@ -21,6 +31,16 @@ const InteractionSchema = new mongoose.Schema({
   rating: { type: Number, min: 1, max: 5 },
   review: { type: String },
   isFavorite: { type: Boolean, default: false },
+  characteristics: {
+    deliciousFilterCoffee: { type: Boolean, default: false },
+    pleasantAtmosphere: { type: Boolean, default: false },
+    friendlyStaff: { type: Boolean, default: false },
+    yummyEats: { type: Boolean, default: false },
+    affordablePrices: { type: Boolean, default: false },
+    freeWifi: { type: Boolean, default: false },
+    petFriendly: { type: Boolean, default: false },
+    outdoorSeating: { type: Boolean, default: false },
+  },
   date: { type: Date, default: Date.now },
 });
 

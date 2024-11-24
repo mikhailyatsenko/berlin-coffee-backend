@@ -21,6 +21,22 @@ type Geometry {
   coordinates: [Float!]!
 }
 
+type CharacteristicData {
+  pressed: Boolean!
+  count: Int!     
+}
+
+type CharacteristicCounts {
+  deliciousFilterCoffee: CharacteristicData!
+  pleasantAtmosphere: CharacteristicData!
+  friendlyStaff: CharacteristicData!
+  yummyEats: CharacteristicData!   
+  affordablePrices: CharacteristicData!
+  freeWifi: CharacteristicData!
+  petFriendly: CharacteristicData!  
+  outdoorSeating: CharacteristicData!
+}
+
 type PlaceProperties {
   id: ID!
   name: String!
@@ -33,16 +49,15 @@ type PlaceProperties {
   favoriteCount: Int!
   isFavorite: Boolean!
   reviews: [Review!]!
+  characteristicCounts: CharacteristicCounts!
 }
 
-type PlaceDetails {
+type PlaceReviews {
   id: ID!
   reviews: [Review!]!
-  favoriteCount: Int!
-  isFavorite: Boolean!
 }
 
-# Review types
+
 type Review {
   id: ID!
   text: String!
@@ -55,7 +70,7 @@ type Review {
   userRating: Float
 }
 
-# User activity types
+
 type UserReviewActivity {
   rating: Int
   review: String
@@ -84,8 +99,19 @@ type SuccessResponse {
 type Query {
   currentUser: User
   places: [Place!]!
-  placeDetails(placeId: ID!): PlaceDetails!
+  placeReviews(placeId: ID!): PlaceReviews!
   getUserReviewActivity: [UserReviewActivity!]!
+}
+
+enum Characteristic {
+  deliciousFilterCoffee
+  pleasantAtmosphere
+  friendlyStaff
+  yummyEats    
+  affordablePrices
+  freeWifi
+  petFriendly  
+  outdoorSeating
 }
 
 # Mutations
@@ -94,9 +120,9 @@ type Mutation {
   signInWithEmail(email: String!, password: String!): AuthPayload!
   registerUser(email: String!, displayName: String!, password: String!): AuthPayload!
 
-  updatePersonalData(userId: ID!, displayName: String, email: String): UpdatePersonalDataResponse!
+  updatePersonalData(userId: ID!, displayName: String, email: String): SuccessResponse!
 
-  setNewPassword(userId: ID!, oldPassword: String, newPassword: String!): SetNewPasswordResponse!
+  setNewPassword(userId: ID!, oldPassword: String, newPassword: String!): SuccessResponse!
 
   logout: LogoutResponse
 
@@ -104,28 +130,30 @@ type Mutation {
 
   deleteAvatar: SuccessResponse!
 
-  addReview(placeId: ID!, text: String, rating: Float): AddReviewResponse!
+  addRating(placeId: ID!, rating: Float!): AddRatingResponse!
+
+  addTextReview(placeId: ID!, text: String!): AddTextReviewResponse!
 
   toggleFavorite(placeId: ID!): Boolean!
 
-  deleteReview(reviewId: ID!): DeleteReviewResult!
+  deleteReview(reviewId: ID!, deleteOptions: String!): DeleteReviewResult!
+
+  toggleCharacteristic(placeId: ID!, characteristic: Characteristic!): SuccessResponse!
 
 }
 
-# Responses for updates and actions
-type SetNewPasswordResponse {
-    success : Boolean!
+type AddTextReviewResponse {
+    reviewId: String!
+    text: String!
 }
 
-type UpdatePersonalDataResponse {
-    success : Boolean!
-}
-
-type AddReviewResponse {
-    review : Review!
+type AddRatingResponse {
     averageRating : Float!
     ratingCount : Int!
+    reviewId: String!
+    userRating: Int!
 }
+
 
 type DeleteReviewResult {
     reviewId : ID!

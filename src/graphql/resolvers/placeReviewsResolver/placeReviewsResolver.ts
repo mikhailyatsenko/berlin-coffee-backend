@@ -9,7 +9,7 @@ interface UserMap {
   };
 }
 
-export async function placeDetailsResolver(
+export async function placeReviewsResolver(
   _: never,
   { placeId }: { placeId: string },
   context: { user?: { id: string } },
@@ -48,23 +48,9 @@ export async function placeDetailsResolver(
         userRating: interaction.rating || null,
       }));
 
-    const favoriteCount = interactions.filter(
-      (interaction) => interaction.isFavorite,
-    ).length;
-
-    const isFavorite = context.user
-      ? !!interactions.find(
-          (interaction) =>
-            interaction.userId.toString() === context.user?.id &&
-            interaction.isFavorite,
-        )
-      : false;
-
     return {
       id: placeId,
       reviews,
-      favoriteCount,
-      isFavorite,
     };
   } catch (error) {
     console.error("Error fetching place details:", error);
