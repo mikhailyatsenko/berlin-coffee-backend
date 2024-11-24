@@ -95,10 +95,7 @@ export async function getAllPlacesResolver(
           properties: {
             id: place._id.toString(),
             ...place.properties,
-            averageRating:
-              stats.averageRating !== null
-                ? Number(stats.averageRating.toFixed(1))
-                : null,
+            averageRating: Number(stats.averageRating.toFixed(1)),
             ratingCount: stats.ratingCount,
             characteristicCounts,
             favoriteCount,
