@@ -108,6 +108,7 @@ export async function getAllPlacesResolver(
         };
       }),
     );
+
     return placesWithStats;
   } catch (error) {
     console.error("Error fetching places:", error);
