@@ -22,7 +22,8 @@ export async function addTextReviewResolver(
       placeId,
     }).lean();
 
-    const updateData = { date: new Date(), text };
+    const updateData = { date: new Date(), review: text };
+    console.log(updateData);
 
     let reviewId: string | null = null;
 
