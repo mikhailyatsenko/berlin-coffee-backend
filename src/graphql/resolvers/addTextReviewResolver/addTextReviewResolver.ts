@@ -39,6 +39,7 @@ export async function addTextReviewResolver(
         placeId,
         ...updateData,
       });
+
       reviewId = newInteraction._id.toString();
     }
 
