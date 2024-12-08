@@ -14,7 +14,7 @@ export async function getUserReviewActivityResolver(
           $match: {
             userId: user._id,
             $or: [
-              { review: { $exists: true, $ne: null } },
+              { reviewText: { $exists: true, $ne: null } },
               { rating: { $exists: true } },
             ],
           },
@@ -40,7 +40,7 @@ export async function getUserReviewActivityResolver(
               $push: {
                 id: "$_id",
                 rating: "$rating",
-                review: "$review",
+                reviewText: "$reviewText",
                 date: "$date",
               },
             },
@@ -71,7 +71,7 @@ export async function getUserReviewActivityResolver(
       return activity.map((interaction) => ({
         id: interaction.reviews[0]?.id,
         rating: interaction.reviews[0]?.rating,
-        review: interaction.reviews[0]?.review,
+        reviewText: interaction.reviews[0]?.reviewText,
         placeId: interaction._id,
         placeName: interaction.placeName,
         averageRating: interaction.averageRating

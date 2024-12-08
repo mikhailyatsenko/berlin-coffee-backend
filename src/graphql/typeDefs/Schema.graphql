@@ -73,7 +73,7 @@ type Review {
 
 type UserReviewActivity {
   rating: Int
-  review: String
+  reviewText: String
   placeId: ID!
   placeName: String!
   averageRating: Float

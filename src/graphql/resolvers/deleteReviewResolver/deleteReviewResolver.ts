@@ -31,11 +31,11 @@ export async function deleteReviewResolver(
     }
 
     if (deleteOptions === "deleteReviewText") {
-      interaction.review = undefined;
+      interaction.reviewText = undefined;
     } else if (deleteOptions === "deleteRating") {
       interaction.rating = undefined;
     } else if (deleteOptions === "deleteAll") {
-      interaction.review = undefined;
+      interaction.reviewText = undefined;
       interaction.rating = undefined;
     }
 

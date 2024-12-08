@@ -19,7 +19,7 @@ export async function placeReviewsResolver(
       .sort({ date: -1 })
       .lean();
     const userIds = interactions
-      .filter((interaction) => interaction.review || interaction.rating)
+      .filter((interaction) => interaction.reviewText || interaction.rating)
       .map((interaction) => interaction.userId);
     const users = await User.find({ _id: { $in: userIds } }).lean();
 
@@ -32,10 +32,10 @@ export async function placeReviewsResolver(
     }, {});
 
     const reviews = interactions
-      .filter((interaction) => interaction.review || interaction.rating)
+      .filter((interaction) => interaction.reviewText || interaction.rating)
       .map((interaction) => ({
         id: interaction._id.toString(),
-        text: interaction.review || "",
+        text: interaction.reviewText || "",
         userId: interaction.userId.toString(),
         userName:
           userMap[interaction.userId.toString()]?.name || "Unknown User",

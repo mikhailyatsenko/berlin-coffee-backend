@@ -6,7 +6,7 @@ export interface IInteraction extends Document {
   userId: mongoose.Types.ObjectId;
   placeId: IPlace["_id"];
   rating?: number;
-  review?: string;
+  reviewText?: string;
   isFavorite: boolean;
   characteristics: {
     deliciousFilterCoffee: boolean;
@@ -29,7 +29,7 @@ const InteractionSchema = new mongoose.Schema({
     required: true,
   },
   rating: { type: Number, min: 1, max: 5 },
-  review: { type: String },
+  reviewText: { type: String },
   isFavorite: { type: Boolean, default: false },
   characteristics: {
     deliciousFilterCoffee: { type: Boolean, default: false },
