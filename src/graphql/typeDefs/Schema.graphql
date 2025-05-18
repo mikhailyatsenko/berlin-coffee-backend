@@ -60,10 +60,10 @@ type PlaceReviews {
 
 type Review {
   id: ID!
-  text: String!
+  text: String
   userId: ID!
   userName: String!
-  userAvatar: String!
+  userAvatar: String
   placeId: ID!
   createdAt: String!
   isOwnReview: Boolean!

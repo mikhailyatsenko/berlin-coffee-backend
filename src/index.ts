@@ -20,7 +20,7 @@ import { dirname } from "path";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-interface Context {
+export interface Context {
   user?: IUser;
 }
 

@@ -69,7 +69,6 @@ export async function getUserReviewActivityResolver(
       ]);
 
       return activity.map((interaction) => ({
-        id: interaction.reviews[0]?.id,
         rating: interaction.reviews[0]?.rating,
         reviewText: interaction.reviews[0]?.reviewText,
         placeId: interaction._id,
@@ -89,5 +88,5 @@ export async function getUserReviewActivityResolver(
       });
     }
   }
-  return null;
+  return [];
 }
