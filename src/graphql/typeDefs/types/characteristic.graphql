@@ -1,0 +1,26 @@
+enum Characteristic {
+  deliciousFilterCoffee
+  pleasantAtmosphere
+  friendlyStaff
+  yummyEats    
+  affordablePrices
+  freeWifi
+  petFriendly  
+  outdoorSeating
+}
+
+type CharacteristicData {
+  pressed: Boolean!
+  count: Int!     
+}
+
+type CharacteristicCounts {
+  deliciousFilterCoffee: CharacteristicData!
+  pleasantAtmosphere: CharacteristicData!
+  friendlyStaff: CharacteristicData!
+  yummyEats: CharacteristicData!   
+  affordablePrices: CharacteristicData!
+  freeWifi: CharacteristicData!
+  petFriendly: CharacteristicData!  
+  outdoorSeating: CharacteristicData!
+} 

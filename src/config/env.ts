@@ -3,22 +3,21 @@ import dotenv from "dotenv";
 dotenv.config();
 
 export const {
+  MONGO_URI,
   GOOGLE_CLIENT_ID,
   GOOGLE_CLIENT_SECRET,
   JWT_SECRET,
-  MONGO_URI,
-  PORT,
+  MAILERSEND_API_KEY,
   NODE_ENV,
-  CLIENT_URL,
 } = process.env;
 
 const requiredEnvVars = [
+  "MONGO_URI",
   "GOOGLE_CLIENT_ID",
   "GOOGLE_CLIENT_SECRET",
   "JWT_SECRET",
-  "MONGO_URI",
+  "MAILERSEND_API_KEY",
   "NODE_ENV",
-  "CLIENT_URL",
 ];
 
 for (const envVar of requiredEnvVars) {

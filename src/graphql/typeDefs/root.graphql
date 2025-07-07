@@ -1,0 +1,32 @@
+type Query {
+  currentUser: User
+  places: [Place!]!
+  placeReviews(placeId: ID!): PlaceReviews!
+  getUserReviewActivity: [UserReviewActivity!]!
+}
+
+type Mutation {
+  # Authentication Mutations
+  loginWithGoogle(code: String!): AuthPayload
+  signInWithEmail(email: String!, password: String!): AuthPayload!
+  registerUser(email: String!, displayName: String!, password: String!): SuccessResponse!
+  resendConfirmationEmail(email: String!): SuccessResponse!
+  confirmEmail(token: String!, email: String!): AuthPayload!
+  logout: LogoutResponse
+
+  # User Profile Mutations
+  updatePersonalData(userId: ID!, displayName: String, email: String): SuccessResponse!
+  setNewPassword(userId: ID!, oldPassword: String, newPassword: String!): SuccessResponse!
+  uploadAvatar(userId: ID!, fileUrl: String!): SuccessResponse!
+  deleteAvatar: SuccessResponse!
+
+  # Place and Review Mutations
+  addRating(placeId: ID!, rating: Float!): AddRatingResponse!
+  addTextReview(placeId: ID!, text: String!): AddTextReviewResponse!
+  toggleFavorite(placeId: ID!): Boolean!
+  deleteReview(reviewId: ID!, deleteOptions: String!): DeleteReviewResult!
+  toggleCharacteristic(placeId: ID!, characteristic: Characteristic!): SuccessResponse!
+
+  # Contact Form Mutation
+  contactForm(name: String!, email: String!, message: String!): ContactFormResponse!
+} 

@@ -30,31 +30,28 @@ export async function placeReviewsResolver(
       };
       return acc;
     }, {});
-
     const reviews = interactions
       .filter((interaction) => interaction.reviewText || interaction.rating)
       .map((interaction) => ({
         id: interaction._id.toString(),
-        text: interaction.reviewText || "",
+        text: interaction.reviewText || null,
         userId: interaction.userId.toString(),
         userName:
           userMap[interaction.userId.toString()]?.name || "Unknown User",
-        userAvatar: userMap[interaction.userId.toString()]?.avatar || "",
-        placeId: interaction.placeId.toString(),
+        userAvatar: userMap[interaction.userId.toString()]?.avatar || null,
         createdAt: interaction.date.toISOString(),
         isOwnReview: context.user
           ? interaction.userId.toString() === context.user.id
           : false,
         userRating: interaction.rating || null,
       }));
-
     return {
       id: placeId,
       reviews,
     };
   } catch (error) {
-    console.error("Error fetching place details:", error);
-    throw new GraphQLError("Error fetching place details", {
+    console.error("Error fetching place reviews:", error);
+    throw new GraphQLError("Error fetching place reviews", {
       extensions: {
         code: "INTERNAL_SERVER_ERROR",
         error: error instanceof Error ? error.message : String(error),

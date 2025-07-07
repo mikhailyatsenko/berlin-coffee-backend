@@ -2,8 +2,14 @@ import User from "../../../models/User.js";
 import bcrypt from "bcrypt";
 import { GraphQLError } from "graphql";
 import isEmail from "validator/lib/isEmail.js";
-import jwt from "jsonwebtoken";
-import { Response } from "express";
+import { MailerSend, EmailParams, Sender, Recipient } from "mailersend";
+import {
+  FROM_EMAIL,
+  FROM_NAME,
+} from "../contactFormResolver/constants/index.js";
+import crypto from "crypto";
+import { addHours } from "date-fns";
+import { env } from "../../../utils/env.utils.js";
 
 interface RegisterUserArgs {
   email: string;
@@ -14,7 +20,6 @@ interface RegisterUserArgs {
 export async function registerUserResolver(
   _: never,
   { email, displayName, password }: RegisterUserArgs,
-  { res }: { res: Response },
 ) {
   if (!isEmail(email)) {
     throw new GraphQLError("Invalid email address");
@@ -36,39 +41,46 @@ export async function registerUserResolver(
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
+    const rawToken = crypto.randomBytes(32).toString("hex");
+    const hashedToken = crypto
+      .createHash("sha256")
+      .update(rawToken)
+      .digest("hex");
+    const tokenExpires = addHours(new Date(), 1); // TTL 1 час
+
     const newUser = new User({
       email,
       password: hashedPassword,
       displayName,
+      isEmailConfirmed: false,
+      emailConfirmationToken: hashedToken,
+      emailConfirmationTokenExpires: tokenExpires,
     });
 
     await newUser.save();
 
-    const token = jwt.sign(
-      { id: newUser._id, email: newUser.email },
-      process.env.JWT_SECRET!,
-      { expiresIn: "2d" },
-    );
+    const confirmationUrl = `${env.frontendUrl}/confirm-email?token=${rawToken}&email=${encodeURIComponent(email)}`;
 
-    res.cookie("jwt", token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
-      domain:
-        process.env.NODE_ENV === "production" ? "yatsenko.site" : "localhost",
-      path: "/",
-      maxAge: 24 * 60 * 60 * 1000 * 2, // 2 days
+    if (!process.env.MAILERSEND_API_KEY) {
+      throw new Error("MAILERSEND_API_KEY is not defined");
+    }
+    const mailerSend = new MailerSend({
+      apiKey: process.env.MAILERSEND_API_KEY,
     });
 
+    await mailerSend.email.send(
+      new EmailParams()
+        .setFrom(new Sender(FROM_EMAIL, FROM_NAME))
+        .setTo([new Recipient(email)])
+        .setSubject("Confirm your email")
+        .setHtml(
+          `<p>Click <a href="${confirmationUrl}">here</a> to confirm your email. This link is valid for 1 hour.</p>`,
+        )
+        .setText(`Confirm your email: ${confirmationUrl} (valid for 1 hour)`),
+    );
+
     return {
-      user: {
-        id: newUser._id,
-        email: newUser.email,
-        displayName: newUser.displayName,
-        avatar: newUser.avatar,
-        createdAt: newUser.createdAt.toISOString(),
-        isGoogleUserUserWithoutPassword: false,
-      },
+      success: true,
     };
   } catch (error) {
     console.error("Error registering user:", error);

@@ -1,0 +1,38 @@
+type Review {
+  id: ID!
+  text: String
+  userId: ID!
+  userName: String!
+  userAvatar: String
+  placeId: ID!
+  createdAt: String!
+  isOwnReview: Boolean!
+  userRating: Float
+}
+
+type UserReviewActivity {
+  rating: Int
+  reviewText: String
+  placeId: ID!
+  placeName: String!
+  averageRating: Float
+  createdAt: String!
+}
+
+type AddTextReviewResponse {
+  reviewId: String!
+  text: String!
+}
+
+type AddRatingResponse {
+  averageRating: Float!
+  ratingCount: Int!
+  reviewId: String!
+  userRating: Int!
+}
+
+type DeleteReviewResult {
+  reviewId: ID!
+  averageRating: Float!
+  ratingCount: Int!
+} 

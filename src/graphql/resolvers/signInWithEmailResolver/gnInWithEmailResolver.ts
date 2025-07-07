@@ -24,6 +24,14 @@ export async function signInWithEmailResolver(
       });
     }
 
+    if (!user.isEmailConfirmed) {
+      throw new GraphQLError("Please confirm your email before logging in.", {
+        extensions: {
+          code: "BAD_USER_INPUT",
+        },
+      });
+    }
+
     if (user.googleId && !user.password) {
       throw new GraphQLError(
         "This email is associated with a Google account and does not have a password",

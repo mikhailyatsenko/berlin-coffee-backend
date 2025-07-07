@@ -2,7 +2,7 @@ import { getAllPlacesResolver } from "./getAllPlacesResolver/getAllPlacesResolve
 import { toggleFavoriteResolver } from "./toggleFavoriteResolver/toggleFavoriteResolver.js";
 import { deleteReviewResolver } from "./deleteReviewResolver/deleteReviewResolver.js";
 import { placeReviewsResolver } from "./placeReviewsResolver/placeReviewsResolver.js";
-import { registerUserResolver } from "./registerUserResolver/registerUserResolver.js";
+import { registerUserResolver } from "./registerUser/registerUserResolver.js";
 import { signInWithEmailResolver } from "./signInWithEmailResolver/gnInWithEmailResolver.js";
 import { loginWithGoogleResolver } from "./loginWithGoogleResolver/loginWithGoogleResolver.js";
 import { currentUserResolver } from "./currentUserResolver/currentUserResolver.js";
@@ -15,6 +15,9 @@ import { deleteAvatarResolver } from "./deleteAvatarResolver/deleteAvatarResolve
 import { toggleCharacteristicResolver } from "./toggleCharacteristicResolver/toggleCharacteristicResolver.js";
 import { addTextReviewResolver } from "./addTextReviewResolver/addTextReviewResolver.js";
 import { addRatingResolver } from "./addRatingResolver/addRatingResolver.js";
+import { contactFormResolver } from "./contactFormResolver/contactFormResolver.js";
+import { resendConfirmationEmailResolver } from "./registerUser/resendConfirmationEmailResolver.js";
+import { confirmEmailResolver } from "./registerUser/confirmEmailResolver.js";
 
 export const resolvers = {
   Query: {
@@ -29,6 +32,8 @@ export const resolvers = {
     loginWithGoogle: loginWithGoogleResolver,
     signInWithEmail: signInWithEmailResolver,
     logout: logoutResolver,
+    resendConfirmationEmail: resendConfirmationEmailResolver,
+    confirmEmail: confirmEmailResolver,
 
     updatePersonalData: updatePersonalDataResolver,
     setNewPassword: setNewPasswordResolver,
@@ -40,5 +45,7 @@ export const resolvers = {
     toggleFavorite: toggleFavoriteResolver,
     deleteReview: deleteReviewResolver,
     toggleCharacteristic: toggleCharacteristicResolver,
+
+    contactForm: contactFormResolver,
   },
 };

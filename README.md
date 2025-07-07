@@ -20,13 +20,6 @@
 
 The backend is built with Express, GraphQL, Apollo Server and Mongoose for MongoDB integration.
 
-
 ## Source
- You can access the frontend [here](https://github.com/mikhailyatsenko/coffemapberlin) and the backend [here](https://github.com/mikhailyatsenko/berlin-coffee-backend).
-
-
-
-**I welcome contributions to the project ❤️ **
-
-
+ You can access the frontend source [here](https://github.com/mikhailyatsenko/coffemapberlin)
 

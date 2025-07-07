@@ -1,0 +1,14 @@
+type SuccessResponse {
+  success: Boolean!
+}
+
+type ContactForm {
+  name: String!
+  email: String!
+  message: String!
+}
+
+type ContactFormResponse {
+  name: String!
+  success: Boolean!
+} 
