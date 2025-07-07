@@ -37,7 +37,7 @@ export const env = {
   // Domains
   frontendDomain: isDev ? "localhost:5173" : "3welle.com",
   backendDomain: isDev ? "localhost:3000" : "yatsenko.site",
-  cookieDomain: isDev ? "localhost" : "3welle.com",
+  cookieDomain: isDev ? "localhost" : "yatsenko.site",
 
   // URLs
   get frontendUrl() {
