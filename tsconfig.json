@@ -1,9 +1,9 @@
 {
   "compilerOptions": {
-    "target": "ESNext",            // Целевая версия JavaScript
-    "module": "ESNext",            // Используем ESM для модулей
-    "moduleResolution": "node",    // Разрешение модулей для Node.js
-    "esModuleInterop": true,       // Включение интероперабельности для импорта/экспорта
+    "target": "ESNext",            
+    "module": "ESNext",            
+    "moduleResolution": "node",    
+    "esModuleInterop": true,       
     "resolveJsonModule": true, 
     "baseUrl": "./",
     "outDir": "./dist",

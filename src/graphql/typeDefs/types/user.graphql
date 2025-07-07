@@ -1,0 +1,17 @@
+type User {
+  id: ID!
+  email: String!
+  displayName: String!
+  avatar: String
+  createdAt: String
+  isGoogleUserUserWithoutPassword: Boolean!
+}
+
+type AuthPayload {
+  user: User!
+  isFirstLogin: Boolean
+}
+
+type LogoutResponse {
+  message: String!
+} 

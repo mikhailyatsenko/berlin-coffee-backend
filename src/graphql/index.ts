@@ -5,12 +5,18 @@ import { fileURLToPath } from "url";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const Types = readFileSync(
-  path.join(__dirname, "./typeDefs/Schema.graphql"),
+const schemaFiles = [
+  "./typeDefs/types/user.graphql",
+  "./typeDefs/types/place.graphql",
+  "./typeDefs/types/review.graphql",
+  "./typeDefs/types/characteristic.graphql",
+  "./typeDefs/types/common.graphql",
+  "./typeDefs/root.graphql",
+];
 
-  { encoding: "utf-8" },
-);
+const typeDefs = schemaFiles
+  .map((file) => readFileSync(path.join(__dirname, file), "utf-8"))
+  .join("\n");
 
-export const typeDefs = `${Types}`;
-
+export { typeDefs };
 export { resolvers } from "./resolvers/resolvers.js";

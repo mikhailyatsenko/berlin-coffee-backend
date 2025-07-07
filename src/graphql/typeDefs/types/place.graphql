@@ -1,0 +1,31 @@
+type Place {
+  id: ID! 
+  type: String!
+  geometry: Geometry!
+  properties: PlaceProperties!
+}
+
+type Geometry {
+  type: String!
+  coordinates: [Float!]!
+}
+
+type PlaceProperties {
+  id: ID!
+  name: String!
+  description: String!
+  address: String!
+  image: String!
+  instagram: String!
+  averageRating: Float
+  ratingCount: Int!
+  favoriteCount: Int!
+  isFavorite: Boolean!
+  reviews: [Review!]!
+  characteristicCounts: CharacteristicCounts!
+}
+
+type PlaceReviews {
+  id: ID!
+  reviews: [Review!]!
+} 
