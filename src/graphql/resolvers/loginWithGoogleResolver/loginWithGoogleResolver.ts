@@ -57,6 +57,7 @@ export async function loginWithGoogleResolver(
       user = new User({
         googleId: payload.sub,
         email: payload.email,
+        isEmailConfirmed: true,
         displayName: payload.name,
         avatar: payload.picture,
       });

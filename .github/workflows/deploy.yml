@@ -10,29 +10,24 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1️⃣ Клонируем репозиторий
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 2️⃣ Устанавливаем Node
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
 
-      # 3️⃣ Устанавливаем зависимости и билдим
       - name: Install dependencies
         run: npm ci
 
       - name: Build project
         run: npm run build
 
-      # 4️⃣ Упаковываем dist + package.json + package-lock.json
       - name: Prepare deployment package
         run: |
           tar -czf deploy.tar.gz dist package.json package-lock.json
 
-      # 5️⃣ Отправляем архив на сервер
       - name: Upload to server
         uses: appleboy/scp-action@v0.1.7
         with:
@@ -42,7 +37,6 @@ jobs:
           source: "deploy.tar.gz"
           target: "/var/www/coffee-server"
 
-      # 6️⃣ Разархивируем, ставим зависимости, перезапускаем pm2
       - name: Deploy on server
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -51,6 +45,7 @@ jobs:
           key: ${{ secrets.SERVER_SSH_KEY }}
           script: |
             cd /var/www/coffee-server
+            m -rf dist
             tar -xzf deploy.tar.gz
             rm deploy.tar.gz
             npm ci --only=production
