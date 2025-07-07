@@ -12,7 +12,6 @@ export async function confirmEmailResolver(
 ) {
   const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
 
-  // Сначала проверяем существование пользователя
   const user = (await User.findOne({ email })) as IUser;
   if (!user) {
     throw new GraphQLError("User not found", {
@@ -22,7 +21,6 @@ export async function confirmEmailResolver(
     });
   }
 
-  // Проверяем, не подтверждён ли уже email
   if (user.isEmailConfirmed) {
     throw new GraphQLError("Email is already confirmed", {
       extensions: {
@@ -31,7 +29,6 @@ export async function confirmEmailResolver(
     });
   }
 
-  // Проверяем срок действия токена
   if (
     !user.emailConfirmationTokenExpires ||
     user.emailConfirmationTokenExpires < new Date()
@@ -43,7 +40,6 @@ export async function confirmEmailResolver(
     });
   }
 
-  // Проверяем валидность токена
   if (user.emailConfirmationToken !== hashedToken) {
     throw new GraphQLError("Invalid confirmation link", {
       extensions: {
@@ -52,23 +48,19 @@ export async function confirmEmailResolver(
     });
   }
 
-  // Если все проверки пройдены, подтверждаем email
   user.isEmailConfirmed = true;
   user.emailConfirmationToken = null;
   user.emailConfirmationTokenExpires = null;
   await user.save();
 
-  // Создаем JWT токен
   const jwtToken = jwt.sign(
     { id: user._id, email: user.email },
     env.jwtSecret,
     { expiresIn: "2d" },
   );
 
-  // Устанавливаем cookie
   res.cookie("jwt", jwtToken, env.cookieSettings);
 
-  // Возвращаем данные пользователя
   return {
     user: {
       id: user._id,
