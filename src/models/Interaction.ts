@@ -25,7 +25,7 @@ const InteractionSchema = new mongoose.Schema({
   userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
   placeId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: "Place",
+    ref: "NewPlace",
     required: true,
   },
   rating: { type: Number, min: 1, max: 5 },
