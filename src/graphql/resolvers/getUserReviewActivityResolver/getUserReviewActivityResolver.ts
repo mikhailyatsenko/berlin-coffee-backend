@@ -21,7 +21,7 @@ export async function getUserReviewActivityResolver(
         },
         {
           $lookup: {
-            from: "places",
+            from: "newplaces",
             localField: "placeId",
             foreignField: "_id",
             as: "place",

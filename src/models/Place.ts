@@ -9,7 +9,7 @@ export interface IPlace extends Document {
   };
   properties: {
     name: string;
-    description: string;
+    description: string | null;
     address: string;
     image: string;
     instagram: string;
@@ -26,7 +26,7 @@ const PlaceSchema = new mongoose.Schema({
     name: { type: String, required: true },
     description: {
       type: String,
-      default: "",
+      default: null,
     },
     address: { type: String, required: true },
     image: {
@@ -37,4 +37,4 @@ const PlaceSchema = new mongoose.Schema({
   },
 });
 
-export default mongoose.model<IPlace>("Place", PlaceSchema);
+export default mongoose.model<IPlace>("NewPlace", PlaceSchema);

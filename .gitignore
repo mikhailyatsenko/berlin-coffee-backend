@@ -4,3 +4,4 @@ dist
 .vscode
 importPlaces.ts
 **/src/plOld.json
+DATABASE_OPTIMIZATION.md
