@@ -8,6 +8,7 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
 
     steps:
       - name: Checkout repository
@@ -20,13 +21,16 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+        timeout-minutes: 5
 
       - name: Build project
         run: npm run build
+        timeout-minutes: 5
 
       - name: Prepare deployment package
         run: |
           tar -czf deploy.tar.gz dist package.json package-lock.json
+        timeout-minutes: 2
 
       - name: Upload to server
         uses: appleboy/scp-action@v0.1.7
@@ -36,6 +40,7 @@ jobs:
           key: ${{ secrets.SERVER_SSH_KEY }}
           source: "deploy.tar.gz"
           target: "/var/www/coffee-server"
+          timeout: 300s
 
       - name: Deploy on server
         uses: appleboy/ssh-action@v1.0.3
@@ -44,9 +49,30 @@ jobs:
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           script: |
+            set -e
             cd /var/www/coffee-server
-            m -rf dist
+            
+            # Extract new deployment
+            rm -rf dist
             tar -xzf deploy.tar.gz
             rm deploy.tar.gz
+            
+            # Install production dependencies
             npm ci --only=production
-            pm2 restart graphql-server  || pm2 start dist/index.js --name graphql-server
+            
+            # Restart or start PM2 process
+            if pm2 list | grep -q "coffe-server"; then
+              pm2 restart coffe-server
+            else
+              pm2 start dist/index.js --name coffe-server
+            fi
+            
+            # Verify deployment
+            sleep 5
+            if ! pm2 list | grep -q "coffe-server.*online"; then
+              echo "Deployment failed - PM2 process not running"
+              exit 1
+            fi
+            
+            echo "Deployment completed successfully"
+          timeout: 600s
