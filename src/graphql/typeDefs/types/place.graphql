@@ -23,9 +23,26 @@ type PlaceProperties {
   isFavorite: Boolean!
   reviews: [Review!]!
   characteristicCounts: CharacteristicCounts!
+  additionalInfo: JSON
+  googleReview: GoogleReview
+  neighborhood: String
+  openingHours: [OpeningHour!]
+  phone: String
+  website: String
 }
 
 type PlaceReviews {
   id: ID!
   reviews: [Review!]!
+} 
+
+type GoogleReview {
+  text: String!
+  stars: Int!
+  publishedAtDate: String!
+}
+
+type OpeningHour {
+  day: String!
+  hours: String!
 } 

@@ -11,4 +11,6 @@ type ContactForm {
 type ContactFormResponse {
   name: String!
   success: Boolean!
-} 
+}
+
+scalar JSON 
