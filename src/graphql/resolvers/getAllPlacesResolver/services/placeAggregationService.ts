@@ -14,6 +14,16 @@ export interface PlaceWithStats {
     address: string;
     image: string;
     instagram: string;
+    additionalInfo?: Record<string, { [key: string]: boolean }[]>;
+    googleReview?: {
+      text: string;
+      stars: number;
+      publishedAtDate: string;
+    } | null;
+    neighborhood?: string;
+    openingHours?: { day: string; hours: string }[];
+    phone?: string | null;
+    website?: string | null;
   };
   characteristicCounts: {
     deliciousFilterCoffee: { pressed: boolean; count: number };
