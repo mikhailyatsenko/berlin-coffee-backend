@@ -147,7 +147,7 @@ const bootstrapServer = async () => {
   );
 
   // Static folder for uploaded images
-  app.use("/uploads", express.static(path.join(__dirname, "./uploads")));
+  app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 
   app.listen(PORT, "127.0.0.1", () => {
     console.log(`Running server at ${PORT}`);
