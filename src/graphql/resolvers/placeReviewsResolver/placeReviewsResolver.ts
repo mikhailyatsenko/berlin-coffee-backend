@@ -1,5 +1,6 @@
 import Interaction from "../../../models/Interaction.js";
 import User from "../../../models/User.js";
+import Place from "../../../models/Place.js";
 import { GraphQLError } from "graphql";
 
 interface UserMap {
@@ -45,6 +46,22 @@ export async function placeReviewsResolver(
           : false,
         userRating: interaction.rating || null,
       }));
+
+    // googleReview from Place
+    const place = await Place.findById(placeId).lean();
+    const googleReview = place?.properties?.googleReview;
+    if (googleReview) {
+      reviews.push({
+        id: "google",
+        text: googleReview.text,
+        userId: "google",
+        userName: "Google Maps User",
+        userAvatar: null,
+        createdAt: googleReview.publishedAtDate,
+        isOwnReview: false,
+        userRating: googleReview.stars,
+      });
+    }
     return {
       id: placeId,
       reviews,

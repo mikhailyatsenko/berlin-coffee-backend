@@ -1,4 +1,4 @@
-import { GraphQLResolveInfo } from 'graphql';
+import { GraphQLResolveInfo, GraphQLScalarType, GraphQLScalarTypeConfig } from 'graphql';
 import { IUser } from '../../models/User';
 import { IPlace } from '../../models/Place';
 import { IInteraction } from '../../models/Interaction';
@@ -19,6 +19,7 @@ export type Scalars = {
   Boolean: { input: boolean; output: boolean; }
   Int: { input: number; output: number; }
   Float: { input: number; output: number; }
+  JSON: { input: any; output: any; }
 };
 
 export type AddRatingResponse = {
@@ -96,6 +97,13 @@ export type Geometry = {
   type: Scalars['String']['output'];
 };
 
+export type GoogleReview = {
+  __typename?: 'GoogleReview';
+  publishedAtDate: Scalars['String']['output'];
+  stars: Scalars['Int']['output'];
+  text: Scalars['String']['output'];
+};
+
 export type LogoutResponse = {
   __typename?: 'LogoutResponse';
   message: Scalars['String']['output'];
@@ -105,12 +113,14 @@ export type Mutation = {
   __typename?: 'Mutation';
   addRating: AddRatingResponse;
   addTextReview: AddTextReviewResponse;
+  confirmEmail: AuthPayload;
   contactForm: ContactFormResponse;
   deleteAvatar: SuccessResponse;
   deleteReview: DeleteReviewResult;
   loginWithGoogle?: Maybe<AuthPayload>;
   logout?: Maybe<LogoutResponse>;
-  registerUser: AuthPayload;
+  registerUser: SuccessResponse;
+  resendConfirmationEmail: SuccessResponse;
   setNewPassword: SuccessResponse;
   signInWithEmail: AuthPayload;
   toggleCharacteristic: SuccessResponse;
@@ -129,6 +139,12 @@ export type MutationAddRatingArgs = {
 export type MutationAddTextReviewArgs = {
   placeId: Scalars['ID']['input'];
   text: Scalars['String']['input'];
+};
+
+
+export type MutationConfirmEmailArgs = {
+  email: Scalars['String']['input'];
+  token: Scalars['String']['input'];
 };
 
 
@@ -154,6 +170,11 @@ export type MutationRegisterUserArgs = {
   displayName: Scalars['String']['input'];
   email: Scalars['String']['input'];
   password: Scalars['String']['input'];
+};
+
+
+export type MutationResendConfirmationEmailArgs = {
+  email: Scalars['String']['input'];
 };
 
 
@@ -193,6 +214,12 @@ export type MutationUploadAvatarArgs = {
   userId: Scalars['ID']['input'];
 };
 
+export type OpeningHour = {
+  __typename?: 'OpeningHour';
+  day: Scalars['String']['output'];
+  hours: Scalars['String']['output'];
+};
+
 export type Place = {
   __typename?: 'Place';
   geometry: Geometry;
@@ -203,18 +230,24 @@ export type Place = {
 
 export type PlaceProperties = {
   __typename?: 'PlaceProperties';
+  additionalInfo?: Maybe<Scalars['JSON']['output']>;
   address: Scalars['String']['output'];
   averageRating?: Maybe<Scalars['Float']['output']>;
   characteristicCounts: CharacteristicCounts;
   description: Scalars['String']['output'];
   favoriteCount: Scalars['Int']['output'];
+  googleReview?: Maybe<GoogleReview>;
   id: Scalars['ID']['output'];
   image: Scalars['String']['output'];
   instagram: Scalars['String']['output'];
   isFavorite: Scalars['Boolean']['output'];
   name: Scalars['String']['output'];
+  neighborhood?: Maybe<Scalars['String']['output']>;
+  openingHours?: Maybe<Array<OpeningHour>>;
+  phone?: Maybe<Scalars['String']['output']>;
   ratingCount: Scalars['Int']['output'];
   reviews: Array<Review>;
+  website?: Maybe<Scalars['String']['output']>;
 };
 
 export type PlaceReviews = {
@@ -357,10 +390,13 @@ export type ResolversTypes = {
   DeleteReviewResult: ResolverTypeWrapper<DeleteReviewResult>;
   Float: ResolverTypeWrapper<Scalars['Float']['output']>;
   Geometry: ResolverTypeWrapper<Geometry>;
+  GoogleReview: ResolverTypeWrapper<GoogleReview>;
   ID: ResolverTypeWrapper<Scalars['ID']['output']>;
   Int: ResolverTypeWrapper<Scalars['Int']['output']>;
+  JSON: ResolverTypeWrapper<Scalars['JSON']['output']>;
   LogoutResponse: ResolverTypeWrapper<LogoutResponse>;
   Mutation: ResolverTypeWrapper<{}>;
+  OpeningHour: ResolverTypeWrapper<OpeningHour>;
   Place: ResolverTypeWrapper<IPlace>;
   PlaceProperties: ResolverTypeWrapper<Omit<PlaceProperties, 'reviews'> & { reviews: Array<ResolversTypes['Review']> }>;
   PlaceReviews: ResolverTypeWrapper<Omit<PlaceReviews, 'reviews'> & { reviews: Array<ResolversTypes['Review']> }>;
@@ -385,10 +421,13 @@ export type ResolversParentTypes = {
   DeleteReviewResult: DeleteReviewResult;
   Float: Scalars['Float']['output'];
   Geometry: Geometry;
+  GoogleReview: GoogleReview;
   ID: Scalars['ID']['output'];
   Int: Scalars['Int']['output'];
+  JSON: Scalars['JSON']['output'];
   LogoutResponse: LogoutResponse;
   Mutation: {};
+  OpeningHour: OpeningHour;
   Place: IPlace;
   PlaceProperties: Omit<PlaceProperties, 'reviews'> & { reviews: Array<ResolversParentTypes['Review']> };
   PlaceReviews: Omit<PlaceReviews, 'reviews'> & { reviews: Array<ResolversParentTypes['Review']> };
@@ -464,6 +503,17 @@ export type GeometryResolvers<ContextType = Context, ParentType extends Resolver
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 };
 
+export type GoogleReviewResolvers<ContextType = Context, ParentType extends ResolversParentTypes['GoogleReview'] = ResolversParentTypes['GoogleReview']> = {
+  publishedAtDate?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  stars?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  text?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
+};
+
+export interface JsonScalarConfig extends GraphQLScalarTypeConfig<ResolversTypes['JSON'], any> {
+  name: 'JSON';
+}
+
 export type LogoutResponseResolvers<ContextType = Context, ParentType extends ResolversParentTypes['LogoutResponse'] = ResolversParentTypes['LogoutResponse']> = {
   message?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
@@ -472,18 +522,26 @@ export type LogoutResponseResolvers<ContextType = Context, ParentType extends Re
 export type MutationResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Mutation'] = ResolversParentTypes['Mutation']> = {
   addRating?: Resolver<ResolversTypes['AddRatingResponse'], ParentType, ContextType, RequireFields<MutationAddRatingArgs, 'placeId' | 'rating'>>;
   addTextReview?: Resolver<ResolversTypes['AddTextReviewResponse'], ParentType, ContextType, RequireFields<MutationAddTextReviewArgs, 'placeId' | 'text'>>;
+  confirmEmail?: Resolver<ResolversTypes['AuthPayload'], ParentType, ContextType, RequireFields<MutationConfirmEmailArgs, 'email' | 'token'>>;
   contactForm?: Resolver<ResolversTypes['ContactFormResponse'], ParentType, ContextType, RequireFields<MutationContactFormArgs, 'email' | 'message' | 'name'>>;
   deleteAvatar?: Resolver<ResolversTypes['SuccessResponse'], ParentType, ContextType>;
   deleteReview?: Resolver<ResolversTypes['DeleteReviewResult'], ParentType, ContextType, RequireFields<MutationDeleteReviewArgs, 'deleteOptions' | 'reviewId'>>;
   loginWithGoogle?: Resolver<Maybe<ResolversTypes['AuthPayload']>, ParentType, ContextType, RequireFields<MutationLoginWithGoogleArgs, 'code'>>;
   logout?: Resolver<Maybe<ResolversTypes['LogoutResponse']>, ParentType, ContextType>;
-  registerUser?: Resolver<ResolversTypes['AuthPayload'], ParentType, ContextType, RequireFields<MutationRegisterUserArgs, 'displayName' | 'email' | 'password'>>;
+  registerUser?: Resolver<ResolversTypes['SuccessResponse'], ParentType, ContextType, RequireFields<MutationRegisterUserArgs, 'displayName' | 'email' | 'password'>>;
+  resendConfirmationEmail?: Resolver<ResolversTypes['SuccessResponse'], ParentType, ContextType, RequireFields<MutationResendConfirmationEmailArgs, 'email'>>;
   setNewPassword?: Resolver<ResolversTypes['SuccessResponse'], ParentType, ContextType, RequireFields<MutationSetNewPasswordArgs, 'newPassword' | 'userId'>>;
   signInWithEmail?: Resolver<ResolversTypes['AuthPayload'], ParentType, ContextType, RequireFields<MutationSignInWithEmailArgs, 'email' | 'password'>>;
   toggleCharacteristic?: Resolver<ResolversTypes['SuccessResponse'], ParentType, ContextType, RequireFields<MutationToggleCharacteristicArgs, 'characteristic' | 'placeId'>>;
   toggleFavorite?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationToggleFavoriteArgs, 'placeId'>>;
   updatePersonalData?: Resolver<ResolversTypes['SuccessResponse'], ParentType, ContextType, RequireFields<MutationUpdatePersonalDataArgs, 'userId'>>;
   uploadAvatar?: Resolver<ResolversTypes['SuccessResponse'], ParentType, ContextType, RequireFields<MutationUploadAvatarArgs, 'fileUrl' | 'userId'>>;
+};
+
+export type OpeningHourResolvers<ContextType = Context, ParentType extends ResolversParentTypes['OpeningHour'] = ResolversParentTypes['OpeningHour']> = {
+  day?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  hours?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 };
 
 export type PlaceResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Place'] = ResolversParentTypes['Place']> = {
@@ -495,18 +553,24 @@ export type PlaceResolvers<ContextType = Context, ParentType extends ResolversPa
 };
 
 export type PlacePropertiesResolvers<ContextType = Context, ParentType extends ResolversParentTypes['PlaceProperties'] = ResolversParentTypes['PlaceProperties']> = {
+  additionalInfo?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType>;
   address?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   averageRating?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   characteristicCounts?: Resolver<ResolversTypes['CharacteristicCounts'], ParentType, ContextType>;
   description?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   favoriteCount?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  googleReview?: Resolver<Maybe<ResolversTypes['GoogleReview']>, ParentType, ContextType>;
   id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
   image?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   instagram?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   isFavorite?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
   name?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  neighborhood?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  openingHours?: Resolver<Maybe<Array<ResolversTypes['OpeningHour']>>, ParentType, ContextType>;
+  phone?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   ratingCount?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   reviews?: Resolver<Array<ResolversTypes['Review']>, ParentType, ContextType>;
+  website?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 };
 
@@ -571,8 +635,11 @@ export type Resolvers<ContextType = Context> = {
   ContactFormResponse?: ContactFormResponseResolvers<ContextType>;
   DeleteReviewResult?: DeleteReviewResultResolvers<ContextType>;
   Geometry?: GeometryResolvers<ContextType>;
+  GoogleReview?: GoogleReviewResolvers<ContextType>;
+  JSON?: GraphQLScalarType;
   LogoutResponse?: LogoutResponseResolvers<ContextType>;
   Mutation?: MutationResolvers<ContextType>;
+  OpeningHour?: OpeningHourResolvers<ContextType>;
   Place?: PlaceResolvers<ContextType>;
   PlaceProperties?: PlacePropertiesResolvers<ContextType>;
   PlaceReviews?: PlaceReviewsResolvers<ContextType>;
