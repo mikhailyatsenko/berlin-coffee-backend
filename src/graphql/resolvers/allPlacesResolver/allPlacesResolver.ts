@@ -1,7 +1,7 @@
 import { GraphQLError } from "graphql";
 import { getPlacesWithStats } from "./services/placeAggregationService.js";
 
-export async function getAllPlacesResolver(
+export async function allPlacesResolver(
   _: never,
   __: never,
   { user }: { user?: { id: string } },

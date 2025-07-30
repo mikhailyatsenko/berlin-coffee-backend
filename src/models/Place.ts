@@ -9,6 +9,8 @@ export interface IGoogleReview {
   text: string;
   stars: number;
   publishedAtDate: string;
+  imgCount: number;
+  reviewId: string;
 }
 
 export interface IPlace extends Document {
@@ -35,9 +37,11 @@ export interface IPlace extends Document {
 
 const GoogleReviewSchema = new mongoose.Schema(
   {
+    reviewId: { type: String, required: true },
     text: { type: String, required: true },
     stars: { type: Number, required: true },
     publishedAtDate: { type: String, required: true },
+    imgCount: { type: Number, default: 0 },
   },
   { _id: false },
 );

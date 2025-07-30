@@ -1,4 +1,4 @@
-import { getAllPlacesResolver } from "./getAllPlacesResolver/getAllPlacesResolver.js";
+import { allPlacesResolver } from "./allPlacesResolver/allPlacesResolver.js";
 import { toggleFavoriteResolver } from "./toggleFavoriteResolver/toggleFavoriteResolver.js";
 import { deleteReviewResolver } from "./deleteReviewResolver/deleteReviewResolver.js";
 import { placeReviewsResolver } from "./placeReviewsResolver/placeReviewsResolver.js";
@@ -7,7 +7,7 @@ import { signInWithEmailResolver } from "./signInWithEmailResolver/gnInWithEmail
 import { loginWithGoogleResolver } from "./loginWithGoogleResolver/loginWithGoogleResolver.js";
 import { currentUserResolver } from "./currentUserResolver/currentUserResolver.js";
 import { logoutResolver } from "./logoutReslover/logoutReslover.js";
-import { getUserReviewActivityResolver } from "./getUserReviewActivityResolver/getUserReviewActivityResolver.js";
+import { userReviewActivityResolver } from "./userReviewActivityResolver/userReviewActivityResolver.js";
 import { setNewPasswordResolver } from "./setNewPasswordResolver/setNewPasswordResolver.js";
 import { updatePersonalDataResolver } from "./updatePersonalDataResolver/updatePersonalDataResolver.js";
 import { uploadAvatarResolver } from "./uploadAvatarResolver/uploadAvatarResolver.js";
@@ -23,10 +23,10 @@ import GraphQLJSON from "graphql-type-json";
 export const resolvers = {
   JSON: GraphQLJSON,
   Query: {
-    places: getAllPlacesResolver,
+    places: allPlacesResolver,
     currentUser: currentUserResolver,
     placeReviews: placeReviewsResolver,
-    getUserReviewActivity: getUserReviewActivityResolver,
+    userReviewActivity: userReviewActivityResolver,
   },
 
   Mutation: {

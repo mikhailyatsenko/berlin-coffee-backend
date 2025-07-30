@@ -2,7 +2,7 @@ import { GraphQLError } from "graphql";
 import Interaction from "../../../models/Interaction.js";
 import { IUser } from "src/models/User.js";
 
-export async function getUserReviewActivityResolver(
+export async function userReviewActivityResolver(
   _: never,
   __: never,
   { user }: { user: IUser },

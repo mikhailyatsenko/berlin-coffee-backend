@@ -45,6 +45,7 @@ export async function placeReviewsResolver(
           ? interaction.userId.toString() === context.user.id
           : false,
         userRating: interaction.rating || null,
+        imgCount: 0,
       }));
 
     // googleReview from Place
@@ -52,7 +53,7 @@ export async function placeReviewsResolver(
     const googleReview = place?.properties?.googleReview;
     if (googleReview) {
       reviews.push({
-        id: "google",
+        id: googleReview.reviewId,
         text: googleReview.text,
         userId: "google",
         userName: "Google Maps User",
@@ -60,6 +61,7 @@ export async function placeReviewsResolver(
         createdAt: googleReview.publishedAtDate,
         isOwnReview: false,
         userRating: googleReview.stars,
+        imgCount: googleReview.imgCount || 0,
       });
     }
     return {

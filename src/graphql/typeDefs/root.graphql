@@ -2,7 +2,7 @@ type Query {
   currentUser: User
   places: [Place!]!
   placeReviews(placeId: ID!): PlaceReviews!
-  getUserReviewActivity: [UserReviewActivity!]!
+  userReviewActivity: [UserReviewActivity!]!
 }
 
 type Mutation {

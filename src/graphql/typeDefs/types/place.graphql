@@ -40,6 +40,8 @@ type GoogleReview {
   text: String!
   stars: Int!
   publishedAtDate: String!
+  imgCount: Int!
+  reviewId: String!
 }
 
 type OpeningHour {

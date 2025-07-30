@@ -99,7 +99,9 @@ export type Geometry = {
 
 export type GoogleReview = {
   __typename?: 'GoogleReview';
+  imgCount: Scalars['Int']['output'];
   publishedAtDate: Scalars['String']['output'];
+  reviewId: Scalars['String']['output'];
   stars: Scalars['Int']['output'];
   text: Scalars['String']['output'];
 };
@@ -259,9 +261,9 @@ export type PlaceReviews = {
 export type Query = {
   __typename?: 'Query';
   currentUser?: Maybe<User>;
-  getUserReviewActivity: Array<UserReviewActivity>;
   placeReviews: PlaceReviews;
   places: Array<Place>;
+  userReviewActivity: Array<UserReviewActivity>;
 };
 
 
@@ -273,6 +275,7 @@ export type Review = {
   __typename?: 'Review';
   createdAt: Scalars['String']['output'];
   id: Scalars['ID']['output'];
+  imgCount: Scalars['Int']['output'];
   isOwnReview: Scalars['Boolean']['output'];
   placeId: Scalars['ID']['output'];
   text?: Maybe<Scalars['String']['output']>;
@@ -504,7 +507,9 @@ export type GeometryResolvers<ContextType = Context, ParentType extends Resolver
 };
 
 export type GoogleReviewResolvers<ContextType = Context, ParentType extends ResolversParentTypes['GoogleReview'] = ResolversParentTypes['GoogleReview']> = {
+  imgCount?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   publishedAtDate?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  reviewId?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   stars?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   text?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
@@ -582,14 +587,15 @@ export type PlaceReviewsResolvers<ContextType = Context, ParentType extends Reso
 
 export type QueryResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Query'] = ResolversParentTypes['Query']> = {
   currentUser?: Resolver<Maybe<ResolversTypes['User']>, ParentType, ContextType>;
-  getUserReviewActivity?: Resolver<Array<ResolversTypes['UserReviewActivity']>, ParentType, ContextType>;
   placeReviews?: Resolver<ResolversTypes['PlaceReviews'], ParentType, ContextType, RequireFields<QueryPlaceReviewsArgs, 'placeId'>>;
   places?: Resolver<Array<ResolversTypes['Place']>, ParentType, ContextType>;
+  userReviewActivity?: Resolver<Array<ResolversTypes['UserReviewActivity']>, ParentType, ContextType>;
 };
 
 export type ReviewResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Review'] = ResolversParentTypes['Review']> = {
   createdAt?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+  imgCount?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   isOwnReview?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
   placeId?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
   text?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
