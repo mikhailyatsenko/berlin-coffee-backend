@@ -1,4 +1,5 @@
 type Query {
+  place(placeId: ID!): Place!
   currentUser: User
   places: [Place!]!
   placeReviews(placeId: ID!): PlaceReviews!
