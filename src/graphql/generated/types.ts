@@ -261,9 +261,15 @@ export type PlaceReviews = {
 export type Query = {
   __typename?: 'Query';
   currentUser?: Maybe<User>;
+  place: Place;
   placeReviews: PlaceReviews;
   places: Array<Place>;
   userReviewActivity: Array<UserReviewActivity>;
+};
+
+
+export type QueryPlaceArgs = {
+  placeId: Scalars['ID']['input'];
 };
 
 
@@ -587,6 +593,7 @@ export type PlaceReviewsResolvers<ContextType = Context, ParentType extends Reso
 
 export type QueryResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Query'] = ResolversParentTypes['Query']> = {
   currentUser?: Resolver<Maybe<ResolversTypes['User']>, ParentType, ContextType>;
+  place?: Resolver<ResolversTypes['Place'], ParentType, ContextType, RequireFields<QueryPlaceArgs, 'placeId'>>;
   placeReviews?: Resolver<ResolversTypes['PlaceReviews'], ParentType, ContextType, RequireFields<QueryPlaceReviewsArgs, 'placeId'>>;
   places?: Resolver<Array<ResolversTypes['Place']>, ParentType, ContextType>;
   userReviewActivity?: Resolver<Array<ResolversTypes['UserReviewActivity']>, ParentType, ContextType>;

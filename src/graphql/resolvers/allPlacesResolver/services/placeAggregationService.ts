@@ -14,26 +14,12 @@ export interface PlaceWithStats {
     address: string;
     image: string;
     instagram: string;
-    additionalInfo?: Record<string, { [key: string]: boolean }[]>;
     googleReview?: {
       text: string;
       stars: number;
       publishedAtDate: string;
     } | null;
     neighborhood?: string;
-    openingHours?: { day: string; hours: string }[];
-    phone?: string | null;
-    website?: string | null;
-  };
-  characteristicCounts: {
-    deliciousFilterCoffee: { pressed: boolean; count: number };
-    pleasantAtmosphere: { pressed: boolean; count: number };
-    friendlyStaff: { pressed: boolean; count: number };
-    freeWifi: { pressed: boolean; count: number };
-    yummyEats: { pressed: boolean; count: number };
-    affordablePrices: { pressed: boolean; count: number };
-    petFriendly: { pressed: boolean; count: number };
-    outdoorSeating: { pressed: boolean; count: number };
   };
   favoriteCount: number;
   averageRating: number;
@@ -42,7 +28,7 @@ export interface PlaceWithStats {
 }
 
 /**
- * Получает все места с полной статистикой через агрегацию MongoDB
+ * Получает все места с облегчённой статистикой через агрегацию MongoDB
  * @param userId - ID пользователя для определения его взаимодействий
  * @returns Массив мест с агрегированной статистикой
  */
@@ -60,16 +46,6 @@ export async function getPlacesWithStats(
     },
     {
       $addFields: {
-        characteristicCounts: {
-          deliciousFilterCoffee: { pressed: false, count: 0 },
-          pleasantAtmosphere: { pressed: false, count: 0 },
-          friendlyStaff: { pressed: false, count: 0 },
-          freeWifi: { pressed: false, count: 0 },
-          yummyEats: { pressed: false, count: 0 },
-          affordablePrices: { pressed: false, count: 0 },
-          petFriendly: { pressed: false, count: 0 },
-          outdoorSeating: { pressed: false, count: 0 },
-        },
         favoriteCount: {
           $size: {
             $filter: {
@@ -87,258 +63,6 @@ export async function getPlacesWithStats(
                 userId ? new mongoose.Types.ObjectId(userId) : null,
               ],
             },
-          },
-        },
-      },
-    },
-    {
-      $addFields: {
-        "characteristicCounts.deliciousFilterCoffee.count": {
-          $size: {
-            $filter: {
-              input: "$interactions",
-              cond: {
-                $eq: ["$$this.characteristics.deliciousFilterCoffee", true],
-              },
-            },
-          },
-        },
-        "characteristicCounts.pleasantAtmosphere.count": {
-          $size: {
-            $filter: {
-              input: "$interactions",
-              cond: {
-                $eq: ["$$this.characteristics.pleasantAtmosphere", true],
-              },
-            },
-          },
-        },
-        "characteristicCounts.friendlyStaff.count": {
-          $size: {
-            $filter: {
-              input: "$interactions",
-              cond: { $eq: ["$$this.characteristics.friendlyStaff", true] },
-            },
-          },
-        },
-        "characteristicCounts.freeWifi.count": {
-          $size: {
-            $filter: {
-              input: "$interactions",
-              cond: { $eq: ["$$this.characteristics.freeWifi", true] },
-            },
-          },
-        },
-        "characteristicCounts.yummyEats.count": {
-          $size: {
-            $filter: {
-              input: "$interactions",
-              cond: { $eq: ["$$this.characteristics.yummyEats", true] },
-            },
-          },
-        },
-        "characteristicCounts.affordablePrices.count": {
-          $size: {
-            $filter: {
-              input: "$interactions",
-              cond: {
-                $eq: ["$$this.characteristics.affordablePrices", true],
-              },
-            },
-          },
-        },
-        "characteristicCounts.petFriendly.count": {
-          $size: {
-            $filter: {
-              input: "$interactions",
-              cond: { $eq: ["$$this.characteristics.petFriendly", true] },
-            },
-          },
-        },
-        "characteristicCounts.outdoorSeating.count": {
-          $size: {
-            $filter: {
-              input: "$interactions",
-              cond: { $eq: ["$$this.characteristics.outdoorSeating", true] },
-            },
-          },
-        },
-      },
-    },
-    {
-      $addFields: {
-        "characteristicCounts.deliciousFilterCoffee.pressed": {
-          $cond: {
-            if: {
-              $gt: [
-                {
-                  $size: {
-                    $filter: {
-                      input: "$userInteractions",
-                      cond: {
-                        $eq: [
-                          "$$this.characteristics.deliciousFilterCoffee",
-                          true,
-                        ],
-                      },
-                    },
-                  },
-                },
-                0,
-              ],
-            },
-            then: true,
-            else: false,
-          },
-        },
-        "characteristicCounts.pleasantAtmosphere.pressed": {
-          $cond: {
-            if: {
-              $gt: [
-                {
-                  $size: {
-                    $filter: {
-                      input: "$userInteractions",
-                      cond: {
-                        $eq: [
-                          "$$this.characteristics.pleasantAtmosphere",
-                          true,
-                        ],
-                      },
-                    },
-                  },
-                },
-                0,
-              ],
-            },
-            then: true,
-            else: false,
-          },
-        },
-        "characteristicCounts.friendlyStaff.pressed": {
-          $cond: {
-            if: {
-              $gt: [
-                {
-                  $size: {
-                    $filter: {
-                      input: "$userInteractions",
-                      cond: {
-                        $eq: ["$$this.characteristics.friendlyStaff", true],
-                      },
-                    },
-                  },
-                },
-                0,
-              ],
-            },
-            then: true,
-            else: false,
-          },
-        },
-        "characteristicCounts.freeWifi.pressed": {
-          $cond: {
-            if: {
-              $gt: [
-                {
-                  $size: {
-                    $filter: {
-                      input: "$userInteractions",
-                      cond: {
-                        $eq: ["$$this.characteristics.freeWifi", true],
-                      },
-                    },
-                  },
-                },
-                0,
-              ],
-            },
-            then: true,
-            else: false,
-          },
-        },
-        "characteristicCounts.yummyEats.pressed": {
-          $cond: {
-            if: {
-              $gt: [
-                {
-                  $size: {
-                    $filter: {
-                      input: "$userInteractions",
-                      cond: {
-                        $eq: ["$$this.characteristics.yummyEats", true],
-                      },
-                    },
-                  },
-                },
-                0,
-              ],
-            },
-            then: true,
-            else: false,
-          },
-        },
-        "characteristicCounts.affordablePrices.pressed": {
-          $cond: {
-            if: {
-              $gt: [
-                {
-                  $size: {
-                    $filter: {
-                      input: "$userInteractions",
-                      cond: {
-                        $eq: ["$$this.characteristics.affordablePrices", true],
-                      },
-                    },
-                  },
-                },
-                0,
-              ],
-            },
-            then: true,
-            else: false,
-          },
-        },
-        "characteristicCounts.petFriendly.pressed": {
-          $cond: {
-            if: {
-              $gt: [
-                {
-                  $size: {
-                    $filter: {
-                      input: "$userInteractions",
-                      cond: {
-                        $eq: ["$$this.characteristics.petFriendly", true],
-                      },
-                    },
-                  },
-                },
-                0,
-              ],
-            },
-            then: true,
-            else: false,
-          },
-        },
-        "characteristicCounts.outdoorSeating.pressed": {
-          $cond: {
-            if: {
-              $gt: [
-                {
-                  $size: {
-                    $filter: {
-                      input: "$userInteractions",
-                      cond: {
-                        $eq: ["$$this.characteristics.outdoorSeating", true],
-                      },
-                    },
-                  },
-                },
-                0,
-              ],
-            },
-            then: true,
-            else: false,
           },
         },
       },
@@ -395,6 +119,10 @@ export async function getPlacesWithStats(
         interactions: 0,
         userInteractions: 0,
         ratingStats: 0,
+        "properties.additionalInfo": 0,
+        "properties.openingHours": 0,
+        "properties.phone": 0,
+        "properties.website": 0,
       },
     },
   ]);

@@ -38,16 +38,9 @@ export async function allPlacesResolver(
           instagram: place.properties.instagram || "",
           averageRating: Number(averageRating.toFixed(1)),
           ratingCount: ratingCount,
-          characteristicCounts: place.characteristicCounts,
           favoriteCount: place.favoriteCount,
           isFavorite: place.isFavorite,
-          reviews: [], // Пустой массив для reviews
-          additionalInfo: place.properties.additionalInfo || {},
-          googleReview: place.properties.googleReview || null,
           neighborhood: place.properties.neighborhood || null,
-          openingHours: place.properties.openingHours || [],
-          phone: place.properties.phone || null,
-          website: place.properties.website || null,
         },
       };
     });

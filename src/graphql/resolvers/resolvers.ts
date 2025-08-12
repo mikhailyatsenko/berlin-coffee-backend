@@ -18,12 +18,14 @@ import { addRatingResolver } from "./addRatingResolver/addRatingResolver.js";
 import { contactFormResolver } from "./contactFormResolver/contactFormResolver.js";
 import { resendConfirmationEmailResolver } from "./registerUser/resendConfirmationEmailResolver.js";
 import { confirmEmailResolver } from "./registerUser/confirmEmailResolver.js";
+import { placeResolver } from "./placeResolver/placeResolver.js";
 import GraphQLJSON from "graphql-type-json";
 
 export const resolvers = {
   JSON: GraphQLJSON,
   Query: {
     places: allPlacesResolver,
+    place: placeResolver,
     currentUser: currentUserResolver,
     placeReviews: placeReviewsResolver,
     userReviewActivity: userReviewActivityResolver,
