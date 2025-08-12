@@ -77,7 +77,7 @@ const bootstrapServer = async () => {
     cors<cors.CorsRequest>({
       origin:
         process.env.NODE_ENV === "production"
-          ? "https://3welle.com"
+          ? ["https://3welle.com", "https://dev.3welle.com"]
           : "http://localhost:5173",
       credentials: true,
       allowedHeaders: ["Content-Type", "Authorization", "Content-Length"],
@@ -112,7 +112,7 @@ const bootstrapServer = async () => {
     cors({
       origin:
         process.env.NODE_ENV === "production"
-          ? "https://3welle.com"
+          ? ["https://3welle.com", "https://dev.3welle.com"]
           : "http://localhost:5173",
       credentials: true,
     }),
