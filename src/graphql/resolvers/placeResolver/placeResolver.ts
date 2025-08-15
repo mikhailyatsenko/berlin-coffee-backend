@@ -6,11 +6,25 @@ export async function placeResolver(
   { placeId }: { placeId: string },
   { user }: { user?: { id: string } },
 ) {
+  // Validate placeId presence and format (Mongo ObjectId 24-hex)
+  if (!placeId || typeof placeId !== "string") {
+    throw new GraphQLError("Invalid placeId", {
+      extensions: { code: "BAD_USER_INPUT", http: { status: 400 } },
+    });
+  }
+
+  const isValidMongoObjectId = /^[a-fA-F0-9]{24}$/.test(placeId);
+  if (!isValidMongoObjectId) {
+    throw new GraphQLError("Invalid placeId format", {
+      extensions: { code: "BAD_USER_INPUT", http: { status: 400 } },
+    });
+  }
+
   try {
     const place = await getPlaceWithStatsById(placeId, user?.id);
     if (!place) {
       throw new GraphQLError("Place not found", {
-        extensions: { code: "NOT_FOUND" },
+        extensions: { code: "NOT_FOUND", http: { status: 404 } },
       });
     }
 
@@ -55,6 +69,7 @@ export async function placeResolver(
     throw new GraphQLError("Error fetching place", {
       extensions: {
         code: "INTERNAL_SERVER_ERROR",
+        http: { status: 500 },
         error: error instanceof Error ? error.message : String(error),
       },
     });

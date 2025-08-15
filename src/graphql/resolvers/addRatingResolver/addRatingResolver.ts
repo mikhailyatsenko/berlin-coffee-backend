@@ -2,6 +2,7 @@ import Interaction from "../../../models/Interaction.js";
 import { GraphQLError } from "graphql";
 import mongoose from "mongoose";
 import { IUser } from "src/models/User.js";
+import Place from "../../../models/Place.js";
 
 export async function addRatingResolver(
   _: never,
@@ -61,9 +62,22 @@ export async function addRatingResolver(
 
     const stats = aggregationResult[0] || { averageRating: 0, ratingCount: 0 };
 
+    // Include googleReview.stars like in placeResolver
+    const place = await Place.findById(placeId).lean();
+    const googleStars = place?.properties?.googleReview?.stars;
+
+    let averageRating = stats.averageRating || 0;
+    let ratingCount = stats.ratingCount || 0;
+
+    if (typeof googleStars === "number") {
+      averageRating =
+        (averageRating * ratingCount + googleStars) / (ratingCount + 1);
+      ratingCount = ratingCount + 1;
+    }
+
     return {
-      averageRating: parseFloat(stats.averageRating.toFixed(1)),
-      ratingCount: stats.ratingCount,
+      averageRating: parseFloat(averageRating.toFixed(1)),
+      ratingCount,
       reviewId,
       userRating: rating,
     };
