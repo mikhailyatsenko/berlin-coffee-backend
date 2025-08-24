@@ -5,6 +5,11 @@ type Place {
   properties: PlaceProperties!
 }
 
+type PlacesResponse {
+  places: [Place!]!
+  total: Int!
+}
+
 type Geometry {
   type: String!
   coordinates: [Float!]!

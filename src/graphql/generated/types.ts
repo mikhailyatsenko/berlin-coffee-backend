@@ -258,12 +258,18 @@ export type PlaceReviews = {
   reviews: Array<Review>;
 };
 
+export type PlacesResponse = {
+  __typename?: 'PlacesResponse';
+  places: Array<Place>;
+  total: Scalars['Int']['output'];
+};
+
 export type Query = {
   __typename?: 'Query';
   currentUser?: Maybe<User>;
   place: Place;
   placeReviews: PlaceReviews;
-  places: Array<Place>;
+  places: PlacesResponse;
   userReviewActivity: Array<UserReviewActivity>;
 };
 
@@ -275,6 +281,12 @@ export type QueryPlaceArgs = {
 
 export type QueryPlaceReviewsArgs = {
   placeId: Scalars['ID']['input'];
+};
+
+
+export type QueryPlacesArgs = {
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
 };
 
 export type Review = {
@@ -409,6 +421,7 @@ export type ResolversTypes = {
   Place: ResolverTypeWrapper<IPlace>;
   PlaceProperties: ResolverTypeWrapper<Omit<PlaceProperties, 'reviews'> & { reviews: Array<ResolversTypes['Review']> }>;
   PlaceReviews: ResolverTypeWrapper<Omit<PlaceReviews, 'reviews'> & { reviews: Array<ResolversTypes['Review']> }>;
+  PlacesResponse: ResolverTypeWrapper<Omit<PlacesResponse, 'places'> & { places: Array<ResolversTypes['Place']> }>;
   Query: ResolverTypeWrapper<{}>;
   Review: ResolverTypeWrapper<IInteraction>;
   String: ResolverTypeWrapper<Scalars['String']['output']>;
@@ -440,6 +453,7 @@ export type ResolversParentTypes = {
   Place: IPlace;
   PlaceProperties: Omit<PlaceProperties, 'reviews'> & { reviews: Array<ResolversParentTypes['Review']> };
   PlaceReviews: Omit<PlaceReviews, 'reviews'> & { reviews: Array<ResolversParentTypes['Review']> };
+  PlacesResponse: Omit<PlacesResponse, 'places'> & { places: Array<ResolversParentTypes['Place']> };
   Query: {};
   Review: IInteraction;
   String: Scalars['String']['output'];
@@ -591,11 +605,17 @@ export type PlaceReviewsResolvers<ContextType = Context, ParentType extends Reso
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 };
 
+export type PlacesResponseResolvers<ContextType = Context, ParentType extends ResolversParentTypes['PlacesResponse'] = ResolversParentTypes['PlacesResponse']> = {
+  places?: Resolver<Array<ResolversTypes['Place']>, ParentType, ContextType>;
+  total?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
+};
+
 export type QueryResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Query'] = ResolversParentTypes['Query']> = {
   currentUser?: Resolver<Maybe<ResolversTypes['User']>, ParentType, ContextType>;
   place?: Resolver<ResolversTypes['Place'], ParentType, ContextType, RequireFields<QueryPlaceArgs, 'placeId'>>;
   placeReviews?: Resolver<ResolversTypes['PlaceReviews'], ParentType, ContextType, RequireFields<QueryPlaceReviewsArgs, 'placeId'>>;
-  places?: Resolver<Array<ResolversTypes['Place']>, ParentType, ContextType>;
+  places?: Resolver<ResolversTypes['PlacesResponse'], ParentType, ContextType, RequireFields<QueryPlacesArgs, 'limit' | 'offset'>>;
   userReviewActivity?: Resolver<Array<ResolversTypes['UserReviewActivity']>, ParentType, ContextType>;
 };
 
@@ -656,6 +676,7 @@ export type Resolvers<ContextType = Context> = {
   Place?: PlaceResolvers<ContextType>;
   PlaceProperties?: PlacePropertiesResolvers<ContextType>;
   PlaceReviews?: PlaceReviewsResolvers<ContextType>;
+  PlacesResponse?: PlacesResponseResolvers<ContextType>;
   Query?: QueryResolvers<ContextType>;
   Review?: ReviewResolvers<ContextType>;
   SuccessResponse?: SuccessResponseResolvers<ContextType>;

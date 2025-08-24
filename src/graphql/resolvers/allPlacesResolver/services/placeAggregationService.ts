@@ -28,14 +28,26 @@ export interface PlaceWithStats {
 }
 
 /**
- * Получает все места с облегчённой статистикой через агрегацию MongoDB
+ * Получает места с облегчённой статистикой через агрегацию MongoDB
  * @param userId - ID пользователя для определения его взаимодействий
- * @returns Массив мест с агрегированной статистикой
+ * @param limit - Количество записей для возврата
+ * @param offset - Смещение (пропуск) записей
+ * @returns Объект с массивом мест и общим количеством
  */
 export async function getPlacesWithStats(
   userId?: string,
-): Promise<PlaceWithStats[]> {
-  return Place.aggregate([
+  limit: number = 10,
+  offset: number = 0,
+): Promise<{ places: PlaceWithStats[]; total: number }> {
+  // Получаем общее количество мест
+  const total = await Place.countDocuments();
+
+  // Агрегация с пагинацией
+  const places = await Place.aggregate([
+    // Пагинация: пропускаем и ограничиваем
+    { $skip: offset },
+    { $limit: limit },
+    // Остальная агрегация без изменений
     {
       $lookup: {
         from: "interactions",
@@ -126,4 +138,6 @@ export async function getPlacesWithStats(
       },
     },
   ]);
+
+  return { places, total };
 }

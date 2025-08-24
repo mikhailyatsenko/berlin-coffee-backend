@@ -22,8 +22,6 @@ export async function verifyRecaptcha(
     );
   }
 
-  console.log(secret);
-
   const params = new URLSearchParams({
     secret,
     response: token,

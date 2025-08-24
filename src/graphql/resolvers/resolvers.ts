@@ -1,4 +1,4 @@
-import { allPlacesResolver } from "./allPlacesResolver/allPlacesResolver.js";
+import { placesResolver } from "./allPlacesResolver/placesResolver.js";
 import { toggleFavoriteResolver } from "./toggleFavoriteResolver/toggleFavoriteResolver.js";
 import { deleteReviewResolver } from "./deleteReviewResolver/deleteReviewResolver.js";
 import { placeReviewsResolver } from "./placeReviewsResolver/placeReviewsResolver.js";
@@ -24,7 +24,7 @@ import GraphQLJSON from "graphql-type-json";
 export const resolvers = {
   JSON: GraphQLJSON,
   Query: {
-    places: allPlacesResolver,
+    places: placesResolver,
     place: placeResolver,
     currentUser: currentUserResolver,
     placeReviews: placeReviewsResolver,

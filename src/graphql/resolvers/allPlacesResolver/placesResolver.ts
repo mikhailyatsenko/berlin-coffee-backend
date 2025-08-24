@@ -1,17 +1,15 @@
 import { GraphQLError } from "graphql";
 import { getPlacesWithStats } from "./services/placeAggregationService.js";
 
-export async function allPlacesResolver(
+export async function placesResolver(
   _: never,
-  __: never,
+  { limit = 10, offset = 0 }: { limit: number; offset: number },
   { user }: { user?: { id: string } },
 ) {
   try {
-    // Получаем места с полной статистикой через сервис
-    const placesWithStats = await getPlacesWithStats(user?.id);
-
+    const { places, total } = await getPlacesWithStats(user?.id, limit, offset);
     // Преобразуем в формат GraphQL
-    return placesWithStats.map((place) => {
+    const formattedPlaces = places.map((place) => {
       // Получаем рейтинг из googleReview, если есть
       const googleStars = place.properties?.googleReview?.stars;
       let averageRating = place.averageRating;
@@ -44,6 +42,11 @@ export async function allPlacesResolver(
         },
       };
     });
+
+    return {
+      places: formattedPlaces,
+      total,
+    };
   } catch (error) {
     console.error("Error fetching places:", error);
     throw new GraphQLError("Error fetching places", {
