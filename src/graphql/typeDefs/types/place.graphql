@@ -30,6 +30,7 @@ type PlaceProperties {
   characteristicCounts: CharacteristicCounts!
   additionalInfo: JSON
   googleReview: GoogleReview
+  googleId: String
   neighborhood: String
   openingHours: [OpeningHour!]
   phone: String

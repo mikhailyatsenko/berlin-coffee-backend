@@ -58,6 +58,7 @@ export async function placeResolver(
         favoriteCount: place.favoriteCount,
         isFavorite: place.isFavorite,
         additionalInfo: place.properties.additionalInfo || {},
+        googleId: place.properties.googleId || null,
         neighborhood: place.properties.neighborhood || null,
         openingHours: place.properties.openingHours || [],
         phone: place.properties.phone || null,

@@ -238,6 +238,7 @@ export type PlaceProperties = {
   characteristicCounts: CharacteristicCounts;
   description: Scalars['String']['output'];
   favoriteCount: Scalars['Int']['output'];
+  googleId?: Maybe<Scalars['String']['output']>;
   googleReview?: Maybe<GoogleReview>;
   id: Scalars['ID']['output'];
   image: Scalars['String']['output'];
@@ -584,6 +585,7 @@ export type PlacePropertiesResolvers<ContextType = Context, ParentType extends R
   characteristicCounts?: Resolver<ResolversTypes['CharacteristicCounts'], ParentType, ContextType>;
   description?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   favoriteCount?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  googleId?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   googleReview?: Resolver<Maybe<ResolversTypes['GoogleReview']>, ParentType, ContextType>;
   id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
   image?: Resolver<ResolversTypes['String'], ParentType, ContextType>;

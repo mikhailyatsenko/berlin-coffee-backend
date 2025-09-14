@@ -20,6 +20,7 @@ export interface PlaceWithStats {
       stars: number;
       publishedAtDate: string;
     } | null;
+    googleId?: string | null;
     neighborhood?: string;
     openingHours?: { day: string; hours: string }[];
     phone?: string | null;

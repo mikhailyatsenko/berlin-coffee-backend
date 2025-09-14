@@ -38,6 +38,7 @@ export async function placesResolver(
           ratingCount: ratingCount,
           favoriteCount: place.favoriteCount,
           isFavorite: place.isFavorite,
+          googleId: place.properties.googleId || null,
           neighborhood: place.properties.neighborhood || null,
         },
       };

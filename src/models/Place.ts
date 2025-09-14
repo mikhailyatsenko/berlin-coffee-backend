@@ -28,6 +28,7 @@ export interface IPlace extends Document {
     instagram: string | null;
     additionalInfo?: Record<string, { [key: string]: boolean }[]>;
     googleReview?: IGoogleReview | null;
+    googleId?: string | null;
     neighborhood?: string;
     openingHours?: IOpeningHour[];
     phone?: string | null;
@@ -74,6 +75,7 @@ const PlaceSchema = new mongoose.Schema({
     instagram: { type: String, default: null },
     additionalInfo: { type: mongoose.Schema.Types.Mixed, default: {} },
     googleReview: { type: GoogleReviewSchema, default: null },
+    googleId: { type: String, default: null },
     neighborhood: { type: String, default: null },
     openingHours: { type: [OpeningHourSchema], default: [] },
     phone: { type: String, default: null },

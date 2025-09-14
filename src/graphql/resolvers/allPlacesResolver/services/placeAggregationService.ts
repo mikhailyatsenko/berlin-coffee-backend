@@ -19,6 +19,7 @@ export interface PlaceWithStats {
       stars: number;
       publishedAtDate: string;
     } | null;
+    googleId?: string | null;
     neighborhood?: string;
   };
   favoriteCount: number;
