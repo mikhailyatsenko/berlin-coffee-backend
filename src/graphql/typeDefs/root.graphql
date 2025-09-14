@@ -20,6 +20,7 @@ type Mutation {
   setNewPassword(userId: ID!, oldPassword: String, newPassword: String!): SuccessResponse!
   uploadAvatar(userId: ID!, fileUrl: String!): SuccessResponse!
   deleteAvatar: SuccessResponse!
+  deleteAccount: SuccessResponse!
 
   # Place and Review Mutations
   addRating(placeId: ID!, rating: Float!): AddRatingResponse!

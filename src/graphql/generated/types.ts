@@ -117,6 +117,7 @@ export type Mutation = {
   addTextReview: AddTextReviewResponse;
   confirmEmail: AuthPayload;
   contactForm: ContactFormResponse;
+  deleteAccount: SuccessResponse;
   deleteAvatar: SuccessResponse;
   deleteReview: DeleteReviewResult;
   loginWithGoogle?: Maybe<AuthPayload>;
@@ -550,6 +551,7 @@ export type MutationResolvers<ContextType = Context, ParentType extends Resolver
   addTextReview?: Resolver<ResolversTypes['AddTextReviewResponse'], ParentType, ContextType, RequireFields<MutationAddTextReviewArgs, 'placeId' | 'text'>>;
   confirmEmail?: Resolver<ResolversTypes['AuthPayload'], ParentType, ContextType, RequireFields<MutationConfirmEmailArgs, 'email' | 'token'>>;
   contactForm?: Resolver<ResolversTypes['ContactFormResponse'], ParentType, ContextType, RequireFields<MutationContactFormArgs, 'email' | 'message' | 'name'>>;
+  deleteAccount?: Resolver<ResolversTypes['SuccessResponse'], ParentType, ContextType>;
   deleteAvatar?: Resolver<ResolversTypes['SuccessResponse'], ParentType, ContextType>;
   deleteReview?: Resolver<ResolversTypes['DeleteReviewResult'], ParentType, ContextType, RequireFields<MutationDeleteReviewArgs, 'deleteOptions' | 'reviewId'>>;
   loginWithGoogle?: Resolver<Maybe<ResolversTypes['AuthPayload']>, ParentType, ContextType, RequireFields<MutationLoginWithGoogleArgs, 'code'>>;

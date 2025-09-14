@@ -12,6 +12,7 @@ import { setNewPasswordResolver } from "./setNewPasswordResolver/setNewPasswordR
 import { updatePersonalDataResolver } from "./updatePersonalDataResolver/updatePersonalDataResolver.js";
 import { uploadAvatarResolver } from "./uploadAvatarResolver/uploadAvatarResolver.js";
 import { deleteAvatarResolver } from "./deleteAvatarResolver/deleteAvatarResolver.js";
+import { deleteAccountResolver } from "./deleteAccountResolver/deleteAccountResolver.js";
 import { toggleCharacteristicResolver } from "./toggleCharacteristicResolver/toggleCharacteristicResolver.js";
 import { addTextReviewResolver } from "./addTextReviewResolver/addTextReviewResolver.js";
 import { addRatingResolver } from "./addRatingResolver/addRatingResolver.js";
@@ -43,6 +44,7 @@ export const resolvers = {
     setNewPassword: setNewPasswordResolver,
     uploadAvatar: uploadAvatarResolver,
     deleteAvatar: deleteAvatarResolver,
+    deleteAccount: deleteAccountResolver,
 
     addRating: addRatingResolver,
     addTextReview: addTextReviewResolver,
