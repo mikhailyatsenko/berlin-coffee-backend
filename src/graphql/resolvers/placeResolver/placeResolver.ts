@@ -1,5 +1,7 @@
 import { GraphQLError } from "graphql";
 import { getPlaceWithStatsById } from "./services/placeAggregationService.js";
+import { getPlaceImages } from "../../../utils/imagekit.js";
+import { cache } from "../../../utils/cache.js";
 
 export async function placeResolver(
   _: never,
@@ -28,6 +30,17 @@ export async function placeResolver(
       });
     }
 
+    // Create cache key for images only
+    const imagesCacheKey = `images:${placeId}`;
+    
+    // Check cache for images first
+    let images = cache.get<string[]>(imagesCacheKey);
+    if (!images) {
+      // Get list of images from ImageKit
+      images = await getPlaceImages(placeId) || [];
+      // Cache images for 30 minutes (longer than place data)
+      cache.set(imagesCacheKey, images, 30 * 60 * 1000);
+    }
     const googleStars = place.properties?.googleReview?.stars;
     let averageRating = place.averageRating;
     let ratingCount = place.ratingCount;
@@ -51,6 +64,7 @@ export async function placeResolver(
         description: place.properties.description || "",
         address: place.properties.address || "",
         image: place.properties.image || "",
+        images: images, // array of images for individual place
         instagram: place.properties.instagram || "",
         averageRating: Number(averageRating.toFixed(1)),
         ratingCount: ratingCount,

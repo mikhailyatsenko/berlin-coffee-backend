@@ -21,6 +21,7 @@ type PlaceProperties {
   description: String!
   address: String!
   image: String!
+  images: [String!]
   instagram: String!
   averageRating: Float
   ratingCount: Int!

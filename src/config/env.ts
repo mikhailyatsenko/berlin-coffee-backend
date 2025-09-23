@@ -9,6 +9,9 @@ export const {
   JWT_SECRET,
   MAILERSEND_API_KEY,
   NODE_ENV,
+  IMAGEKIT_PUBLIC_KEY,
+  IMAGEKIT_PRIVATE_KEY,
+  IMAGEKIT_URL_ENDPOINT,
 } = process.env;
 
 const requiredEnvVars = [
@@ -18,6 +21,9 @@ const requiredEnvVars = [
   "JWT_SECRET",
   "MAILERSEND_API_KEY",
   "NODE_ENV",
+  "IMAGEKIT_PUBLIC_KEY",
+  "IMAGEKIT_PRIVATE_KEY",
+  "IMAGEKIT_URL_ENDPOINT",
 ];
 
 for (const envVar of requiredEnvVars) {

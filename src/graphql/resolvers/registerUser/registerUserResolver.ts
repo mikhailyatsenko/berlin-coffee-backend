@@ -68,6 +68,7 @@ export async function registerUserResolver(
       apiKey: process.env.MAILERSEND_API_KEY,
     });
 
+    try {
     await mailerSend.email.send(
       new EmailParams()
         .setFrom(new Sender(FROM_EMAIL, FROM_NAME))
@@ -75,9 +76,12 @@ export async function registerUserResolver(
         .setSubject("Confirm your email")
         .setHtml(
           `<p>Click <a href="${confirmationUrl}">here</a> to confirm your email. This link is valid for 1 hour.</p>`,
-        )
-        .setText(`Confirm your email: ${confirmationUrl} (valid for 1 hour)`),
-    );
+          )
+          .setText(`Confirm your email: ${confirmationUrl} (valid for 1 hour)`),
+      );
+    } catch (error) {
+      console.error("Error sending email:", error);
+    }
 
     return {
       success: true,

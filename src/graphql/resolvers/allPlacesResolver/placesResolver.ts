@@ -8,9 +8,9 @@ export async function placesResolver(
 ) {
   try {
     const { places, total } = await getPlacesWithStats(user?.id, limit, offset);
-    // Преобразуем в формат GraphQL
+    // Convert to GraphQL format
     const formattedPlaces = places.map((place) => {
-      // Получаем рейтинг из googleReview, если есть
+      // Get rating from googleReview if available
       const googleStars = place.properties?.googleReview?.stars;
       let averageRating = place.averageRating;
       let ratingCount = place.ratingCount;
@@ -33,6 +33,7 @@ export async function placesResolver(
           description: place.properties.description || "",
           address: place.properties.address || "",
           image: place.properties.image || "",
+          // images: null, // null for places list
           instagram: place.properties.instagram || "",
           averageRating: Number(averageRating.toFixed(1)),
           ratingCount: ratingCount,

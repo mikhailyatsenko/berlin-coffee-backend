@@ -243,6 +243,7 @@ export type PlaceProperties = {
   googleReview?: Maybe<GoogleReview>;
   id: Scalars['ID']['output'];
   image: Scalars['String']['output'];
+  images?: Maybe<Array<Scalars['String']['output']>>;
   instagram: Scalars['String']['output'];
   isFavorite: Scalars['Boolean']['output'];
   name: Scalars['String']['output'];
@@ -591,6 +592,7 @@ export type PlacePropertiesResolvers<ContextType = Context, ParentType extends R
   googleReview?: Resolver<Maybe<ResolversTypes['GoogleReview']>, ParentType, ContextType>;
   id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
   image?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  images?: Resolver<Maybe<Array<ResolversTypes['String']>>, ParentType, ContextType>;
   instagram?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   isFavorite?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
   name?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
