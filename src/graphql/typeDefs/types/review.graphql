@@ -8,7 +8,7 @@ type Review {
   createdAt: String!
   isOwnReview: Boolean!
   userRating: Float
-  imgCount: Int!
+  reviewImages: Int!
 }
 
 type UserReviewActivity {

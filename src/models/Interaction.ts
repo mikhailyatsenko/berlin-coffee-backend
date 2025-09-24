@@ -19,6 +19,7 @@ export interface IInteraction extends Document {
     outdoorSeating: boolean;
   };
   date: Date;
+  reviewImages?: number;
 }
 
 const InteractionSchema = new mongoose.Schema({
@@ -42,6 +43,7 @@ const InteractionSchema = new mongoose.Schema({
     outdoorSeating: { type: Boolean, default: false },
   },
   date: { type: Date, default: Date.now },
+  reviewImages: { type: Number, default: 0 },
 });
 
 InteractionSchema.index({ userId: 1, placeId: 1 }, { unique: true });

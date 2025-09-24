@@ -47,7 +47,7 @@ export async function placeReviewsResolver(
           ? interaction.userId.toString() === context.user.id
           : false,
         userRating: interaction.rating || null,
-        imgCount: 0,
+        reviewImages: interaction.reviewImages || 0,
       }));
 
     return {
