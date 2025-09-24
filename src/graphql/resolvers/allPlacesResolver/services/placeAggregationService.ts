@@ -14,11 +14,6 @@ export interface PlaceWithStats {
     address: string;
     image: string;
     instagram: string;
-    googleReview?: {
-      text: string;
-      stars: number;
-      publishedAtDate: string;
-    } | null;
     googleId?: string | null;
     neighborhood?: string;
   };

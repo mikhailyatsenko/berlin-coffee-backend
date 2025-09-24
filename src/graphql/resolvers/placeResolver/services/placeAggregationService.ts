@@ -15,11 +15,6 @@ export interface PlaceWithStats {
     image: string;
     instagram: string;
     additionalInfo?: Record<string, { [key: string]: boolean }[]>;
-    googleReview?: {
-      text: string;
-      stars: number;
-      publishedAtDate: string;
-    } | null;
     googleId?: string | null;
     neighborhood?: string;
     openingHours?: { day: string; hours: string }[];

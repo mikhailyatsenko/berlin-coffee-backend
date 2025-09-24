@@ -97,15 +97,6 @@ export type Geometry = {
   type: Scalars['String']['output'];
 };
 
-export type GoogleReview = {
-  __typename?: 'GoogleReview';
-  imgCount: Scalars['Int']['output'];
-  publishedAtDate: Scalars['String']['output'];
-  reviewId: Scalars['String']['output'];
-  stars: Scalars['Int']['output'];
-  text: Scalars['String']['output'];
-};
-
 export type LogoutResponse = {
   __typename?: 'LogoutResponse';
   message: Scalars['String']['output'];
@@ -240,7 +231,6 @@ export type PlaceProperties = {
   description: Scalars['String']['output'];
   favoriteCount: Scalars['Int']['output'];
   googleId?: Maybe<Scalars['String']['output']>;
-  googleReview?: Maybe<GoogleReview>;
   id: Scalars['ID']['output'];
   image: Scalars['String']['output'];
   images?: Maybe<Array<Scalars['String']['output']>>;
@@ -414,7 +404,6 @@ export type ResolversTypes = {
   DeleteReviewResult: ResolverTypeWrapper<DeleteReviewResult>;
   Float: ResolverTypeWrapper<Scalars['Float']['output']>;
   Geometry: ResolverTypeWrapper<Geometry>;
-  GoogleReview: ResolverTypeWrapper<GoogleReview>;
   ID: ResolverTypeWrapper<Scalars['ID']['output']>;
   Int: ResolverTypeWrapper<Scalars['Int']['output']>;
   JSON: ResolverTypeWrapper<Scalars['JSON']['output']>;
@@ -446,7 +435,6 @@ export type ResolversParentTypes = {
   DeleteReviewResult: DeleteReviewResult;
   Float: Scalars['Float']['output'];
   Geometry: Geometry;
-  GoogleReview: GoogleReview;
   ID: Scalars['ID']['output'];
   Int: Scalars['Int']['output'];
   JSON: Scalars['JSON']['output'];
@@ -529,15 +517,6 @@ export type GeometryResolvers<ContextType = Context, ParentType extends Resolver
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 };
 
-export type GoogleReviewResolvers<ContextType = Context, ParentType extends ResolversParentTypes['GoogleReview'] = ResolversParentTypes['GoogleReview']> = {
-  imgCount?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
-  publishedAtDate?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
-  reviewId?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
-  stars?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
-  text?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
-  __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
-};
-
 export interface JsonScalarConfig extends GraphQLScalarTypeConfig<ResolversTypes['JSON'], any> {
   name: 'JSON';
 }
@@ -589,7 +568,6 @@ export type PlacePropertiesResolvers<ContextType = Context, ParentType extends R
   description?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   favoriteCount?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   googleId?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
-  googleReview?: Resolver<Maybe<ResolversTypes['GoogleReview']>, ParentType, ContextType>;
   id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
   image?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   images?: Resolver<Maybe<Array<ResolversTypes['String']>>, ParentType, ContextType>;
@@ -674,7 +652,6 @@ export type Resolvers<ContextType = Context> = {
   ContactFormResponse?: ContactFormResponseResolvers<ContextType>;
   DeleteReviewResult?: DeleteReviewResultResolvers<ContextType>;
   Geometry?: GeometryResolvers<ContextType>;
-  GoogleReview?: GoogleReviewResolvers<ContextType>;
   JSON?: GraphQLScalarType;
   LogoutResponse?: LogoutResponseResolvers<ContextType>;
   Mutation?: MutationResolvers<ContextType>;

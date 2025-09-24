@@ -38,7 +38,9 @@ export async function placeReviewsResolver(
         text: interaction.reviewText || null,
         userId: interaction.userId.toString(),
         userName:
-          userMap[interaction.userId.toString()]?.name || "Unknown User",
+          interaction.userId.toString() === "000000000000000000000000"
+            ? "Google Maps User"
+            : userMap[interaction.userId.toString()]?.name || "Unknown User",
         userAvatar: userMap[interaction.userId.toString()]?.avatar || null,
         createdAt: interaction.date.toISOString(),
         isOwnReview: context.user
@@ -48,22 +50,6 @@ export async function placeReviewsResolver(
         imgCount: 0,
       }));
 
-    // googleReview from Place
-    const place = await Place.findById(placeId).lean();
-    const googleReview = place?.properties?.googleReview;
-    if (googleReview) {
-      reviews.push({
-        id: googleReview.reviewId,
-        text: googleReview.text,
-        userId: "google",
-        userName: "Google Maps User",
-        userAvatar: null,
-        createdAt: googleReview.publishedAtDate,
-        isOwnReview: false,
-        userRating: googleReview.stars,
-        imgCount: googleReview.imgCount || 0,
-      });
-    }
     return {
       id: placeId,
       reviews,

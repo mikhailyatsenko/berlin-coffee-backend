@@ -30,7 +30,6 @@ type PlaceProperties {
   reviews: [Review!]!
   characteristicCounts: CharacteristicCounts!
   additionalInfo: JSON
-  googleReview: GoogleReview
   googleId: String
   neighborhood: String
   openingHours: [OpeningHour!]
@@ -43,13 +42,6 @@ type PlaceReviews {
   reviews: [Review!]!
 } 
 
-type GoogleReview {
-  text: String!
-  stars: Int!
-  publishedAtDate: String!
-  imgCount: Int!
-  reviewId: String!
-}
 
 type OpeningHour {
   day: String!

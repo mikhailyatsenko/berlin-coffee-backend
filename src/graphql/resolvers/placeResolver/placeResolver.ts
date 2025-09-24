@@ -41,15 +41,8 @@ export async function placeResolver(
       // Cache images for 30 minutes (longer than place data)
       cache.set(imagesCacheKey, images, 30 * 60 * 1000);
     }
-    const googleStars = place.properties?.googleReview?.stars;
-    let averageRating = place.averageRating;
-    let ratingCount = place.ratingCount;
-    if (typeof googleStars === "number") {
-      averageRating =
-        (place.averageRating * place.ratingCount + googleStars) /
-        (place.ratingCount + 1);
-      ratingCount = place.ratingCount + 1;
-    }
+    const averageRating = place.averageRating;
+    const ratingCount = place.ratingCount;
 
     return {
       id: place._id.toString(),

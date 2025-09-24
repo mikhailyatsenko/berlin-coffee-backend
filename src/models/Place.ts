@@ -5,13 +5,6 @@ export interface IOpeningHour {
   hours: string;
 }
 
-export interface IGoogleReview {
-  text: string;
-  stars: number;
-  publishedAtDate: string;
-  imgCount: number;
-  reviewId: string;
-}
 
 export interface IPlace extends Document {
   _id: mongoose.Types.ObjectId;
@@ -27,7 +20,6 @@ export interface IPlace extends Document {
     image: string;
     instagram: string | null;
     additionalInfo?: Record<string, { [key: string]: boolean }[]>;
-    googleReview?: IGoogleReview | null;
     googleId?: string | null;
     neighborhood?: string;
     openingHours?: IOpeningHour[];
@@ -36,16 +28,6 @@ export interface IPlace extends Document {
   };
 }
 
-const GoogleReviewSchema = new mongoose.Schema(
-  {
-    reviewId: { type: String, required: true },
-    text: { type: String, required: true },
-    stars: { type: Number, required: true },
-    publishedAtDate: { type: String, required: true },
-    imgCount: { type: Number, default: 0 },
-  },
-  { _id: false },
-);
 
 const OpeningHourSchema = new mongoose.Schema(
   {
@@ -74,7 +56,6 @@ const PlaceSchema = new mongoose.Schema({
     },
     instagram: { type: String, default: null },
     additionalInfo: { type: mongoose.Schema.Types.Mixed, default: {} },
-    googleReview: { type: GoogleReviewSchema, default: null },
     googleId: { type: String, default: null },
     neighborhood: { type: String, default: null },
     openingHours: { type: [OpeningHourSchema], default: [] },
