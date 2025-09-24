@@ -286,9 +286,10 @@ export type Review = {
   __typename?: 'Review';
   createdAt: Scalars['String']['output'];
   id: Scalars['ID']['output'];
+  isGoogleReview: Scalars['Boolean']['output'];
   isOwnReview: Scalars['Boolean']['output'];
   placeId: Scalars['ID']['output'];
-  reviewImages?: Maybe<Scalars['Int']['output']>;
+  reviewImages: Scalars['Int']['output'];
   text?: Maybe<Scalars['String']['output']>;
   userAvatar?: Maybe<Scalars['String']['output']>;
   userId: Scalars['ID']['output'];
@@ -606,9 +607,10 @@ export type QueryResolvers<ContextType = Context, ParentType extends ResolversPa
 export type ReviewResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Review'] = ResolversParentTypes['Review']> = {
   createdAt?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+  isGoogleReview?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
   isOwnReview?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
   placeId?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
-  reviewImages?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  reviewImages?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   text?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   userAvatar?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   userId?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;

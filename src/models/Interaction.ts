@@ -20,6 +20,7 @@ export interface IInteraction extends Document {
   };
   date: Date;
   reviewImages?: number;
+  isGoogleReview?: boolean;
 }
 
 const InteractionSchema = new mongoose.Schema({
@@ -44,6 +45,7 @@ const InteractionSchema = new mongoose.Schema({
   },
   date: { type: Date, default: Date.now },
   reviewImages: { type: Number, default: 0 },
+  isGoogleReview: { type: Boolean, default: false },
 });
 
 InteractionSchema.index({ userId: 1, placeId: 1 }, { unique: true });

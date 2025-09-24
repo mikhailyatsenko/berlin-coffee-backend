@@ -38,7 +38,7 @@ export async function placeReviewsResolver(
         text: interaction.reviewText || null,
         userId: interaction.userId.toString(),
         userName:
-          interaction.userId.toString() === "000000000000000000000000"
+          interaction.isGoogleReview
             ? "Google Maps User"
             : userMap[interaction.userId.toString()]?.name || "Unknown User",
         userAvatar: userMap[interaction.userId.toString()]?.avatar || null,
@@ -48,6 +48,7 @@ export async function placeReviewsResolver(
           : false,
         userRating: interaction.rating || null,
         reviewImages: interaction.reviewImages || 0,
+        isGoogleReview: interaction.isGoogleReview || false,
       }));
 
     return {

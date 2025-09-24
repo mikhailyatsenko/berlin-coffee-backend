@@ -9,6 +9,7 @@ type Review {
   isOwnReview: Boolean!
   userRating: Float
   reviewImages: Int!
+  isGoogleReview: Boolean!
 }
 
 type UserReviewActivity {
