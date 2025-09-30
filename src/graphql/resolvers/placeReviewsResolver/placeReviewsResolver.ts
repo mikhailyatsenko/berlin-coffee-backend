@@ -49,6 +49,9 @@ export async function placeReviewsResolver(
         userRating: interaction.rating || null,
         reviewImages: interaction.reviewImages || 0,
         isGoogleReview: interaction.isGoogleReview || false,
+        characteristics: Object.entries(interaction.characteristics || {})
+          .filter(([, pressed]) => !!pressed)
+          .map(([key]) => key),
       }));
 
     return {

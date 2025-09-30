@@ -5,3 +5,6 @@ dist
 importPlaces.ts
 **/src/plOld.json
 DATABASE_OPTIMIZATION.md
+untracked
+compressed-images
+scripts

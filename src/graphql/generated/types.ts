@@ -284,6 +284,7 @@ export type QueryPlacesArgs = {
 
 export type Review = {
   __typename?: 'Review';
+  characteristics?: Maybe<Array<Characteristic>>;
   createdAt: Scalars['String']['output'];
   id: Scalars['ID']['output'];
   isGoogleReview: Scalars['Boolean']['output'];
@@ -605,6 +606,7 @@ export type QueryResolvers<ContextType = Context, ParentType extends ResolversPa
 };
 
 export type ReviewResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Review'] = ResolversParentTypes['Review']> = {
+  characteristics?: Resolver<Maybe<Array<ResolversTypes['Characteristic']>>, ParentType, ContextType>;
   createdAt?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
   isGoogleReview?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
