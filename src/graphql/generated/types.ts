@@ -38,6 +38,7 @@ export type AddTextReviewResponse = {
 
 export type AuthPayload = {
   __typename?: 'AuthPayload';
+  emailChanged?: Maybe<Scalars['Boolean']['output']>;
   isFirstLogin?: Maybe<Scalars['Boolean']['output']>;
   user: User;
 };
@@ -300,6 +301,7 @@ export type Review = {
 
 export type SuccessResponse = {
   __typename?: 'SuccessResponse';
+  pendingEmail?: Maybe<Scalars['String']['output']>;
   success: Scalars['Boolean']['output'];
 };
 
@@ -470,6 +472,7 @@ export type AddTextReviewResponseResolvers<ContextType = Context, ParentType ext
 };
 
 export type AuthPayloadResolvers<ContextType = Context, ParentType extends ResolversParentTypes['AuthPayload'] = ResolversParentTypes['AuthPayload']> = {
+  emailChanged?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType>;
   isFirstLogin?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType>;
   user?: Resolver<ResolversTypes['User'], ParentType, ContextType>;
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
@@ -622,6 +625,7 @@ export type ReviewResolvers<ContextType = Context, ParentType extends ResolversP
 };
 
 export type SuccessResponseResolvers<ContextType = Context, ParentType extends ResolversParentTypes['SuccessResponse'] = ResolversParentTypes['SuccessResponse']> = {
+  pendingEmail?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   success?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 };

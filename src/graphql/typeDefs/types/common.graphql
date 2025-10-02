@@ -1,5 +1,6 @@
 type SuccessResponse {
   success: Boolean!
+  pendingEmail: String
 }
 
 type ContactForm {

@@ -12,7 +12,11 @@ export async function confirmEmailResolver(
 ) {
   const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
 
-  const user = (await User.findOne({ email })) as IUser;
+  // Prefer lookup by current email; if not found, try by pendingEmail
+  let user = (await User.findOne({ email })) as IUser | null;
+  if (!user) {
+    user = (await User.findOne({ pendingEmail: email })) as IUser | null;
+  }
   if (!user) {
     throw new GraphQLError("User not found", {
       extensions: {
@@ -21,11 +25,21 @@ export async function confirmEmailResolver(
     });
   }
 
-  if (user.isEmailConfirmed) {
+  // Two flows with guard clauses: registration (no pendingEmail) vs email-change (has pendingEmail)
+  const isEmailChange = Boolean(user.pendingEmail);
+  if (isEmailChange && user.pendingEmail !== email) {
+    throw new GraphQLError("Invalid email", {
+      extensions: { code: "INVALID_EMAIL" },
+    });
+  }
+  if (!isEmailChange && user.isEmailConfirmed) {
     throw new GraphQLError("Email is already confirmed", {
-      extensions: {
-        code: "EMAIL_ALREADY_CONFIRMED",
-      },
+      extensions: { code: "EMAIL_ALREADY_CONFIRMED" },
+    });
+  }
+  if (!isEmailChange && user.email !== email) {
+    throw new GraphQLError("Invalid email", {
+      extensions: { code: "INVALID_EMAIL" },
     });
   }
 
@@ -48,7 +62,14 @@ export async function confirmEmailResolver(
     });
   }
 
-  user.isEmailConfirmed = true;
+  // If this is a pending email change, swap emails; otherwise mark confirmed
+  if (isEmailChange) {
+    user.email = user.pendingEmail!;
+    user.pendingEmail = null;
+    user.isEmailConfirmed = true;
+  } else {
+    user.isEmailConfirmed = true;
+  }
   user.emailConfirmationToken = null;
   user.emailConfirmationTokenExpires = null;
   await user.save();
@@ -70,5 +91,6 @@ export async function confirmEmailResolver(
       createdAt: user.createdAt.toISOString(),
       isGoogleUserUserWithoutPassword: false,
     },
+    emailChanged: isEmailChange,
   };
 }

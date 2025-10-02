@@ -4,6 +4,7 @@ export interface IUser extends Document {
   _id: mongoose.Types.ObjectId;
   googleId?: string | null;
   email: string;
+  pendingEmail?: string | null;
   password?: string | null;
   displayName: string;
   avatar?: string | null;
@@ -15,6 +16,7 @@ export interface IUser extends Document {
 const UserSchema = new mongoose.Schema({
   googleId: { type: String, unique: true, sparse: true },
   email: { type: String, required: true, unique: true },
+  pendingEmail: { type: String, default: null },
   password: { type: String },
   displayName: { type: String, required: true },
   avatar: { type: String },
