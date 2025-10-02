@@ -13,11 +13,18 @@ export async function resendConfirmationEmailResolver(
   _: never,
   { email }: { email: string },
 ) {
-  const user = (await User.findOne({ email })) as IUser;
+  // Find by current email (registration flow) or by pendingEmail (email change flow)
+  let user = (await User.findOne({ email })) as IUser | null;
+  if (!user) {
+    user = (await User.findOne({ pendingEmail: email })) as IUser | null;
+  }
   if (!user) {
     throw new GraphQLError("User with this email does not exist.");
   }
-  if (user.isEmailConfirmed) {
+
+  const isEmailChange = user.pendingEmail === email;
+  if (!isEmailChange && user.isEmailConfirmed) {
+    // Registration flow: if already confirmed, no need to resend
     throw new GraphQLError("Email is already confirmed.");
   }
 
@@ -26,7 +33,7 @@ export async function resendConfirmationEmailResolver(
     .createHash("sha256")
     .update(rawToken)
     .digest("hex");
-  const tokenExpires = addHours(new Date(), 1); // TTL 1 час
+  const tokenExpires = addHours(new Date(), 1); // TTL 1 hour
 
   user.emailConfirmationToken = hashedToken;
   user.emailConfirmationTokenExpires = tokenExpires;

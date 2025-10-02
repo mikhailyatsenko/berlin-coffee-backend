@@ -46,7 +46,7 @@ export async function registerUserResolver(
       .createHash("sha256")
       .update(rawToken)
       .digest("hex");
-    const tokenExpires = addHours(new Date(), 1); // TTL 1 час
+    const tokenExpires = addHours(new Date(), 1); // TTL 1 hour
 
     const newUser = new User({
       email,
