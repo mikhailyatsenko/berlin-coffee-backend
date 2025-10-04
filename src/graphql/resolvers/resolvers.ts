@@ -21,6 +21,9 @@ import { resendConfirmationEmailResolver } from "./registerUser/resendConfirmati
 import { confirmEmailResolver } from "./registerUser/confirmEmailResolver.js";
 import { placeResolver } from "./placeResolver/placeResolver.js";
 import GraphQLJSON from "graphql-type-json";
+import { requestPasswordResetResolver } from "./passwordReset/requestPasswordResetResolver.js";
+import { validatePasswordResetTokenResolver } from "./passwordReset/validatePasswordResetTokenResolver.js";
+import { resetPasswordResolver } from "./passwordReset/resetPasswordResolver.js";
 
 export const resolvers = {
   JSON: GraphQLJSON,
@@ -39,6 +42,9 @@ export const resolvers = {
     logout: logoutResolver,
     resendConfirmationEmail: resendConfirmationEmailResolver,
     confirmEmail: confirmEmailResolver,
+    requestPasswordReset: requestPasswordResetResolver,
+    validatePasswordResetToken: validatePasswordResetTokenResolver,
+    resetPassword: resetPasswordResolver,
 
     updatePersonalData: updatePersonalDataResolver,
     setNewPassword: setNewPasswordResolver,

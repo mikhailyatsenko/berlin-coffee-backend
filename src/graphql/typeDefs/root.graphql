@@ -13,6 +13,9 @@ type Mutation {
   registerUser(email: String!, displayName: String!, password: String!): SuccessResponse!
   resendConfirmationEmail(email: String!): SuccessResponse!
   confirmEmail(token: String!, email: String!): AuthPayload!
+  requestPasswordReset(email: String!): SuccessResponse!
+  validatePasswordResetToken(email: String!, token: String!): SuccessResponse!
+  resetPassword(token: String!, email: String!, newPassword: String!): SuccessResponse!
   logout: LogoutResponse
 
   # User Profile Mutations
