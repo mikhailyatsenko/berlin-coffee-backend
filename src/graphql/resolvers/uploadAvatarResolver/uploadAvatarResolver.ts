@@ -41,7 +41,7 @@ export async function uploadAvatarResolver(
     const buffer = Buffer.from(fileBuffer, 'base64');
 
     // Upload new avatar to ImageKit
-    const fileId = await uploadAvatar(buffer, fileName, userId);
+    const fileId = await uploadAvatar(buffer, userId);
 
 
 

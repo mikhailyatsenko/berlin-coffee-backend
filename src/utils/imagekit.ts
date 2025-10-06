@@ -1,7 +1,6 @@
 import ImageKit from "imagekit";
 import sharp from "sharp";
 import { IMAGEKIT_PUBLIC_KEY, IMAGEKIT_PRIVATE_KEY, IMAGEKIT_URL_ENDPOINT } from "../config/env.js";
-import { cache } from "./cache.js";
 
 // Инициализация ImageKit
 const imagekit = new ImageKit({
@@ -68,7 +67,6 @@ export async function getPlaceImages(placeId: string): Promise<string[]> {
  */
 export async function uploadAvatar(
   fileBuffer: Buffer,
-  fileName: string,
   userId: string
 ): Promise<string> {
   try {
