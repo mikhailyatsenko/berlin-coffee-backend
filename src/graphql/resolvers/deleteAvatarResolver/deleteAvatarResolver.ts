@@ -1,11 +1,7 @@
 import { GraphQLError } from "graphql";
 import User, { IUser } from "../../../models/User.js";
-import fs from "fs";
-import path, { dirname } from "path";
-import { fileURLToPath } from "url";
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+import { deleteAvatar } from "../../../utils/imagekit.js";
+import { IMAGEKIT_URL_ENDPOINT } from "../../../config/env.js";
 
 export async function deleteAvatarResolver(
   _: never,
@@ -27,21 +23,16 @@ export async function deleteAvatarResolver(
     }
 
     if (user.avatar) {
-      const avatarPath = path.join(
-        __dirname,
-        "../../../uploads",
-        `user-${user.id}`,
-        "avatar",
-        path.basename(user.avatar),
-      );
 
-      if (fs.existsSync(avatarPath)) {
+      
+    
         try {
-          fs.unlinkSync(avatarPath);
+          const filePath = user.avatar.replace(IMAGEKIT_URL_ENDPOINT!, '');
+          await deleteAvatar(filePath);
         } catch (err) {
-          throw new GraphQLError("Error deleting old avatar:");
+          console.warn("Error deleting avatar from ImageKit:", err);
         }
-      }
+      
 
       user.avatar = null;
       await user.save();

@@ -21,7 +21,7 @@ type Mutation {
   # User Profile Mutations
   updatePersonalData(userId: ID!, displayName: String, email: String): SuccessResponse!
   setNewPassword(userId: ID!, oldPassword: String, newPassword: String!): SuccessResponse!
-  uploadAvatar(userId: ID!, fileUrl: String!): SuccessResponse!
+  uploadAvatar(userId: ID!, fileBuffer: String!, fileName: String!): UploadAvatarResponse!
   deleteAvatar: SuccessResponse!
   deleteAccount: SuccessResponse!
 

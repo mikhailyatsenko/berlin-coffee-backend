@@ -15,4 +15,10 @@ type AuthPayload {
 
 type LogoutResponse {
   message: String!
+}
+
+type UploadAvatarResponse {
+  success: Boolean!
+  fileId: String
+  avatarUrl: String
 } 

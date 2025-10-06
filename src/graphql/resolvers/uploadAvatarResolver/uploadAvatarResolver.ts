@@ -1,16 +1,11 @@
 import { GraphQLError } from "graphql";
 import User, { IUser } from "../../../models/User.js";
-
-import fs from "fs";
-import path, { dirname } from "path";
-import { fileURLToPath } from "url";
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+import { IMAGEKIT_URL_ENDPOINT } from "../../../config/env.js";
+import { uploadAvatar, deleteAvatar } from "../../../utils/imagekit.js";
 
 export async function uploadAvatarResolver(
   _: never,
-  { userId, fileUrl }: { userId: string; fileUrl: string },
+  { userId, fileBuffer, fileName }: { userId: string; fileBuffer: string; fileName: string },
   context: { user?: IUser },
 ) {
   try {
@@ -27,35 +22,41 @@ export async function uploadAvatarResolver(
       });
     }
 
-    if (!fileUrl || typeof fileUrl !== "string") {
-      throw new GraphQLError("Invalid file URL", {
+    if (!fileBuffer || !fileName) {
+      throw new GraphQLError("Invalid file data", {
         extensions: { code: "BAD_USER_INPUT" },
       });
     }
 
+    // Delete old avatar from ImageKit if exists
     if (user.avatar) {
-      const oldAvatarPath = path.join(
-        __dirname,
-        "../../../uploads",
-        `user-${user.id}`,
-        "avatar",
-        path.basename(user.avatar),
-      );
-      if (fs.existsSync(oldAvatarPath)) {
-        try {
-          fs.unlinkSync(oldAvatarPath);
-        } catch (err) {
-          throw new GraphQLError("Error deleting old avatar:");
-        }
+      try {
+        await deleteAvatar(user.avatar);
+      } catch (err) {
+        console.warn("Error deleting old avatar from ImageKit:", err);
       }
     }
 
-    user.avatar = fileUrl;
+    // Convert base64 to buffer
+    const buffer = Buffer.from(fileBuffer, 'base64');
 
+    // Upload new avatar to ImageKit
+    const fileId = await uploadAvatar(buffer, fileName, userId);
+
+
+
+    // Save file ID to user
+    const filePath = `3welle/avatars/${userId}/avatar-${userId}.jpeg`;
+    const avatarUrl = `${IMAGEKIT_URL_ENDPOINT}/${filePath}`;
+    user.avatar = avatarUrl;
     await user.save();
+
+    // Get the avatar URL
 
     return {
       success: true,
+      fileId,
+      avatarUrl,
     };
   } catch (error) {
     console.error("Error uploading avatar:", error);
@@ -67,3 +68,6 @@ export async function uploadAvatarResolver(
     });
   }
 }
+
+
+

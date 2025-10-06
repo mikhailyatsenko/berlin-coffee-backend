@@ -1,4 +1,5 @@
 import ImageKit from "imagekit";
+import sharp from "sharp";
 import { IMAGEKIT_PUBLIC_KEY, IMAGEKIT_PRIVATE_KEY, IMAGEKIT_URL_ENDPOINT } from "../config/env.js";
 import { cache } from "./cache.js";
 
@@ -59,6 +60,103 @@ export async function getPlaceImages(placeId: string): Promise<string[]> {
 }
 
 /**
+ * Uploads avatar to ImageKit with resizing and compression
+ * @param fileBuffer - File buffer
+ * @param fileName - File name
+ * @param userId - User ID
+ * @returns Promise<string> - ImageKit file ID
+ */
+export async function uploadAvatar(
+  fileBuffer: Buffer,
+  fileName: string,
+  userId: string
+): Promise<string> {
+  try {
+    // Rate limiting
+    const now = Date.now();
+    const timeSinceLastRequest = now - lastRequestTime;
+    if (timeSinceLastRequest < MIN_REQUEST_INTERVAL) {
+      await delay(MIN_REQUEST_INTERVAL - timeSinceLastRequest);
+    }
+    lastRequestTime = Date.now();
+
+    // Process image with Sharp: resize to 640px max dimension and convert to JPEG
+    const processedBuffer = await sharp(fileBuffer)
+      .resize(640, 640, {
+        fit: 'inside',
+        withoutEnlargement: true
+      })
+      .jpeg({ 
+        quality: 85,
+        progressive: true,
+        mozjpeg: true
+      })
+      .toBuffer();
+
+    const result = await imagekit.upload({
+      file: processedBuffer,
+      fileName: `avatar-${userId}.jpeg`,
+      folder: `3welle/avatars/${userId}`,
+      useUniqueFileName: false
+    });
+    
+    // Return filePath instead of fileId for compatibility
+    return result.filePath;
+  } catch (error) {
+    console.error('Error uploading avatar to ImageKit:', error);
+    throw new Error('Failed to upload avatar to ImageKit');
+  }
+}
+
+/**
+ * Deletes avatar from ImageKit
+ * @param fileId - ImageKit file ID
+ * @returns Promise<boolean> - Success status
+ */
+export async function deleteAvatar(filePath: string): Promise<boolean> {
+  try {
+    // Rate limiting
+    const now = Date.now();
+    const timeSinceLastRequest = now - lastRequestTime;
+    if (timeSinceLastRequest < MIN_REQUEST_INTERVAL) {
+      await delay(MIN_REQUEST_INTERVAL - timeSinceLastRequest);
+    }
+    lastRequestTime = Date.now();
+
+
+    
+    // First, get the fileId from filePath
+    const files = await imagekit.listFiles({
+      path: filePath.substring(0, filePath.lastIndexOf('/'))
+    });
+
+
+    
+    const file = files.find(item => 
+      item.type === 'file' && item.filePath === filePath
+    );
+    if (!file) {
+
+      return true; // File doesn't exist, consider it deleted
+    }
+    
+    const fileId = (file as any).fileId;
+
+    
+    await imagekit.deleteFile(fileId);
+
+    return true;
+  } catch (error) {
+    console.error('Error deleting avatar from ImageKit:', {
+      filePath,
+      error: error instanceof Error ? error.message : error,
+      stack: error instanceof Error ? error.stack : undefined
+    });
+    return false;
+  }
+}
+
+/**
  * Gets image URL from ImageKit
  * @param filePath - File path in ImageKit
  * @param transformations - Optional image transformations
@@ -70,6 +168,22 @@ export function getImageUrl(
 ): string {
   return imagekit.url({
     path: filePath,
+    transformation: transformations,
+  });
+}
+
+/**
+ * Gets avatar URL from ImageKit file ID
+ * @param fileId - ImageKit file ID
+ * @param transformations - Optional image transformations
+ * @returns string - Avatar URL
+ */
+export function getAvatarUrl(
+  fileId: string,
+  transformations?: any[]
+): string {
+  return imagekit.url({
+    path: fileId,
     transformation: transformations,
   });
 }
