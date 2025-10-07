@@ -17,9 +17,9 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
 
-      - name: Install dependencies
+      - name: Install dependencies (for build only)
         run: npm ci
         timeout-minutes: 5
 
@@ -51,28 +51,33 @@ jobs:
           script: |
             set -e
             cd /var/www/coffee-server
-            
+
             # Extract new deployment
             rm -rf dist
             tar -xzf deploy.tar.gz
             rm deploy.tar.gz
-            
-            # Install production dependencies
-            npm ci --only=production
-            
+
+            # Install dependencies directly on the server
+            rm -rf node_modules
+            npm ci --only=production --include=optional
+
+            # Rebuild sharp for the current linux (glibc) environment and fetch correct binary
+            npm rebuild sharp --update-binary
+            node -e "console.log('sharp version:', require('sharp').version)"
+
             # Restart or start PM2 process
             if pm2 list | grep -q "coffe-server"; then
               pm2 restart coffe-server
             else
-              pm2 start dist/index.js --name coffe-server
+              pm2 start dist/index.js --name coffe-server --interpreter $(which node)
             fi
-            
+
             # Verify deployment
             sleep 5
             if ! pm2 list | grep -q "coffe-server.*online"; then
               echo "Deployment failed - PM2 process not running"
               exit 1
             fi
-            
-            echo "Deployment completed successfully"
+
+            echo "✅ Deployment completed successfully"
           timeout: 600s
