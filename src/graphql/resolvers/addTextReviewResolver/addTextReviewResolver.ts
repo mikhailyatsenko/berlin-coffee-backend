@@ -4,7 +4,7 @@ import { IUser } from "src/models/User.js";
 
 export async function addTextReviewResolver(
   _: never,
-  { text, placeId }: { placeId: string; text: string },
+  { text, placeId, reviewImages }: { placeId: string; text: string; reviewImages?: number },
   { user }: { user: IUser },
 ) {
   if (!user) {
@@ -22,7 +22,7 @@ export async function addTextReviewResolver(
       placeId,
     }).lean();
 
-    const updateData = { date: new Date(), reviewText: text };
+    const updateData = { date: new Date(), reviewText: text, ...(reviewImages ? { reviewImages } : {}) };
 
     let reviewId: string | null = null;
 

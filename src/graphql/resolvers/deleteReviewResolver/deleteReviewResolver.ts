@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import Interaction from "../../../models/Interaction.js";
 import { GraphQLError } from "graphql";
+import { deleteAllReviewImages } from "../../../utils/imagekit.js";
 
 export async function deleteReviewResolver(
   _: never,
@@ -32,11 +33,17 @@ export async function deleteReviewResolver(
 
     if (deleteOptions === "deleteReviewText") {
       interaction.reviewText = undefined;
+      deleteAllReviewImages(`3welle/review-images/${interaction.placeId}/${reviewId}`)
+      interaction.reviewImages = 0;
     } else if (deleteOptions === "deleteRating") {
       interaction.rating = undefined;
     } else if (deleteOptions === "deleteAll") {
       interaction.reviewText = undefined;
       interaction.rating = undefined;
+      if (interaction.reviewImages && interaction.reviewImages > 0) {
+        deleteAllReviewImages(`3welle/review-images/${interaction.placeId}/${reviewId}`)
+        interaction.reviewImages = 0;
+      }
     }
 
     await interaction.save();

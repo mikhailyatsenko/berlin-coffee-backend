@@ -154,6 +154,30 @@ export async function deleteAvatar(filePath: string): Promise<boolean> {
   }
 }
 
+
+
+export async function deleteAllReviewImages(folderPath: string): Promise<boolean> {
+  try {
+    // Rate limiting
+    const now = Date.now();
+    const timeSinceLastRequest = now - lastRequestTime;
+    if (timeSinceLastRequest < MIN_REQUEST_INTERVAL) {
+      await delay(MIN_REQUEST_INTERVAL - timeSinceLastRequest);
+    }
+    lastRequestTime = Date.now();
+
+    await imagekit.deleteFolder(folderPath)
+    return true;
+  } catch (error) {
+    console.error('Error deleting folder from ImageKit:', {
+      folderPath,
+      error: error instanceof Error ? error.message : error,
+      stack: error instanceof Error ? error.stack : undefined
+    });
+    return false;
+  }
+}
+
 /**
  * Gets image URL from ImageKit
  * @param filePath - File path in ImageKit

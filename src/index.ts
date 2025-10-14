@@ -12,14 +12,8 @@ import User, { IUser } from "./models/User.js";
 import http from "http";
 import { ApolloServerPluginDrainHttpServer } from "@apollo/server/plugin/drainHttpServer";
 import jwt from "jsonwebtoken";
-import path from "path";
-
-import { fileURLToPath } from "url";
-import { dirname } from "path";
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-
+import ImageKit from 'imagekit';
+import { IMAGEKIT_PUBLIC_KEY, IMAGEKIT_PRIVATE_KEY, IMAGEKIT_URL_ENDPOINT } from "./config/env.js";
 export interface Context {
   user?: IUser;
 }
@@ -108,9 +102,33 @@ const bootstrapServer = async () => {
 
   await connectDatabase();
 
+const imagekit = new ImageKit({
+  publicKey: IMAGEKIT_PUBLIC_KEY!,
+  privateKey: IMAGEKIT_PRIVATE_KEY!,
+  urlEndpoint: IMAGEKIT_URL_ENDPOINT!,
+});
 
-  // Static folder for uploaded images
-  app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
+app.get('/imagekit/auth', async (req, res) => {
+  // if (req.cookies.jwt) {
+  //   const decoded = jwt.verify(req.cookies.jwt, process.env.JWT_SECRET!) as {
+  //     id: string;
+  //   };
+  //   const user = await User.findById(decoded.id);
+  //   if (user) {
+      const { token, expire, signature } = imagekit.getAuthenticationParameters();
+      res.setHeader("Access-Control-Allow-Origin", "*");
+      res.header("Access-Control-Allow-Headers", 
+        "Origin, X-Requested-With, Content-Type, Accept");
+      res.json({
+        token,
+        expire,
+        signature,
+        publicKey: IMAGEKIT_PUBLIC_KEY!
+      });
+    // }
+  // }
+  
+});
 
   app.listen(PORT, "127.0.0.1", () => {
     console.log(`Running server at ${PORT}`);

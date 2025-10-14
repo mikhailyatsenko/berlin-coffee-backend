@@ -27,7 +27,7 @@ type Mutation {
 
   # Place and Review Mutations
   addRating(placeId: ID!, rating: Float!): AddRatingResponse!
-  addTextReview(placeId: ID!, text: String!): AddTextReviewResponse!
+  addTextReview(placeId: ID!, text: String!, reviewImages: Int): AddTextReviewResponse!
   toggleFavorite(placeId: ID!): Boolean!
   deleteReview(reviewId: ID!, deleteOptions: String!): DeleteReviewResult!
   toggleCharacteristic(placeId: ID!, characteristic: Characteristic!): SuccessResponse!
