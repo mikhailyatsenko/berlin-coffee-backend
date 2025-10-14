@@ -1,5 +1,6 @@
 # Backend for 3welle.com
 
+
 ## Overview
 3welle.com is a web application designed to help Berlin residents and visitors discover the best specialty coffee shops in the city. Users can explore a map of coffee shops, read reviews, and find essential information about each location.
 
@@ -8,7 +9,7 @@
 - **Express**
 - **Apollo Server**
 - **GraphQL**
-- **Mongoose**
+- **MongoDB**
 - **JSON Web Token (JWT)**
 
 ## Features
@@ -18,8 +19,9 @@
 - **Rating System**: Rate your favorite coffee shops.
 - **Responsive Design**: Optimized for both desktop and mobile devices.
 
-The backend is built with Express, GraphQL, Apollo Server and Mongoose for MongoDB integration.
 
-## Source
- You can access the frontend source [here](https://github.com/mikhailyatsenko/coffemapberlin)
+
+### Frontend:
+[![coffeemapberlin](https://github-readme-stats.vercel.app/api/pin/?username=mikhailyatsenko&repo=coffeemapberlin&theme=transparent&show_icons=true)](https://github.com/mikhailyatsenko/coffeemapberlin)
+
 
