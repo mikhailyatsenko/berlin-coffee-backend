@@ -1,7 +1,8 @@
 type Query {
   place(placeId: ID!): Place!
   currentUser: User
-places(limit: Int = 10, offset: Int = 0): PlacesResponse!
+  places(limit: Int = 10, offset: Int = 0): PlacesResponse!
+  favoritePlaces: [FavoritePlace!]!
   placeReviews(placeId: ID!): PlaceReviews!
   userReviewActivity: [UserReviewActivity!]!
 }

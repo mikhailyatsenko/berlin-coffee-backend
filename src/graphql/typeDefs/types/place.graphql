@@ -10,6 +10,23 @@ type PlacesResponse {
   total: Int!
 }
 
+type FavoritePlace {
+  id: ID!
+  name: String!
+  address: String!
+  image: String!
+  instagram: String!
+  averageRating: Float
+  isFavorite: Boolean!
+  neighborhood: String
+  googleId: String
+}
+
+type FavoritePlacesResponse {
+  places: [FavoritePlace!]!
+  total: Int!
+}
+
 type Geometry {
   type: String!
   coordinates: [Float!]!

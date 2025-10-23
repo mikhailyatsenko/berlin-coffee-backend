@@ -92,6 +92,25 @@ export type DeleteReviewResult = {
   reviewId: Scalars['ID']['output'];
 };
 
+export type FavoritePlace = {
+  __typename?: 'FavoritePlace';
+  address: Scalars['String']['output'];
+  averageRating?: Maybe<Scalars['Float']['output']>;
+  googleId?: Maybe<Scalars['String']['output']>;
+  id: Scalars['ID']['output'];
+  image: Scalars['String']['output'];
+  instagram: Scalars['String']['output'];
+  isFavorite: Scalars['Boolean']['output'];
+  name: Scalars['String']['output'];
+  neighborhood?: Maybe<Scalars['String']['output']>;
+};
+
+export type FavoritePlacesResponse = {
+  __typename?: 'FavoritePlacesResponse';
+  places: Array<FavoritePlace>;
+  total: Scalars['Int']['output'];
+};
+
 export type Geometry = {
   __typename?: 'Geometry';
   coordinates: Array<Scalars['Float']['output']>;
@@ -115,13 +134,16 @@ export type Mutation = {
   loginWithGoogle?: Maybe<AuthPayload>;
   logout?: Maybe<LogoutResponse>;
   registerUser: SuccessResponse;
+  requestPasswordReset: SuccessResponse;
   resendConfirmationEmail: SuccessResponse;
+  resetPassword: SuccessResponse;
   setNewPassword: SuccessResponse;
   signInWithEmail: AuthPayload;
   toggleCharacteristic: SuccessResponse;
   toggleFavorite: Scalars['Boolean']['output'];
   updatePersonalData: SuccessResponse;
-  uploadAvatar: SuccessResponse;
+  uploadAvatar: UploadAvatarResponse;
+  validatePasswordResetToken: SuccessResponse;
 };
 
 
@@ -133,6 +155,7 @@ export type MutationAddRatingArgs = {
 
 export type MutationAddTextReviewArgs = {
   placeId: Scalars['ID']['input'];
+  reviewImages?: InputMaybe<Scalars['Int']['input']>;
   text: Scalars['String']['input'];
 };
 
@@ -168,8 +191,20 @@ export type MutationRegisterUserArgs = {
 };
 
 
+export type MutationRequestPasswordResetArgs = {
+  email: Scalars['String']['input'];
+};
+
+
 export type MutationResendConfirmationEmailArgs = {
   email: Scalars['String']['input'];
+};
+
+
+export type MutationResetPasswordArgs = {
+  email: Scalars['String']['input'];
+  newPassword: Scalars['String']['input'];
+  token: Scalars['String']['input'];
 };
 
 
@@ -205,8 +240,15 @@ export type MutationUpdatePersonalDataArgs = {
 
 
 export type MutationUploadAvatarArgs = {
-  fileUrl: Scalars['String']['input'];
+  fileBuffer: Scalars['String']['input'];
+  fileName: Scalars['String']['input'];
   userId: Scalars['ID']['input'];
+};
+
+
+export type MutationValidatePasswordResetTokenArgs = {
+  email: Scalars['String']['input'];
+  token: Scalars['String']['input'];
 };
 
 export type OpeningHour = {
@@ -261,6 +303,7 @@ export type PlacesResponse = {
 export type Query = {
   __typename?: 'Query';
   currentUser?: Maybe<User>;
+  favoritePlaces: FavoritePlacesResponse;
   place: Place;
   placeReviews: PlaceReviews;
   places: PlacesResponse;
@@ -302,6 +345,13 @@ export type Review = {
 export type SuccessResponse = {
   __typename?: 'SuccessResponse';
   pendingEmail?: Maybe<Scalars['String']['output']>;
+  success: Scalars['Boolean']['output'];
+};
+
+export type UploadAvatarResponse = {
+  __typename?: 'UploadAvatarResponse';
+  avatarUrl?: Maybe<Scalars['String']['output']>;
+  fileId?: Maybe<Scalars['String']['output']>;
   success: Scalars['Boolean']['output'];
 };
 
@@ -406,6 +456,8 @@ export type ResolversTypes = {
   ContactForm: ResolverTypeWrapper<ContactForm>;
   ContactFormResponse: ResolverTypeWrapper<ContactFormResponse>;
   DeleteReviewResult: ResolverTypeWrapper<DeleteReviewResult>;
+  FavoritePlace: ResolverTypeWrapper<FavoritePlace>;
+  FavoritePlacesResponse: ResolverTypeWrapper<FavoritePlacesResponse>;
   Float: ResolverTypeWrapper<Scalars['Float']['output']>;
   Geometry: ResolverTypeWrapper<Geometry>;
   ID: ResolverTypeWrapper<Scalars['ID']['output']>;
@@ -422,6 +474,7 @@ export type ResolversTypes = {
   Review: ResolverTypeWrapper<IInteraction>;
   String: ResolverTypeWrapper<Scalars['String']['output']>;
   SuccessResponse: ResolverTypeWrapper<SuccessResponse>;
+  UploadAvatarResponse: ResolverTypeWrapper<UploadAvatarResponse>;
   User: ResolverTypeWrapper<IUser>;
   UserReviewActivity: ResolverTypeWrapper<UserReviewActivity>;
 };
@@ -437,6 +490,8 @@ export type ResolversParentTypes = {
   ContactForm: ContactForm;
   ContactFormResponse: ContactFormResponse;
   DeleteReviewResult: DeleteReviewResult;
+  FavoritePlace: FavoritePlace;
+  FavoritePlacesResponse: FavoritePlacesResponse;
   Float: Scalars['Float']['output'];
   Geometry: Geometry;
   ID: Scalars['ID']['output'];
@@ -453,6 +508,7 @@ export type ResolversParentTypes = {
   Review: IInteraction;
   String: Scalars['String']['output'];
   SuccessResponse: SuccessResponse;
+  UploadAvatarResponse: UploadAvatarResponse;
   User: IUser;
   UserReviewActivity: UserReviewActivity;
 };
@@ -516,6 +572,25 @@ export type DeleteReviewResultResolvers<ContextType = Context, ParentType extend
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 };
 
+export type FavoritePlaceResolvers<ContextType = Context, ParentType extends ResolversParentTypes['FavoritePlace'] = ResolversParentTypes['FavoritePlace']> = {
+  address?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  averageRating?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  googleId?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+  image?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  instagram?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  isFavorite?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  name?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  neighborhood?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
+};
+
+export type FavoritePlacesResponseResolvers<ContextType = Context, ParentType extends ResolversParentTypes['FavoritePlacesResponse'] = ResolversParentTypes['FavoritePlacesResponse']> = {
+  places?: Resolver<Array<ResolversTypes['FavoritePlace']>, ParentType, ContextType>;
+  total?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
+};
+
 export type GeometryResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Geometry'] = ResolversParentTypes['Geometry']> = {
   coordinates?: Resolver<Array<ResolversTypes['Float']>, ParentType, ContextType>;
   type?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
@@ -542,13 +617,16 @@ export type MutationResolvers<ContextType = Context, ParentType extends Resolver
   loginWithGoogle?: Resolver<Maybe<ResolversTypes['AuthPayload']>, ParentType, ContextType, RequireFields<MutationLoginWithGoogleArgs, 'code'>>;
   logout?: Resolver<Maybe<ResolversTypes['LogoutResponse']>, ParentType, ContextType>;
   registerUser?: Resolver<ResolversTypes['SuccessResponse'], ParentType, ContextType, RequireFields<MutationRegisterUserArgs, 'displayName' | 'email' | 'password'>>;
+  requestPasswordReset?: Resolver<ResolversTypes['SuccessResponse'], ParentType, ContextType, RequireFields<MutationRequestPasswordResetArgs, 'email'>>;
   resendConfirmationEmail?: Resolver<ResolversTypes['SuccessResponse'], ParentType, ContextType, RequireFields<MutationResendConfirmationEmailArgs, 'email'>>;
+  resetPassword?: Resolver<ResolversTypes['SuccessResponse'], ParentType, ContextType, RequireFields<MutationResetPasswordArgs, 'email' | 'newPassword' | 'token'>>;
   setNewPassword?: Resolver<ResolversTypes['SuccessResponse'], ParentType, ContextType, RequireFields<MutationSetNewPasswordArgs, 'newPassword' | 'userId'>>;
   signInWithEmail?: Resolver<ResolversTypes['AuthPayload'], ParentType, ContextType, RequireFields<MutationSignInWithEmailArgs, 'email' | 'password'>>;
   toggleCharacteristic?: Resolver<ResolversTypes['SuccessResponse'], ParentType, ContextType, RequireFields<MutationToggleCharacteristicArgs, 'characteristic' | 'placeId'>>;
   toggleFavorite?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationToggleFavoriteArgs, 'placeId'>>;
   updatePersonalData?: Resolver<ResolversTypes['SuccessResponse'], ParentType, ContextType, RequireFields<MutationUpdatePersonalDataArgs, 'userId'>>;
-  uploadAvatar?: Resolver<ResolversTypes['SuccessResponse'], ParentType, ContextType, RequireFields<MutationUploadAvatarArgs, 'fileUrl' | 'userId'>>;
+  uploadAvatar?: Resolver<ResolversTypes['UploadAvatarResponse'], ParentType, ContextType, RequireFields<MutationUploadAvatarArgs, 'fileBuffer' | 'fileName' | 'userId'>>;
+  validatePasswordResetToken?: Resolver<ResolversTypes['SuccessResponse'], ParentType, ContextType, RequireFields<MutationValidatePasswordResetTokenArgs, 'email' | 'token'>>;
 };
 
 export type OpeningHourResolvers<ContextType = Context, ParentType extends ResolversParentTypes['OpeningHour'] = ResolversParentTypes['OpeningHour']> = {
@@ -602,6 +680,7 @@ export type PlacesResponseResolvers<ContextType = Context, ParentType extends Re
 
 export type QueryResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Query'] = ResolversParentTypes['Query']> = {
   currentUser?: Resolver<Maybe<ResolversTypes['User']>, ParentType, ContextType>;
+  favoritePlaces?: Resolver<ResolversTypes['FavoritePlacesResponse'], ParentType, ContextType>;
   place?: Resolver<ResolversTypes['Place'], ParentType, ContextType, RequireFields<QueryPlaceArgs, 'placeId'>>;
   placeReviews?: Resolver<ResolversTypes['PlaceReviews'], ParentType, ContextType, RequireFields<QueryPlaceReviewsArgs, 'placeId'>>;
   places?: Resolver<ResolversTypes['PlacesResponse'], ParentType, ContextType, RequireFields<QueryPlacesArgs, 'limit' | 'offset'>>;
@@ -626,6 +705,13 @@ export type ReviewResolvers<ContextType = Context, ParentType extends ResolversP
 
 export type SuccessResponseResolvers<ContextType = Context, ParentType extends ResolversParentTypes['SuccessResponse'] = ResolversParentTypes['SuccessResponse']> = {
   pendingEmail?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  success?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
+};
+
+export type UploadAvatarResponseResolvers<ContextType = Context, ParentType extends ResolversParentTypes['UploadAvatarResponse'] = ResolversParentTypes['UploadAvatarResponse']> = {
+  avatarUrl?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  fileId?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   success?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 };
@@ -659,6 +745,8 @@ export type Resolvers<ContextType = Context> = {
   ContactForm?: ContactFormResolvers<ContextType>;
   ContactFormResponse?: ContactFormResponseResolvers<ContextType>;
   DeleteReviewResult?: DeleteReviewResultResolvers<ContextType>;
+  FavoritePlace?: FavoritePlaceResolvers<ContextType>;
+  FavoritePlacesResponse?: FavoritePlacesResponseResolvers<ContextType>;
   Geometry?: GeometryResolvers<ContextType>;
   JSON?: GraphQLScalarType;
   LogoutResponse?: LogoutResponseResolvers<ContextType>;
@@ -671,6 +759,7 @@ export type Resolvers<ContextType = Context> = {
   Query?: QueryResolvers<ContextType>;
   Review?: ReviewResolvers<ContextType>;
   SuccessResponse?: SuccessResponseResolvers<ContextType>;
+  UploadAvatarResponse?: UploadAvatarResponseResolvers<ContextType>;
   User?: UserResolvers<ContextType>;
   UserReviewActivity?: UserReviewActivityResolvers<ContextType>;
 };
