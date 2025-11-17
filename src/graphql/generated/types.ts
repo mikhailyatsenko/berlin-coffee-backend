@@ -303,11 +303,18 @@ export type PlacesResponse = {
 export type Query = {
   __typename?: 'Query';
   currentUser?: Maybe<User>;
-  favoritePlaces: FavoritePlacesResponse;
+  favoritePlaces: Array<FavoritePlace>;
+  filteredPlaces: PlacesResponse;
   place: Place;
   placeReviews: PlaceReviews;
   places: PlacesResponse;
   userReviewActivity: Array<UserReviewActivity>;
+};
+
+
+export type QueryFilteredPlacesArgs = {
+  minRating?: InputMaybe<Scalars['Float']['input']>;
+  neighborhood?: InputMaybe<Scalars['String']['input']>;
 };
 
 
@@ -680,7 +687,8 @@ export type PlacesResponseResolvers<ContextType = Context, ParentType extends Re
 
 export type QueryResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Query'] = ResolversParentTypes['Query']> = {
   currentUser?: Resolver<Maybe<ResolversTypes['User']>, ParentType, ContextType>;
-  favoritePlaces?: Resolver<ResolversTypes['FavoritePlacesResponse'], ParentType, ContextType>;
+  favoritePlaces?: Resolver<Array<ResolversTypes['FavoritePlace']>, ParentType, ContextType>;
+  filteredPlaces?: Resolver<ResolversTypes['PlacesResponse'], ParentType, ContextType, Partial<QueryFilteredPlacesArgs>>;
   place?: Resolver<ResolversTypes['Place'], ParentType, ContextType, RequireFields<QueryPlaceArgs, 'placeId'>>;
   placeReviews?: Resolver<ResolversTypes['PlaceReviews'], ParentType, ContextType, RequireFields<QueryPlaceReviewsArgs, 'placeId'>>;
   places?: Resolver<ResolversTypes['PlacesResponse'], ParentType, ContextType, RequireFields<QueryPlacesArgs, 'limit' | 'offset'>>;
