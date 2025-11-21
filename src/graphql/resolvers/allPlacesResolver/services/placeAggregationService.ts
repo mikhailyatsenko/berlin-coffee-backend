@@ -32,17 +32,20 @@ export interface PlaceWithStats {
  */
 export async function getPlacesWithStats(
   userId?: string,
-  limit: number = 10,
+  limit?: number,
   offset: number = 0,
 ): Promise<{ places: PlaceWithStats[]; total: number }> {
   // Получаем общее количество мест
   const total = await Place.countDocuments();
 
   // Агрегация с пагинацией
-  const places = await Place.aggregate([
-    // Пагинация: пропускаем и ограничиваем
-    { $skip: offset },
-    { $limit: limit },
+  const aggregationPipeline: mongoose.PipelineStage[] = [{ $skip: offset }];
+
+  if (typeof limit === "number") {
+    aggregationPipeline.push({ $limit: limit });
+  }
+
+  aggregationPipeline.push(
     // Остальная агрегация без изменений
     {
       $lookup: {
@@ -133,7 +136,9 @@ export async function getPlacesWithStats(
         "properties.website": 0,
       },
     },
-  ]);
+  );
+
+  const places = await Place.aggregate(aggregationPipeline);
 
   return { places, total };
 }

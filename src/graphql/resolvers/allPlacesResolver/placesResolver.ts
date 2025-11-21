@@ -1,13 +1,23 @@
 import { GraphQLError } from "graphql";
 import { getPlacesWithStats } from "./services/placeAggregationService.js";
 
+interface PlacesResolverArgs {
+  limit?: number | null;
+  offset?: number;
+}
+
 export async function placesResolver(
   _: never,
-  { limit = 10, offset = 0 }: { limit: number; offset: number },
+  { limit, offset = 0 }: PlacesResolverArgs,
   { user }: { user?: { id: string } },
 ) {
   try {
-    const { places, total } = await getPlacesWithStats(user?.id, limit, offset);
+    const resolvedLimit = typeof limit === "number" ? limit : undefined;
+    const { places, total } = await getPlacesWithStats(
+      user?.id,
+      resolvedLimit,
+      offset,
+    );
     // Convert to GraphQL format
     const formattedPlaces = places.map((place) => {
       const averageRating = place.averageRating;

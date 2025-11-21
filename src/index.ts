@@ -27,8 +27,8 @@ const PORT = 3000;
 const bootstrapServer = async () => {
   app.use(
     compression({
-      threshold: 10240,
-      level: 3,
+      threshold: 1024,
+      level: 2,
       filter: (req: express.Request, res: express.Response) => {
         if (req.headers["x-no-compression"]) {
           return false;
@@ -102,33 +102,33 @@ const bootstrapServer = async () => {
 
   await connectDatabase();
 
-const imagekit = new ImageKit({
-  publicKey: IMAGEKIT_PUBLIC_KEY!,
-  privateKey: IMAGEKIT_PRIVATE_KEY!,
-  urlEndpoint: IMAGEKIT_URL_ENDPOINT!,
-});
+  const imagekit = new ImageKit({
+    publicKey: IMAGEKIT_PUBLIC_KEY!,
+    privateKey: IMAGEKIT_PRIVATE_KEY!,
+    urlEndpoint: IMAGEKIT_URL_ENDPOINT!,
+  });
 
-app.get('/imagekit/auth', async (req, res) => {
-  // if (req.cookies.jwt) {
-  //   const decoded = jwt.verify(req.cookies.jwt, process.env.JWT_SECRET!) as {
-  //     id: string;
-  //   };
-  //   const user = await User.findById(decoded.id);
-  //   if (user) {
-      const { token, expire, signature } = imagekit.getAuthenticationParameters();
-      res.setHeader("Access-Control-Allow-Origin", "*");
-      res.header("Access-Control-Allow-Headers", 
-        "Origin, X-Requested-With, Content-Type, Accept");
-      res.json({
-        token,
-        expire,
-        signature,
-        publicKey: IMAGEKIT_PUBLIC_KEY!
-      });
+  app.get('/imagekit/auth', async (req, res) => {
+    // if (req.cookies.jwt) {
+    //   const decoded = jwt.verify(req.cookies.jwt, process.env.JWT_SECRET!) as {
+    //     id: string;
+    //   };
+    //   const user = await User.findById(decoded.id);
+    //   if (user) {
+    const { token, expire, signature } = imagekit.getAuthenticationParameters();
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.header("Access-Control-Allow-Headers",
+      "Origin, X-Requested-With, Content-Type, Accept");
+    res.json({
+      token,
+      expire,
+      signature,
+      publicKey: IMAGEKIT_PUBLIC_KEY!
+    });
     // }
-  // }
-  
-});
+    // }
+
+  });
 
   app.listen(PORT, "127.0.0.1", () => {
     console.log(`Running server at ${PORT}`);
