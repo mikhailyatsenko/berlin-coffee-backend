@@ -9,6 +9,7 @@ export interface IUser extends Document {
   displayName: string;
   avatar?: string | null;
   createdAt: Date;
+  lastActive?: Date | null;
   isEmailConfirmed: boolean;
   emailConfirmationToken?: string | null;
   emailConfirmationTokenExpires?: Date | null;
@@ -23,6 +24,7 @@ const UserSchema = new mongoose.Schema({
   displayName: { type: String, required: true },
   avatar: { type: String },
   createdAt: { type: Date, default: Date.now },
+  lastActive: { type: Date, default: Date.now },
   isEmailConfirmed: { type: Boolean, default: false },
   emailConfirmationToken: { type: String, default: null },
   emailConfirmationTokenExpires: { type: Date, default: null },

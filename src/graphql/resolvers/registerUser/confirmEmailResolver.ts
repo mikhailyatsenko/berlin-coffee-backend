@@ -72,6 +72,7 @@ export async function confirmEmailResolver(
   }
   user.emailConfirmationToken = null;
   user.emailConfirmationTokenExpires = null;
+  user.lastActive = new Date();
   await user.save();
 
   const jwtToken = jwt.sign(
@@ -89,6 +90,7 @@ export async function confirmEmailResolver(
       displayName: user.displayName,
       avatar: user.avatar,
       createdAt: user.createdAt.toISOString(),
+      lastActive: user.lastActive ? user.lastActive.toISOString() : null,
       isGoogleUserUserWithoutPassword: false,
     },
     emailChanged: isEmailChange,

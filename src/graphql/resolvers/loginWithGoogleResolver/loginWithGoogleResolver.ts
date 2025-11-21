@@ -3,6 +3,7 @@ import { Response } from "express";
 import User from "../../../models/User.js";
 import { createJWT } from "../../../utils/jwt.js";
 import { GraphQLError } from "graphql";
+import { updateLastActive } from "../../../utils/updateLastActive.js";
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID!;
 
@@ -61,8 +62,8 @@ export async function loginWithGoogleResolver(
         displayName: payload.name,
         avatar: payload.picture,
       });
-      await user.save();
     }
+    await updateLastActive(user, { force: true });
 
     const token = createJWT(user?.id);
 
@@ -91,6 +92,7 @@ export async function loginWithGoogleResolver(
         email: user.email,
         avatar: user.avatar,
         createdAt: user.createdAt ? user.createdAt.toISOString() : null,
+        lastActive: user.lastActive ? user.lastActive.toISOString() : null,
         isGoogleUserUserWithoutPassword: !!user.googleId && !user.password,
       },
       isFirstLogin,

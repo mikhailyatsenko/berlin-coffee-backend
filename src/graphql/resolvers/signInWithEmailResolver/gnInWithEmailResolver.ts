@@ -3,6 +3,7 @@ import bcrypt from "bcrypt";
 import { GraphQLError } from "graphql";
 import jwt from "jsonwebtoken";
 import { Response } from "express";
+import { updateLastActive } from "../../../utils/updateLastActive.js";
 
 interface signInWithEmailArgs {
   email: string;
@@ -74,6 +75,8 @@ export async function signInWithEmailResolver(
       path: "/",
     });
 
+    await updateLastActive(user, { force: true });
+
     return {
       user: {
         id: user.id,
@@ -81,6 +84,7 @@ export async function signInWithEmailResolver(
         email: user.email,
         avatar: user.avatar,
         createdAt: user.createdAt ? user.createdAt.toISOString() : null,
+        lastActive: user.lastActive ? user.lastActive.toISOString() : null,
         isGoogleUserUserWithoutPassword: false,
       },
     };

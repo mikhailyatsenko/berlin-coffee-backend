@@ -9,6 +9,7 @@ import { resolvers } from "./graphql/index.js";
 import { connectDatabase } from "./config/database.js";
 import cookieParser from "cookie-parser";
 import User, { IUser } from "./models/User.js";
+import { updateLastActive } from "./utils/updateLastActive.js";
 import http from "http";
 import { ApolloServerPluginDrainHttpServer } from "@apollo/server/plugin/drainHttpServer";
 import jwt from "jsonwebtoken";
@@ -89,6 +90,7 @@ const bootstrapServer = async () => {
               id: string;
             };
             const user = await User.findById(decoded.id);
+            await updateLastActive(user);
             return { user, res };
           } catch (e) {
             console.error("Error verifying token:", e);

@@ -369,6 +369,7 @@ export type User = {
   displayName: Scalars['String']['output'];
   email: Scalars['String']['output'];
   id: Scalars['ID']['output'];
+  lastActive?: Maybe<Scalars['String']['output']>;
   isGoogleUserUserWithoutPassword: Scalars['Boolean']['output'];
 };
 

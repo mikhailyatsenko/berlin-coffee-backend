@@ -4,6 +4,7 @@ type User {
   displayName: String!
   avatar: String
   createdAt: String
+  lastActive: String
   isGoogleUserUserWithoutPassword: Boolean!
 }
 
