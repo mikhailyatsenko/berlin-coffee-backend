@@ -118,7 +118,9 @@ class Cache {
 // Export singleton instance
 export const cache = new Cache();
 
-// Clean expired items every 10 minutes
+// Clean expired items every 10 minutes (only if cache has items)
 setInterval(() => {
-  cache.cleanExpired();
+  if (cache.size() > 0) {
+    cache.cleanExpired();
+  }
 }, 10 * 60 * 1000);
