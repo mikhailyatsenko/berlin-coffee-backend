@@ -35,18 +35,13 @@ export async function getPlacesWithStats(
   limit?: number,
   offset: number = 0,
 ): Promise<{ places: PlaceWithStats[]; total: number }> {
-  // Получаем общее количество мест
+  // Get the total number of places
   const total = await Place.countDocuments();
 
   // Агрегация с пагинацией
-  const aggregationPipeline: mongoose.PipelineStage[] = [{ $skip: offset }];
-
-  if (typeof limit === "number") {
-    aggregationPipeline.push({ $limit: limit });
-  }
-
-  aggregationPipeline.push(
-    // Остальная агрегация без изменений
+  // Calculate rating, sort, then apply pagination
+  const aggregationPipeline: mongoose.PipelineStage[] = [
+    // Calculate statistics by interactions
     {
       $lookup: {
         from: "interactions",
@@ -125,18 +120,29 @@ export async function getPlacesWithStats(
         },
       },
     },
+    // Sort by rating from highest to lowest
     {
-      $project: {
-        interactions: 0,
-        userInteractions: 0,
-        ratingStats: 0,
-        "properties.additionalInfo": 0,
-        "properties.openingHours": 0,
-        "properties.phone": 0,
-        "properties.website": 0,
-      },
+      $sort: { averageRating: -1 },
     },
-  );
+    // Apply pagination after sorting
+    { $skip: offset },
+  ];
+
+  if (typeof limit === "number") {
+    aggregationPipeline.push({ $limit: limit });
+  }
+
+  aggregationPipeline.push({
+    $project: {
+      interactions: 0,
+      userInteractions: 0,
+      ratingStats: 0,
+      "properties.additionalInfo": 0,
+      "properties.openingHours": 0,
+      "properties.phone": 0,
+      "properties.website": 0,
+    },
+  });
 
   const places = await Place.aggregate(aggregationPipeline);
 
