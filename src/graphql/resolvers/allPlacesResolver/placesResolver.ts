@@ -46,7 +46,7 @@ export async function placesResolver(
         },
       };
     });
-
+console.log("DEBUG", formattedPlaces)
     return {
       places: formattedPlaces,
       total,
