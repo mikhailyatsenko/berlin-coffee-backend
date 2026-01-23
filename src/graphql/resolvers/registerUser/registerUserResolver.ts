@@ -69,15 +69,28 @@ export async function registerUserResolver(
     });
 
     try {
-    await mailerSend.email.send(
-      new EmailParams()
-        .setFrom(new Sender(FROM_EMAIL, FROM_NAME))
-        .setTo([new Recipient(email)])
-        .setSubject("Confirm your email")
-        .setHtml(
-          `<p>Click <a href="${confirmationUrl}">here</a> to confirm your email. This link is valid for 1 hour.</p>`,
+      await mailerSend.email.send(
+        new EmailParams()
+          .setFrom(new Sender(FROM_EMAIL, FROM_NAME))
+          .setTo([new Recipient(email)])
+          .setSubject("Welcome to 3.Welle - Confirm your email")
+          .setHtml(
+            `<p>Hi there!</p>
+          <p>Thank you for registering with <strong>3.Welle</strong>! To complete your account setup, please confirm your email address.</p>
+          <p><a href="${confirmationUrl}">Confirm your email</a></p>
+          <p>This link is valid for 1 hour. If you didn't create an account with 3.Welle, please ignore this email.</p>
+          <p>Best regards,<br>The 3.Welle Team</p>`,
           )
-          .setText(`Confirm your email: ${confirmationUrl} (valid for 1 hour)`),
+          .setText(`Hi there!
+
+Thank you for registering with 3.Welle! To complete your account setup and start exploring bars in Berlin, please confirm your email address.
+
+Confirm your email: ${confirmationUrl} (valid for 1 hour)
+
+If you didn't create an account with 3.Welle, please ignore this email.
+
+Best regards,
+The 3.Welle Team`),
       );
     } catch (error) {
       console.error("Error sending email:", error);
