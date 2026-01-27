@@ -41,78 +41,71 @@ export async function getFilteredPlacesWithStats(
             },
         });
     }
-
-   
     if (additionalInfo && additionalInfo.length > 0) {
-      //TODO: check if all possible values checking in map
+        // Динамически ищем тег в ЛЮБОЙ категории additionalInfo
+        // Структура additionalInfo:
+        // {
+        //   "Category 1": [ { "Tag 1": true }, { "Tag 2": true } ],
+        //   "Category 2": [ { "Tag 3": true } ],
+        //   ...
+        // }
+        //
+        // Для каждого выбранного тега (value) строим условие:
+        // - конвертируем additionalInfo в массив пар { k, v } через $objectToArray
+        // - проходим по всем категориям (v - массив объектов)
+        // - внутри каждой категории ищем элемент, где поле с именем тега === true
         const additionalInfoConditions = additionalInfo.map((value) => ({
-            $or: [
-                {
-                    [`properties.additionalInfo.Service options`]: {
-                        $elemMatch: { [value]: true },
+            $expr: {
+                $gt: [
+                    {
+                        $size: {
+                            $ifNull: [
+                                {
+                                    $filter: {
+                                        input: {
+                                            $objectToArray:
+                                                "$properties.additionalInfo",
+                                        },
+                                        as: "category",
+                                        cond: {
+                                            $gt: [
+                                                {
+                                                    $size: {
+                                                        $ifNull: [
+                                                            {
+                                                                $filter: {
+                                                                    input: "$$category.v",
+                                                                    as: "item",
+                                                                    cond: {
+                                                                        $eq: [
+                                                                            {
+                                                                                $getField:
+                                                                                    {
+                                                                                        field: value,
+                                                                                        input: "$$item",
+                                                                                    },
+                                                                            },
+                                                                            true,
+                                                                        ],
+                                                                    },
+                                                                },
+                                                            },
+                                                            [],
+                                                        ],
+                                                    },
+                                                },
+                                                0,
+                                            ],
+                                        },
+                                    },
+                                },
+                                [],
+                            ],
+                        },
                     },
-                },
-                {
-                    [`properties.additionalInfo.Highlights`]: {
-                        $elemMatch: { [value]: true },
-                    },
-                },
-                {
-                    [`properties.additionalInfo.Popular for`]: {
-                        $elemMatch: { [value]: true },
-                    },
-                },
-                {
-                    [`properties.additionalInfo.Accessibility`]: {
-                        $elemMatch: { [value]: true },
-                    },
-                },
-                {
-                    [`properties.additionalInfo.Offerings`]: {
-                        $elemMatch: { [value]: true },
-                    },
-                },
-                {
-                    [`properties.additionalInfo.Dining options`]: {
-                        $elemMatch: { [value]: true },
-                    },
-                },
-                {
-                    [`properties.additionalInfo.Amenities`]: {
-                        $elemMatch: { [value]: true },
-                    },
-                },
-                {
-                    [`properties.additionalInfo.Atmosphere`]: {
-                        $elemMatch: { [value]: true },
-                    },
-                },
-                {
-                    [`properties.additionalInfo.Crowd`]: {
-                        $elemMatch: { [value]: true },
-                    },
-                },
-                {
-                    [`properties.additionalInfo.Planning`]: {
-                        $elemMatch: { [value]: true },
-                    },
-                },
-                {
-                    [`properties.additionalInfo.Payments`]: {
-                        $elemMatch: { [value]: true },
-                    },
-                },
-                {
-                    [`properties.additionalInfo.Children`]: {
-                        $elemMatch: { [value]: true },
-                    },
-                },
-                {
-                    [`properties.additionalInfo.Parking`]: {
-                        $elemMatch: { [value]: true },
-                    },
-                },
-            ],
+                    0,
+                ],
+            },
         }));
 
         // Все условия должны выполняться (AND логика)
