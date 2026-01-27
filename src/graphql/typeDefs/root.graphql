@@ -10,14 +10,8 @@ type Query {
   availableNeighborhoods: AvailableNeighborhoodsResponse!
 }
 
-type AdditionalInfoTag {
-  tag: String!
-  category: String!
-}
-
 type AdditionalInfoTagsResponse {
-  tags: [AdditionalInfoTag!]!
-  total: Int!
+  tags: [String!]!
 }
 
 type AvailableNeighborhoodsResponse {

@@ -7,7 +7,6 @@ export async function availableAdditionalInfoTagsResolver() {
 
         return {
             tags,
-            total: tags.length,
         };
     } catch (error) {
         console.error("Error fetching available additionalInfo tags:", error);
