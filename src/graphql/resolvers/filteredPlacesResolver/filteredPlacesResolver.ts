@@ -1,14 +1,16 @@
 import { GraphQLError } from "graphql";
 import { getFilteredPlacesWithStats } from "./services/filteredPlacesAggregationService.js";
 
-// Функция для нормализации района (только один район, без списка)
-function normalizeNeighborhood(input?: string): string | undefined {
-    if (!input) return input;
-    return input
-        .trim()
-        .split('-')
-        .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-        .join('-');
+
+function normalizeNeighborhood(input?: string[]): string[] | undefined {
+    if (!input || input.length === 0) return input;
+    return input.map(neighborhood =>
+        neighborhood
+            .trim()
+            .split('-')
+            .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+            .join('-')
+    );
 }
 
 export async function filteredPlacesResolver(
@@ -16,9 +18,11 @@ export async function filteredPlacesResolver(
     {
         neighborhood,
         minRating,
+        additionalInfo,
     }: {
-        neighborhood?: string;
+        neighborhood?: string[];
         minRating?: number;
+        additionalInfo?: string[];
     },
     { user }: { user?: { id: string } },
 ) {
@@ -37,6 +41,7 @@ export async function filteredPlacesResolver(
             user?.id,
             normalizedNeighborhood,
             minRating,
+            additionalInfo,
         );
 
         // Convert to GraphQL format
@@ -52,6 +57,7 @@ export async function filteredPlacesResolver(
                 },
                 properties: {
                     id: place._id.toString(),
+                    // slug: place.properties.slug || "",
                     name: place.properties.name || "",
                     description: place.properties.description || "",
                     address: place.properties.address || "",

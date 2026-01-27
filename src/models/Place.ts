@@ -15,6 +15,7 @@ export interface IPlace extends Document {
   };
   properties: {
     name: string;
+    // slug: string;
     description: string | null;
     address: string;
     image: string;
@@ -45,6 +46,7 @@ const PlaceSchema = new mongoose.Schema({
   },
   properties: {
     name: { type: String, required: true },
+    // slug: { type: String, required: true, unique: true, index: true },
     description: {
       type: String,
       default: null,
@@ -57,7 +59,7 @@ const PlaceSchema = new mongoose.Schema({
     instagram: { type: String, default: null },
     additionalInfo: { type: mongoose.Schema.Types.Mixed, default: {} },
     googleId: { type: String, default: null },
-    neighborhood: { type: String, default: null },
+    neighborhood: { type: String, default: null, index: true },
     openingHours: { type: [OpeningHourSchema], default: [] },
     phone: { type: String, default: null },
     website: { type: String, default: null },

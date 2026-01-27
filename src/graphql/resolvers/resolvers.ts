@@ -26,6 +26,8 @@ import GraphQLJSON from "graphql-type-json";
 import { requestPasswordResetResolver } from "./passwordReset/requestPasswordResetResolver.js";
 import { validatePasswordResetTokenResolver } from "./passwordReset/validatePasswordResetTokenResolver.js";
 import { resetPasswordResolver } from "./passwordReset/resetPasswordResolver.js";
+import { availableAdditionalInfoTagsResolver } from "./availableAdditionalInfoTagsResolver/availableAdditionalInfoTagsResolver.js";
+import { availableNeighborhoodsResolver } from "./availableNeighborhoodsResolver/availableNeighborhoodsResolver.js";
 
 export const resolvers = {
   JSON: GraphQLJSON,
@@ -37,6 +39,8 @@ export const resolvers = {
     currentUser: currentUserResolver,
     placeReviews: placeReviewsResolver,
     userReviewActivity: userReviewActivityResolver,
+    availableAdditionalInfoTags: availableAdditionalInfoTagsResolver,
+    availableNeighborhoods: availableNeighborhoodsResolver,
   },
 
   Mutation: {

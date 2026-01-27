@@ -10,6 +10,7 @@ export interface PlaceWithStats {
     };
     properties: {
         name: string;
+        slug: string;
         description: string;
         address: string;
         image: string;
@@ -25,17 +26,99 @@ export interface PlaceWithStats {
 
 export async function getFilteredPlacesWithStats(
     userId?: string,
-    neighborhood?: string,
+    neighborhood?: string[],
     minRating?: number,
+    additionalInfo?: string[],
 ): Promise<{ places: PlaceWithStats[]; total: number }> {
     // Строим pipeline для агрегации
     const pipeline: mongoose.PipelineStage[] = [];
 
     // Фильтр по району (если указан) - применяем в начале
-    if (neighborhood) {
+    if (neighborhood && neighborhood.length > 0) {
         pipeline.push({
             $match: {
-                "properties.neighborhood": neighborhood,
+                "properties.neighborhood": { $in: neighborhood },
+            },
+        });
+    }
+
+   
+    if (additionalInfo && additionalInfo.length > 0) {
+      //TODO: check if all possible values checking in map
+        const additionalInfoConditions = additionalInfo.map((value) => ({
+            $or: [
+                {
+                    [`properties.additionalInfo.Service options`]: {
+                        $elemMatch: { [value]: true },
+                    },
+                },
+                {
+                    [`properties.additionalInfo.Highlights`]: {
+                        $elemMatch: { [value]: true },
+                    },
+                },
+                {
+                    [`properties.additionalInfo.Popular for`]: {
+                        $elemMatch: { [value]: true },
+                    },
+                },
+                {
+                    [`properties.additionalInfo.Accessibility`]: {
+                        $elemMatch: { [value]: true },
+                    },
+                },
+                {
+                    [`properties.additionalInfo.Offerings`]: {
+                        $elemMatch: { [value]: true },
+                    },
+                },
+                {
+                    [`properties.additionalInfo.Dining options`]: {
+                        $elemMatch: { [value]: true },
+                    },
+                },
+                {
+                    [`properties.additionalInfo.Amenities`]: {
+                        $elemMatch: { [value]: true },
+                    },
+                },
+                {
+                    [`properties.additionalInfo.Atmosphere`]: {
+                        $elemMatch: { [value]: true },
+                    },
+                },
+                {
+                    [`properties.additionalInfo.Crowd`]: {
+                        $elemMatch: { [value]: true },
+                    },
+                },
+                {
+                    [`properties.additionalInfo.Planning`]: {
+                        $elemMatch: { [value]: true },
+                    },
+                },
+                {
+                    [`properties.additionalInfo.Payments`]: {
+                        $elemMatch: { [value]: true },
+                    },
+                },
+                {
+                    [`properties.additionalInfo.Children`]: {
+                        $elemMatch: { [value]: true },
+                    },
+                },
+                {
+                    [`properties.additionalInfo.Parking`]: {
+                        $elemMatch: { [value]: true },
+                    },
+                },
+            ],
+        }));
+
+        // Все условия должны выполняться (AND логика)
+        pipeline.push({
+            $match: {
+                $and: additionalInfoConditions,
             },
         });
     }

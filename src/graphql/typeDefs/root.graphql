@@ -2,10 +2,27 @@ type Query {
   place(placeId: ID!): Place!
   currentUser: User
   places(limit: Int, offset: Int = 0): PlacesResponse!
-  filteredPlaces(neighborhood: String, minRating: Float): PlacesResponse!
+  filteredPlaces(neighborhood: [String], minRating: Float, additionalInfo: [String]): PlacesResponse!
   favoritePlaces: [FavoritePlace!]!
   placeReviews(placeId: ID!): PlaceReviews!
   userReviewActivity: [UserReviewActivity!]!
+  availableAdditionalInfoTags: AdditionalInfoTagsResponse!
+  availableNeighborhoods: AvailableNeighborhoodsResponse!
+}
+
+type AdditionalInfoTag {
+  tag: String!
+  category: String!
+}
+
+type AdditionalInfoTagsResponse {
+  tags: [AdditionalInfoTag!]!
+  total: Int!
+}
+
+type AvailableNeighborhoodsResponse {
+  neighborhoods: [String!]!
+  total: Int!
 }
 
 type Mutation {
