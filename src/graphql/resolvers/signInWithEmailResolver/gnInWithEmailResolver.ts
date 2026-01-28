@@ -63,7 +63,7 @@ export async function signInWithEmailResolver(
     const token = jwt.sign(
       { id: user._id, email: user.email },
       process.env.JWT_SECRET!,
-      { expiresIn: "14d" },
+      { expiresIn: "21d" },
     );
 
     res.cookie("jwt", token, {
