@@ -110,26 +110,46 @@ const bootstrapServer = async () => {
     urlEndpoint: IMAGEKIT_URL_ENDPOINT!,
   });
 
-  app.get('/imagekit/auth', async (req, res) => {
-    // if (req.cookies.jwt) {
-    //   const decoded = jwt.verify(req.cookies.jwt, process.env.JWT_SECRET!) as {
-    //     id: string;
-    //   };
-    //   const user = await User.findById(decoded.id);
-    //   if (user) {
-    const { token, expire, signature } = imagekit.getAuthenticationParameters();
-    res.setHeader("Access-Control-Allow-Origin", "*");
-    res.header("Access-Control-Allow-Headers",
-      "Origin, X-Requested-With, Content-Type, Accept");
-    res.json({
-      token,
-      expire,
-      signature,
-      publicKey: IMAGEKIT_PUBLIC_KEY!
-    });
-    // }
-    // }
+  app.get('/imagekit-bars/auth', async (req, res) => {
+    // CORS headers
+    const origin = req.headers.origin;
+    const allowedOrigins = process.env.NODE_ENV === "production"
+      ? ["https://dev.3welle.com", "https://3welle.com"]
+      : ["http://localhost:5173"];
+    
+    if (allowedOrigins.includes(origin || "")) {
+      res.header("Access-Control-Allow-Origin", origin);
+    }
+    res.header("Access-Control-Allow-Credentials", "true");
+    res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
 
+    const token = req.cookies.jwt;
+
+    if (!token) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    try {
+      const decoded = jwt.verify(token, process.env.JWT_SECRET!) as {
+        id: string;
+      };
+      const user = await User.findById(decoded.id);
+      
+      if (!user) {
+        return res.status(401).json({ error: 'User not found' });
+      }
+
+      const { token: imageKitToken, expire, signature } = imagekit.getAuthenticationParameters();
+      res.json({
+        token: imageKitToken,
+        expire,
+        signature,
+        publicKey: IMAGEKIT_PUBLIC_KEY!
+      });
+    } catch (error) {
+      console.error('Error verifying token for imagekit auth:', error);
+      return res.status(401).json({ error: 'Invalid token' });
+    }
   });
 
   app.listen(PORT, "127.0.0.1", () => {
