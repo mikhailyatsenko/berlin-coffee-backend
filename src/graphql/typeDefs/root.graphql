@@ -78,4 +78,12 @@ type Mutation {
     email: String!
     message: String!
   ): ContactFormResponse!
+
+  # Report Inaccuracy Mutation
+  reportInaccuracy(
+    placeId: String!
+    placeName: String!
+    message: String!
+  ): ReportInaccuracyResponse!
 }
+

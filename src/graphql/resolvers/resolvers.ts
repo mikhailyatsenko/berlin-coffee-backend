@@ -28,6 +28,7 @@ import { validatePasswordResetTokenResolver } from "./passwordReset/validatePass
 import { resetPasswordResolver } from "./passwordReset/resetPasswordResolver.js";
 import { availableAdditionalInfoTagsResolver } from "./availableAdditionalInfoTagsResolver/availableAdditionalInfoTagsResolver.js";
 import { availableNeighborhoodsResolver } from "./availableNeighborhoodsResolver/availableNeighborhoodsResolver.js";
+import { reportInaccuracyResolver } from "./reportInaccuracyResolver/reportInaccuracyResolver.js";
 
 export const resolvers = {
   JSON: GraphQLJSON,
@@ -67,5 +68,6 @@ export const resolvers = {
     toggleCharacteristic: toggleCharacteristicResolver,
 
     contactForm: contactFormResolver,
+    reportInaccuracy: reportInaccuracyResolver,
   },
 };

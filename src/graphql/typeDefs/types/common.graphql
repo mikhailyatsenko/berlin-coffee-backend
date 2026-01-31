@@ -14,4 +14,9 @@ type ContactFormResponse {
   success: Boolean!
 }
 
+type ReportInaccuracyResponse {
+  success: Boolean!
+  placeName: String!
+}
+
 scalar JSON 
