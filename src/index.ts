@@ -110,7 +110,7 @@ const bootstrapServer = async () => {
     urlEndpoint: IMAGEKIT_URL_ENDPOINT!,
   });
 
-  app.get('/imagekit-bars/auth', async (req, res) => {
+  app.get('/imagekit/auth', async (req, res) => {
     // CORS headers
     const origin = req.headers.origin;
     const allowedOrigins = process.env.NODE_ENV === "production"
