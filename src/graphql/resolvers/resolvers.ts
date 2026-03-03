@@ -5,10 +5,11 @@ import { toggleFavoriteResolver } from "./toggleFavoriteResolver/toggleFavoriteR
 import { deleteReviewResolver } from "./deleteReviewResolver/deleteReviewResolver.js";
 import { placeReviewsResolver } from "./placeReviewsResolver/placeReviewsResolver.js";
 import { registerUserResolver } from "./registerUser/registerUserResolver.js";
-import { signInWithEmailResolver } from "./signInWithEmailResolver/gnInWithEmailResolver.js";
+import { signInWithEmailResolver } from "./signInWithEmailResolver/signInWithEmailResolver.js";
 import { loginWithGoogleResolver } from "./loginWithGoogleResolver/loginWithGoogleResolver.js";
 import { currentUserResolver } from "./currentUserResolver/currentUserResolver.js";
 import { logoutResolver } from "./logoutReslover/logoutReslover.js";
+import { refreshTokenResolver } from "./refreshTokenResolver/refreshTokenResolver.js";
 import { userReviewActivityResolver } from "./userReviewActivityResolver/userReviewActivityResolver.js";
 import { setNewPasswordResolver } from "./setNewPasswordResolver/setNewPasswordResolver.js";
 import { updatePersonalDataResolver } from "./updatePersonalDataResolver/updatePersonalDataResolver.js";
@@ -49,6 +50,7 @@ export const resolvers = {
     loginWithGoogle: loginWithGoogleResolver,
     signInWithEmail: signInWithEmailResolver,
     logout: logoutResolver,
+    refreshToken: refreshTokenResolver,
     resendConfirmationEmail: resendConfirmationEmailResolver,
     confirmEmail: confirmEmailResolver,
     requestPasswordReset: requestPasswordResetResolver,

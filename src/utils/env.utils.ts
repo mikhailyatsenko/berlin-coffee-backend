@@ -49,6 +49,28 @@ export const env = {
       maxAge: 24 * 60 * 60 * 1000 * 2,
     };
   },
+
+  get accessTokenCookieSettings() {
+    return {
+      httpOnly: true,
+      secure: this.isProd,
+      sameSite: this.isProd ? "none" : ("lax" as "none" | "lax"),
+      domain: this.cookieDomain,
+      path: "/",
+      maxAge: 15 * 60 * 1000, // 15 minutes
+    };
+  },
+
+  get refreshTokenCookieSettings() {
+    return {
+      httpOnly: true,
+      secure: this.isProd,
+      sameSite: this.isProd ? "none" : ("lax" as "none" | "lax"),
+      domain: this.cookieDomain,
+      path: "/",
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+    };
+  },
 } as const;
 
 export type Env = typeof env;

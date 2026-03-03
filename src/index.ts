@@ -1,5 +1,5 @@
 import "./config/env.js";
-import express from "express";
+import express, { Request, Response } from "express";
 import { ApolloServer } from "@apollo/server";
 import { expressMiddleware } from "@apollo/server/express4";
 import cors from "cors";
@@ -12,11 +12,13 @@ import User, { IUser } from "./models/User.js";
 import { updateLastActive } from "./utils/updateLastActive.js";
 import http from "http";
 import { ApolloServerPluginDrainHttpServer } from "@apollo/server/plugin/drainHttpServer";
-import jwt from "jsonwebtoken";
 import ImageKit from 'imagekit';
 import { IMAGEKIT_PUBLIC_KEY, IMAGEKIT_PRIVATE_KEY, IMAGEKIT_URL_ENDPOINT } from "./config/env.js";
+import { getUserFromAccessToken, refreshAccessToken, clearAuthCookies, getUserFromToken } from "./utils/tokenUtils.js";
 export interface Context {
-  user?: IUser;
+  user?: IUser | null;
+  req?: Request;
+  res: Response;
 }
 
 const app = express();
@@ -82,22 +84,27 @@ const bootstrapServer = async () => {
     express.json(),
     expressMiddleware(server, {
       context: async ({ req, res }) => {
-        const token = req.cookies.jwt;
+        const accessToken = req.cookies.jwt;
+        const refreshToken = req.cookies.refreshToken;
 
-        if (token) {
-          try {
-            const decoded = jwt.verify(token, process.env.JWT_SECRET!) as {
-              id: string;
-            };
-            const user = await User.findById(decoded.id);
-            await updateLastActive(user);
-            return { user, res };
-          } catch (e) {
-            console.error("Error verifying token:", e);
-            res.clearCookie("jwt");
-          }
+        // Try access token first
+        let user = await getUserFromAccessToken(accessToken);
+
+        // If access token failed, try refresh token
+        if (!user && refreshToken) {
+          const result = await refreshAccessToken(refreshToken, res);
+          user = result?.user ?? null;
         }
-        return { res };
+
+        // Clear cookies if both tokens are invalid
+        if (!user) {
+          clearAuthCookies(res);
+        } else {
+          // Update last active only if we have a valid user
+          await updateLastActive(user);
+        }
+
+        return { user: user ?? null, req, res };
       },
     }),
   );
@@ -123,19 +130,25 @@ const bootstrapServer = async () => {
     res.header("Access-Control-Allow-Credentials", "true");
     res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
 
-    const token = req.cookies.jwt;
+    const accessToken = req.cookies.jwt;
+    const refreshToken = req.cookies.refreshToken;
 
-    if (!token) {
+    if (!accessToken) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
     try {
-      const decoded = jwt.verify(token, process.env.JWT_SECRET!) as {
-        id: string;
-      };
-      const user = await User.findById(decoded.id);
-      
+      // Try access token first
+      let user = await getUserFromAccessToken(accessToken);
+
+      // If access token failed, try to refresh
+      if (!user && refreshToken) {
+        const result = await refreshAccessToken(refreshToken, res);
+        user = result?.user ?? null;
+      }
+
       if (!user) {
+        clearAuthCookies(res);
         return res.status(401).json({ error: 'User not found' });
       }
 

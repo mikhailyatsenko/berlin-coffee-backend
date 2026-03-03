@@ -1,9 +1,9 @@
 import User from "../../../models/User.js";
 import bcrypt from "bcrypt";
 import { GraphQLError } from "graphql";
-import jwt from "jsonwebtoken";
 import { Response } from "express";
 import { updateLastActive } from "../../../utils/updateLastActive.js";
+import { setAuthCookies, formatUserResponse } from "../../../utils/authHelpers.js";
 
 interface signInWithEmailArgs {
   email: string;
@@ -60,33 +60,11 @@ export async function signInWithEmailResolver(
       });
     }
 
-    const token = jwt.sign(
-      { id: user._id, email: user.email },
-      process.env.JWT_SECRET!,
-      { expiresIn: "21d" },
-    );
-
-    res.cookie("jwt", token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
-      domain:
-        process.env.NODE_ENV === "production" ? "yatsenko.site" : "localhost",
-      path: "/",
-    });
-
+    setAuthCookies(user._id.toString(), res);
     await updateLastActive(user, { force: true });
 
     return {
-      user: {
-        id: user.id,
-        displayName: user.displayName,
-        email: user.email,
-        avatar: user.avatar,
-        createdAt: user.createdAt ? user.createdAt.toISOString() : null,
-        lastActive: user.lastActive ? user.lastActive.toISOString() : null,
-        isGoogleUserUserWithoutPassword: false,
-      },
+      user: formatUserResponse(user),
     };
   } catch (error) {
     console.error("Error logging in:", error);

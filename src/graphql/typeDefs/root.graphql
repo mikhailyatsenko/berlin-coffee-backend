@@ -38,6 +38,7 @@ type Mutation {
     newPassword: String!
   ): SuccessResponse!
   logout: LogoutResponse
+  refreshToken: RefreshTokenResponse!
 
   # User Profile Mutations
   updatePersonalData(

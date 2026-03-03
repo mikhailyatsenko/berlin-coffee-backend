@@ -1,9 +1,9 @@
 import { OAuth2Client } from "google-auth-library";
 import { Response } from "express";
 import User from "../../../models/User.js";
-import { createJWT } from "../../../utils/jwt.js";
 import { GraphQLError } from "graphql";
 import { updateLastActive } from "../../../utils/updateLastActive.js";
+import { setAuthCookies, formatUserResponse } from "../../../utils/authHelpers.js";
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID!;
 
@@ -65,17 +65,7 @@ export async function loginWithGoogleResolver(
     }
     await updateLastActive(user, { force: true });
 
-    const token = createJWT(user?.id);
-
-    res.cookie("jwt", token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
-      domain:
-        process.env.NODE_ENV === "production" ? "yatsenko.site" : "localhost",
-      path: "/",
-      maxAge: 24 * 60 * 60 * 1000 * 2, // 2 days
-    });
+    setAuthCookies(user.id, res);
 
     res.setHeader("Access-Control-Allow-Credentials", "true");
     res.setHeader(

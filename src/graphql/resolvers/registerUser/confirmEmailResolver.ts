@@ -1,9 +1,9 @@
 import User, { IUser } from "../../../models/User.js";
 import crypto from "crypto";
 import { GraphQLError } from "graphql";
-import jwt from "jsonwebtoken";
 import { Response } from "express";
-import { env } from "../../../utils/env.utils.js";
+import { setAuthCookies, formatUserResponse } from "../../../utils/authHelpers.js";
+
 
 export async function confirmEmailResolver(
   _: never,
@@ -75,24 +75,10 @@ export async function confirmEmailResolver(
   user.lastActive = new Date();
   await user.save();
 
-  const jwtToken = jwt.sign(
-    { id: user._id, email: user.email },
-    env.jwtSecret,
-    { expiresIn: "2d" },
-  );
-
-  res.cookie("jwt", jwtToken, env.cookieSettings);
+  setAuthCookies(user._id.toString(), res);
 
   return {
-    user: {
-      id: user._id,
-      email: user.email,
-      displayName: user.displayName,
-      avatar: user.avatar,
-      createdAt: user.createdAt.toISOString(),
-      lastActive: user.lastActive ? user.lastActive.toISOString() : null,
-      isGoogleUserUserWithoutPassword: false,
-    },
+    user: formatUserResponse(user),
     emailChanged: isEmailChange,
   };
 }
