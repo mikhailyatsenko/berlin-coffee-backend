@@ -11,7 +11,7 @@ export async function logoutResolver(
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: (process.env.NODE_ENV === "production" ? "none" : "lax") as "none" | "lax",
-      domain: process.env.NODE_ENV === "production" ? "yatsenko.site" : "localhost",
+      domain: process.env.NODE_ENV === "production" ? "api.3welle.com" : "localhost",
       path: "/",
     };
 

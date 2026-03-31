@@ -29,8 +29,8 @@ export const env = {
   isProd: !isDev,
 
   frontendDomain: isDev ? "localhost:5173" : "3welle.com",
-  backendDomain: isDev ? "localhost:3000" : "yatsenko.site",
-  cookieDomain: isDev ? "localhost" : "yatsenko.site",
+  backendDomain: isDev ? "localhost:3000" : "api.3welle.com",
+  cookieDomain: isDev ? "localhost" : "api.3welle.com",
 
   get frontendUrl() {
     return `http${this.isProd ? "s" : ""}://${this.frontendDomain}`;
