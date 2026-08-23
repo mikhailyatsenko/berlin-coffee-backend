@@ -1,12 +1,16 @@
 import ImageKit from "imagekit";
 import sharp from "sharp";
-import { IMAGEKIT_PUBLIC_KEY, IMAGEKIT_PRIVATE_KEY, IMAGEKIT_URL_ENDPOINT } from "../config/env.js";
+import {
+  IMAGEKIT_PUBLIC_KEY,
+  IMAGEKIT_PRIVATE_KEY,
+  IMAGEKIT_URL_ENDPOINT,
+} from "../config/env.js";
 
 // Инициализация ImageKit
 const imagekit = new ImageKit({
   publicKey: IMAGEKIT_PUBLIC_KEY!,
   privateKey: IMAGEKIT_PRIVATE_KEY!,
-  urlEndpoint: IMAGEKIT_URL_ENDPOINT!, 
+  urlEndpoint: IMAGEKIT_URL_ENDPOINT!,
 });
 
 // Rate limiting
@@ -17,7 +21,7 @@ const MIN_REQUEST_INTERVAL = 50; // 50ms between requests (20 requests per secon
  * Function for delay between requests
  */
 function delay(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms));
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 /**
@@ -36,15 +40,15 @@ export async function getPlaceImages(placeId: string): Promise<string[]> {
     lastRequestTime = Date.now();
 
     const folderPath = `places-main-img/${placeId}`;
-    
+
     const result = await imagekit.listFiles({
       path: folderPath,
     });
 
     // Extract only file names from full paths
     const filePath = result
-      .filter(file => file.type === "file") // Only files, not folders
-      .map(file => {
+      .filter((file) => file.type === "file") // Only files, not folders
+      .map((file) => {
         // Remove folder path from file name
         const fullPath = (file as any).filePath;
         return fullPath;
@@ -67,7 +71,7 @@ export async function getPlaceImages(placeId: string): Promise<string[]> {
  */
 export async function uploadAvatar(
   fileBuffer: Buffer,
-  userId: string
+  userId: string,
 ): Promise<string> {
   try {
     // Rate limiting
@@ -81,13 +85,13 @@ export async function uploadAvatar(
     // Process image with Sharp: resize to 640px max dimension and convert to JPEG
     const processedBuffer = await sharp(fileBuffer)
       .resize(640, 640, {
-        fit: 'inside',
-        withoutEnlargement: true
+        fit: "inside",
+        withoutEnlargement: true,
       })
-      .jpeg({ 
+      .jpeg({
         quality: 85,
         progressive: true,
-        mozjpeg: true
+        mozjpeg: true,
       })
       .toBuffer();
 
@@ -95,14 +99,71 @@ export async function uploadAvatar(
       file: processedBuffer,
       fileName: `avatar-${userId}.jpeg`,
       folder: `3welle/avatars/${userId}`,
-      useUniqueFileName: false
+      useUniqueFileName: false,
     });
-    
+
     // Return filePath instead of fileId for compatibility
     return result.filePath;
   } catch (error) {
-    console.error('Error uploading avatar to ImageKit:', error);
-    throw new Error('Failed to upload avatar to ImageKit');
+    console.error("Error uploading avatar to ImageKit:", error);
+    throw new Error("Failed to upload avatar to ImageKit");
+  }
+}
+
+/**
+ * Uploads a single review image to ImageKit.
+ *
+ * The folder and the file name are built here, on the server: the client-side
+ * upload signature cannot be scoped to a path, so the only way to keep review
+ * images inside their own folder is to never let the client pick it.
+ *
+ * File names must stay `image_1.jpg`, `image_2.jpg`, ... — the frontend derives
+ * review image URLs from the stored counter (see getReviewImages.ts).
+ *
+ * @param fileBuffer - Decoded file buffer
+ * @param placeId - Place the review belongs to
+ * @param reviewId - Interaction id of the review
+ * @param index - 1-based position of the image within the review
+ * @returns Promise<string> - ImageKit file path
+ */
+export async function uploadReviewImage(
+  fileBuffer: Buffer,
+  placeId: string,
+  reviewId: string,
+  index: number,
+): Promise<string> {
+  try {
+    // Rate limiting
+    const now = Date.now();
+    const timeSinceLastRequest = now - lastRequestTime;
+    if (timeSinceLastRequest < MIN_REQUEST_INTERVAL) {
+      await delay(MIN_REQUEST_INTERVAL - timeSinceLastRequest);
+    }
+    lastRequestTime = Date.now();
+
+    const processedBuffer = await sharp(fileBuffer)
+      .resize(1440, 1440, {
+        fit: "inside",
+        withoutEnlargement: true,
+      })
+      .jpeg({
+        quality: 82,
+        progressive: true,
+        mozjpeg: true,
+      })
+      .toBuffer();
+
+    const result = await imagekit.upload({
+      file: processedBuffer,
+      fileName: `image_${index}.jpg`,
+      folder: `3welle/review-images/${placeId}/${reviewId}`,
+      useUniqueFileName: false,
+    });
+
+    return result.filePath;
+  } catch (error) {
+    console.error("Error uploading review image to ImageKit:", error);
+    throw new Error("Failed to upload review image to ImageKit");
   }
 }
 
@@ -121,42 +182,36 @@ export async function deleteAvatar(filePath: string): Promise<boolean> {
     }
     lastRequestTime = Date.now();
 
-
-    
     // First, get the fileId from filePath
     const files = await imagekit.listFiles({
-      path: filePath.substring(0, filePath.lastIndexOf('/'))
+      path: filePath.substring(0, filePath.lastIndexOf("/")),
     });
 
-
-    
-    const file = files.find(item => 
-      item.type === 'file' && item.filePath === filePath
+    const file = files.find(
+      (item) => item.type === "file" && item.filePath === filePath,
     );
     if (!file) {
-
       return true; // File doesn't exist, consider it deleted
     }
-    
+
     const fileId = (file as any).fileId;
 
-    
     await imagekit.deleteFile(fileId);
 
     return true;
   } catch (error) {
-    console.error('Error deleting avatar from ImageKit:', {
+    console.error("Error deleting avatar from ImageKit:", {
       filePath,
       error: error instanceof Error ? error.message : error,
-      stack: error instanceof Error ? error.stack : undefined
+      stack: error instanceof Error ? error.stack : undefined,
     });
     return false;
   }
 }
 
-
-
-export async function deleteAllReviewImages(folderPath: string): Promise<boolean> {
+export async function deleteAllReviewImages(
+  folderPath: string,
+): Promise<boolean> {
   try {
     // Rate limiting
     const now = Date.now();
@@ -166,13 +221,13 @@ export async function deleteAllReviewImages(folderPath: string): Promise<boolean
     }
     lastRequestTime = Date.now();
 
-    await imagekit.deleteFolder(folderPath)
+    await imagekit.deleteFolder(folderPath);
     return true;
   } catch (error) {
-    console.error('Error deleting folder from ImageKit:', {
+    console.error("Error deleting folder from ImageKit:", {
       folderPath,
       error: error instanceof Error ? error.message : error,
-      stack: error instanceof Error ? error.stack : undefined
+      stack: error instanceof Error ? error.stack : undefined,
     });
     return false;
   }
@@ -184,10 +239,7 @@ export async function deleteAllReviewImages(folderPath: string): Promise<boolean
  * @param transformations - Optional image transformations
  * @returns string - Image URL
  */
-export function getImageUrl(
-  filePath: string, 
-  transformations?: any[]
-): string {
+export function getImageUrl(filePath: string, transformations?: any[]): string {
   return imagekit.url({
     path: filePath,
     transformation: transformations,
@@ -200,10 +252,7 @@ export function getImageUrl(
  * @param transformations - Optional image transformations
  * @returns string - Avatar URL
  */
-export function getAvatarUrl(
-  fileId: string,
-  transformations?: any[]
-): string {
+export function getAvatarUrl(fileId: string, transformations?: any[]): string {
   return imagekit.url({
     path: fileId,
     transformation: transformations,

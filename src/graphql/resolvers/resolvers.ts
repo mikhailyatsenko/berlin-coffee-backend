@@ -30,6 +30,9 @@ import { resetPasswordResolver } from "./passwordReset/resetPasswordResolver.js"
 import { availableAdditionalInfoTagsResolver } from "./availableAdditionalInfoTagsResolver/availableAdditionalInfoTagsResolver.js";
 import { availableNeighborhoodsResolver } from "./availableNeighborhoodsResolver/availableNeighborhoodsResolver.js";
 import { reportInaccuracyResolver } from "./reportInaccuracyResolver/reportInaccuracyResolver.js";
+import { createGuestIdentityResolver } from "./guestIdentityResolver/createGuestIdentityResolver.js";
+import { claimGuestReviewsResolver } from "./guestIdentityResolver/claimGuestReviewsResolver.js";
+import { uploadReviewImageResolver } from "./uploadReviewImageResolver/uploadReviewImageResolver.js";
 
 export const resolvers = {
   JSON: GraphQLJSON,
@@ -63,11 +66,15 @@ export const resolvers = {
     deleteAvatar: deleteAvatarResolver,
     deleteAccount: deleteAccountResolver,
 
+    createGuestIdentity: createGuestIdentityResolver,
+    claimGuestReviews: claimGuestReviewsResolver,
+
     addRating: addRatingResolver,
     addTextReview: addTextReviewResolver,
     toggleFavorite: toggleFavoriteResolver,
     deleteReview: deleteReviewResolver,
     toggleCharacteristic: toggleCharacteristicResolver,
+    uploadReviewImage: uploadReviewImageResolver,
 
     contactForm: contactFormResolver,
     reportInaccuracy: reportInaccuracyResolver,

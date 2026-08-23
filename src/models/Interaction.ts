@@ -3,7 +3,11 @@ import { IPlace } from "./Place";
 
 export interface IInteraction extends Document {
   _id: mongoose.Types.ObjectId;
-  userId: mongoose.Types.ObjectId;
+  /** Absent on guest interactions. Never set this to null: the partial index
+   *  below matches on $exists, and null counts as existing. */
+  userId?: mongoose.Types.ObjectId;
+  /** Absent on interactions that belong to a registered user. */
+  guestId?: string;
   placeId: IPlace["_id"];
   rating?: number;
   reviewText?: string;
@@ -24,7 +28,8 @@ export interface IInteraction extends Document {
 }
 
 const InteractionSchema = new mongoose.Schema({
-  userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+  guestId: { type: String },
   placeId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "NewPlace",
@@ -48,6 +53,16 @@ const InteractionSchema = new mongoose.Schema({
   isGoogleReview: { type: Boolean, default: false },
 });
 
-InteractionSchema.index({ userId: 1, placeId: 1 }, { unique: true });
+// Partial indexes so guest interactions (no userId) do not collide with each
+// other, and account interactions (no guestId) do not collide either.
+// Keep these in sync with scripts/migrateGuestIndexes.ts.
+InteractionSchema.index(
+  { userId: 1, placeId: 1 },
+  { unique: true, partialFilterExpression: { userId: { $exists: true } } },
+);
+InteractionSchema.index(
+  { guestId: 1, placeId: 1 },
+  { unique: true, partialFilterExpression: { guestId: { $exists: true } } },
+);
 
 export default mongoose.model<IInteraction>("Interaction", InteractionSchema);

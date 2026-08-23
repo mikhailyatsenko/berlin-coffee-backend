@@ -1,0 +1,17 @@
+"""
+Credentials issued once after a successful captcha check. The client stores both
+values in localStorage; the raw secret is never returned again.
+"""
+type GuestIdentityPayload {
+  guestId: String!
+  guestSecret: String!
+}
+
+type ClaimGuestReviewsResponse {
+  claimedCount: Int!
+  """
+  Guest reviews left behind because the account already has a review for that
+  place. They stay anonymous rather than overwriting anything.
+  """
+  conflictedCount: Int!
+}

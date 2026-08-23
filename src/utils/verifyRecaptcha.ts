@@ -1,51 +1,103 @@
-// import fetch from "node-fetch";
+import { GraphQLError } from "graphql";
+import { RECAPTCHA_V3_SECRET } from "../config/env.js";
 
-import { env } from "./env.utils.js";
+const VERIFY_URL = "https://www.google.com/recaptcha/api/siteverify";
+const REQUEST_TIMEOUT_MS = 3000;
+const MIN_SCORE = 0.5;
+
+/** Must match the action names the frontend passes to grecaptcha.execute. */
+export type RecaptchaAction =
+  | "create_guest_identity"
+  | "register_user"
+  | "contact_form"
+  | "report_inaccuracy";
+
+interface SiteVerifyResponse {
+  success: boolean;
+  score?: number;
+  action?: string;
+  hostname?: string;
+  "error-codes"?: string[];
+}
+
+const captchaError = (message: string, reason: string) =>
+  new GraphQLError(message, {
+    extensions: { code: "CAPTCHA_FAILED", reason },
+  });
 
 /**
  * Verifies a Google reCAPTCHA v3 token.
+ *
+ * Fails closed: a timeout, a network error or an unreachable Google rejects the
+ * request instead of waving it through.
+ *
  * @param token The token received from the client.
+ * @param action The action the token was minted for. Verified against the
+ *   response — without this check a token obtained on any other form of the
+ *   site would be accepted here.
  * @param remoteIp (optional) The user's IP address for extra security.
- * @throws Error if verification fails or score is too low.
  */
 export async function verifyRecaptcha(
   token: string,
+  action: RecaptchaAction,
   remoteIp?: string,
 ): Promise<void> {
-  const secret = env.isDev
-    ? process.env.RE_CAPTCHA_KEY_DEV
-    : process.env.RE_CAPTCHA_KEY_PROD;
-
-  if (!secret) {
-    throw new Error(
-      "RECAPTCHA_SECRET_KEY is not defined in environment variables",
+  if (!RECAPTCHA_V3_SECRET) {
+    throw captchaError(
+      "Captcha verification is unavailable",
+      "secret_not_configured",
     );
   }
 
+  if (!token) {
+    throw captchaError("Captcha token is missing", "missing_token");
+  }
+
   const params = new URLSearchParams({
-    secret,
+    secret: RECAPTCHA_V3_SECRET,
     response: token,
   });
   if (remoteIp) {
     params.append("remoteip", remoteIp);
   }
-  const res = await fetch("https://www.google.com/recaptcha/api/siteverify", {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: params.toString(),
-  });
-  if (!res.ok) {
-    throw new Error("Failed to verify reCAPTCHA: network error");
-  }
-  const data = await res.json();
-  if (!data.success) {
-    throw new Error(
-      "Failed to verify reCAPTCHA: " +
-        (data["error-codes"]?.join(", ") || "unknown error"),
+
+  let data: SiteVerifyResponse;
+
+  try {
+    const res = await fetch(VERIFY_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: params.toString(),
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+    });
+
+    if (!res.ok) {
+      throw new Error(`siteverify responded with ${res.status}`);
+    }
+
+    data = (await res.json()) as SiteVerifyResponse;
+  } catch (error) {
+    console.error("reCAPTCHA verification unreachable:", error);
+    throw captchaError(
+      "Could not verify captcha, please try again",
+      "verification_unavailable",
     );
   }
-  // Optionally, check score for v3 (e.g., >= 0.5 is usually considered human)
-  if (typeof data.score === "number" && data.score < 0.5) {
-    throw new Error("reCAPTCHA score too low: " + data.score);
+
+  if (!data.success) {
+    console.warn("reCAPTCHA rejected:", data["error-codes"]);
+    throw captchaError("Captcha verification failed", "rejected");
+  }
+
+  if (data.action !== action) {
+    console.warn(
+      `reCAPTCHA action mismatch: expected ${action}, got ${data.action}`,
+    );
+    throw captchaError("Captcha verification failed", "action_mismatch");
+  }
+
+  if (typeof data.score === "number" && data.score < MIN_SCORE) {
+    console.warn(`reCAPTCHA score too low for ${action}: ${data.score}`);
+    throw captchaError("Captcha verification failed", "low_score");
   }
 }

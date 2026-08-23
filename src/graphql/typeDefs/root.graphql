@@ -27,6 +27,10 @@ type Mutation {
     email: String!
     displayName: String!
     password: String!
+    # Nullable only so the previous frontend build keeps validating during the
+    # rollout; the resolver requires it. Make it String! once the new frontend
+    # is live.
+    captchaToken: String
   ): SuccessResponse!
   resendConfirmationEmail(email: String!): SuccessResponse!
   confirmEmail(token: String!, email: String!): AuthPayload!
@@ -59,18 +63,48 @@ type Mutation {
   deleteAvatar: SuccessResponse!
   deleteAccount: SuccessResponse!
 
+  # Guest Mutations
+  """
+  Issues a guest identity after a captcha check. This is the only place a guest
+  captcha is verified; every later guest action authenticates with the secret.
+  """
+  createGuestIdentity(captchaToken: String): GuestIdentityPayload!
+  """Attaches reviews left as a guest to the currently signed-in account."""
+  claimGuestReviews(
+    guestId: String!
+    guestSecret: String!
+  ): ClaimGuestReviewsResponse!
+
   # Place and Review Mutations
-  addRating(placeId: ID!, rating: Float!): AddRatingResponse!
+  # guestId/guestSecret are used only when there is no signed-in user.
+  addRating(
+    placeId: ID!
+    rating: Float!
+    guestId: String
+    guestSecret: String
+  ): AddRatingResponse!
   addTextReview(
     placeId: ID!
     text: String!
+    # Deprecated: the server counts uploaded images itself. Kept so the previous
+    # frontend build keeps working during the rollout.
     reviewImages: Int
+    guestId: String
+    guestSecret: String
   ): AddTextReviewResponse!
+  uploadReviewImage(
+    reviewId: ID!
+    fileBuffer: String!
+    guestId: String
+    guestSecret: String
+  ): UploadReviewImageResponse!
   toggleFavorite(placeId: ID!): Boolean!
   deleteReview(reviewId: ID!, deleteOptions: String!): DeleteReviewResult!
   toggleCharacteristic(
     placeId: ID!
     characteristic: Characteristic!
+    guestId: String
+    guestSecret: String
   ): SuccessResponse!
 
   # Contact Form Mutation
@@ -78,6 +112,7 @@ type Mutation {
     name: String!
     email: String!
     message: String!
+    captchaToken: String
   ): ContactFormResponse!
 
   # Report Inaccuracy Mutation
@@ -85,6 +120,7 @@ type Mutation {
     placeId: String!
     placeName: String!
     message: String!
+    captchaToken: String
   ): ReportInaccuracyResponse!
 }
 

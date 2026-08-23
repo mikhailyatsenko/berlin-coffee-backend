@@ -10,10 +10,27 @@ import {
   FROM_EMAIL,
   FROM_NAME,
 } from "./constants/index.js";
+import { Request } from "express";
+import { clientIp } from "../../../utils/rateLimit.js";
+import { verifyRecaptcha } from "../../../utils/verifyRecaptcha.js";
+
 export async function contactFormResolver(
   _: never,
-  { name, email, message }: { name: string; email: string; message: string },
+  {
+    name,
+    email,
+    message,
+    captchaToken,
+  }: {
+    name: string;
+    email: string;
+    message: string;
+    captchaToken?: string | null;
+  },
+  { req }: { req?: Request },
 ) {
+  await verifyRecaptcha(captchaToken ?? "", "contact_form", clientIp(req));
+
   if (!process.env.MAILERSEND_API_KEY) {
     throw new Error("MAILERSEND_API_KEY is not defined");
   }
