@@ -10,17 +10,24 @@ import {
 import crypto from "crypto";
 import { addHours } from "date-fns";
 import { env } from "../../../utils/env.utils.js";
+import { Request } from "express";
+import { clientIp } from "../../../utils/rateLimit.js";
+import { verifyRecaptcha } from "../../../utils/verifyRecaptcha.js";
 
 interface RegisterUserArgs {
   email: string;
   displayName: string;
   password: string;
+  captchaToken?: string | null;
 }
 
 export async function registerUserResolver(
   _: never,
-  { email, displayName, password }: RegisterUserArgs,
+  { email, displayName, password, captchaToken }: RegisterUserArgs,
+  { req }: { req?: Request },
 ) {
+  await verifyRecaptcha(captchaToken ?? "", "register_user", clientIp(req));
+
   if (!isEmail(email)) {
     throw new GraphQLError("Invalid email address");
   }
@@ -80,8 +87,7 @@ export async function registerUserResolver(
           <p><a href="${confirmationUrl}">Confirm your email</a></p>
           <p>This link is valid for 1 hour. If you didn't create an account with 3.Welle, please ignore this email.</p>
           <p>Best regards,<br>The 3.Welle Team</p>`,
-          )
-          .setText(`Hi there!
+          ).setText(`Hi there!
 
 Thank you for registering with 3.Welle! To complete your account setup and start exploring bars in Berlin, please confirm your email address.
 

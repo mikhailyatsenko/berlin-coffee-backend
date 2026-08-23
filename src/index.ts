@@ -12,9 +12,18 @@ import User, { IUser } from "./models/User.js";
 import { updateLastActive } from "./utils/updateLastActive.js";
 import http from "http";
 import { ApolloServerPluginDrainHttpServer } from "@apollo/server/plugin/drainHttpServer";
-import ImageKit from 'imagekit';
-import { IMAGEKIT_PUBLIC_KEY, IMAGEKIT_PRIVATE_KEY, IMAGEKIT_URL_ENDPOINT } from "./config/env.js";
-import { getUserFromAccessToken, refreshAccessToken, clearAuthCookies, getUserFromToken } from "./utils/tokenUtils.js";
+import ImageKit from "imagekit";
+import {
+  IMAGEKIT_PUBLIC_KEY,
+  IMAGEKIT_PRIVATE_KEY,
+  IMAGEKIT_URL_ENDPOINT,
+} from "./config/env.js";
+import {
+  getUserFromAccessToken,
+  refreshAccessToken,
+  clearAuthCookies,
+  getUserFromToken,
+} from "./utils/tokenUtils.js";
 export interface Context {
   user?: IUser | null;
   req?: Request;
@@ -61,8 +70,8 @@ const bootstrapServer = async () => {
 
   await server.start();
 
-  app.use(express.json({ limit: '10mb' }));
-  app.use(express.urlencoded({ limit: '10mb', extended: true }));
+  app.use(express.json({ limit: "10mb" }));
+  app.use(express.urlencoded({ limit: "10mb", extended: true }));
   app.use(cookieParser());
 
   app.use("/coffee", (req, res, next) => {
@@ -117,24 +126,28 @@ const bootstrapServer = async () => {
     urlEndpoint: IMAGEKIT_URL_ENDPOINT!,
   });
 
-  app.get('/imagekit/auth', async (req, res) => {
+  app.get("/imagekit/auth", async (req, res) => {
     // CORS headers
     const origin = req.headers.origin;
-    const allowedOrigins = process.env.NODE_ENV === "production"
-      ? ["https://dev.3welle.com", "https://3welle.com"]
-      : ["http://localhost:5173"];
-    
+    const allowedOrigins =
+      process.env.NODE_ENV === "production"
+        ? ["https://dev.3welle.com", "https://3welle.com"]
+        : ["http://localhost:5173"];
+
     if (allowedOrigins.includes(origin || "")) {
       res.header("Access-Control-Allow-Origin", origin);
     }
     res.header("Access-Control-Allow-Credentials", "true");
-    res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
+    res.header(
+      "Access-Control-Allow-Headers",
+      "Origin, X-Requested-With, Content-Type, Accept",
+    );
 
     const accessToken = req.cookies.jwt;
     const refreshToken = req.cookies.refreshToken;
 
     if (!accessToken) {
-      return res.status(401).json({ error: 'Unauthorized' });
+      return res.status(401).json({ error: "Unauthorized" });
     }
 
     try {
@@ -149,19 +162,23 @@ const bootstrapServer = async () => {
 
       if (!user) {
         clearAuthCookies(res);
-        return res.status(401).json({ error: 'User not found' });
+        return res.status(401).json({ error: "User not found" });
       }
 
-      const { token: imageKitToken, expire, signature } = imagekit.getAuthenticationParameters();
+      const {
+        token: imageKitToken,
+        expire,
+        signature,
+      } = imagekit.getAuthenticationParameters();
       res.json({
         token: imageKitToken,
         expire,
         signature,
-        publicKey: IMAGEKIT_PUBLIC_KEY!
+        publicKey: IMAGEKIT_PUBLIC_KEY!,
       });
     } catch (error) {
-      console.error('Error verifying token for imagekit auth:', error);
-      return res.status(401).json({ error: 'Invalid token' });
+      console.error("Error verifying token for imagekit auth:", error);
+      return res.status(401).json({ error: "Invalid token" });
     }
   });
 

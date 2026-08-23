@@ -11,6 +11,7 @@ const schemaFiles = [
   "./typeDefs/types/review.graphql",
   "./typeDefs/types/characteristic.graphql",
   "./typeDefs/types/common.graphql",
+  "./typeDefs/types/guest.graphql",
   "./typeDefs/root.graphql",
 ];
 

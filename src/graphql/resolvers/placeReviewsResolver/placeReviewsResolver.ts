@@ -21,7 +21,8 @@ export async function placeReviewsResolver(
       .lean();
     const userIds = interactions
       .filter((interaction) => interaction.reviewText || interaction.rating)
-      .map((interaction) => interaction.userId);
+      .map((interaction) => interaction.userId)
+      .filter(Boolean);
     const users = await User.find({ _id: { $in: userIds } }).lean();
 
     const userMap: UserMap = users.reduce((acc: UserMap, user) => {
@@ -33,26 +34,31 @@ export async function placeReviewsResolver(
     }, {});
     const reviews = interactions
       .filter((interaction) => interaction.reviewText || interaction.rating)
-      .map((interaction) => ({
-        id: interaction._id.toString(),
-        text: interaction.reviewText || null,
-        userId: interaction.userId.toString(),
-        userName:
-          interaction.isGoogleReview
+      .map((interaction) => {
+        // Guest reviews carry no userId and have no User document behind them.
+        const userId = interaction.userId?.toString() ?? null;
+
+        return {
+          id: interaction._id.toString(),
+          text: interaction.reviewText || null,
+          userId,
+          userName: interaction.isGoogleReview
             ? "Google Maps User"
-            : userMap[interaction.userId.toString()]?.name || "Unknown User",
-        userAvatar: userMap[interaction.userId.toString()]?.avatar || null,
-        createdAt: interaction.date.toISOString(),
-        isOwnReview: context.user
-          ? interaction.userId.toString() === context.user.id
-          : false,
-        userRating: interaction.rating || null,
-        reviewImages: interaction.reviewImages || 0,
-        isGoogleReview: interaction.isGoogleReview || false,
-        characteristics: Object.entries(interaction.characteristics || {})
-          .filter(([, pressed]) => !!pressed)
-          .map(([key]) => key),
-      }));
+            : userId
+              ? userMap[userId]?.name || "Unknown User"
+              : "Anonymous User",
+          userAvatar: userId ? userMap[userId]?.avatar || null : null,
+          createdAt: interaction.date.toISOString(),
+          isOwnReview:
+            context.user && userId ? userId === context.user.id : false,
+          userRating: interaction.rating || null,
+          reviewImages: interaction.reviewImages || 0,
+          isGoogleReview: interaction.isGoogleReview || false,
+          characteristics: Object.entries(interaction.characteristics || {})
+            .filter(([, pressed]) => !!pressed)
+            .map(([key]) => key),
+        };
+      });
 
     return {
       id: placeId,

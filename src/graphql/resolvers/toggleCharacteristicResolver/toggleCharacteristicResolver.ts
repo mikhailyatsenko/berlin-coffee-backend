@@ -1,6 +1,10 @@
+import { Request } from "express";
 import { GraphQLError } from "graphql";
 import Interaction from "../../../models/Interaction.js";
 import Place from "../../../models/Place.js";
+import { IUser } from "../../../models/User.js";
+import { clientIp, consumeRateLimit } from "../../../utils/rateLimit.js";
+import { GuestArgs, resolveReviewActor } from "../../../utils/reviewActor.js";
 
 export type Characteristic =
   | "affordablePrices"
@@ -12,22 +16,17 @@ export type Characteristic =
   | "petFriendly"
   | "outdoorSeating";
 
+interface ToggleCharacteristicArgs extends GuestArgs {
+  placeId: string;
+  characteristic: Characteristic;
+}
+
 export async function toggleCharacteristicResolver(
   _: never,
-  {
-    placeId,
-    characteristic,
-  }: { placeId: string; characteristic: Characteristic },
-  { user }: { user?: { id?: string } },
+  { placeId, characteristic, guestId, guestSecret }: ToggleCharacteristicArgs,
+  { user, req }: { user?: IUser | null; req?: Request },
 ) {
-  if (!user) {
-    throw new GraphQLError("Authentication required", {
-      extensions: {
-        code: "UNAUTHENTICATED",
-        requiresLogin: true,
-      },
-    });
-  }
+  const actor = await resolveReviewActor(user, { guestId, guestSecret });
 
   try {
     const place = await Place.findById(placeId);
@@ -35,17 +34,22 @@ export async function toggleCharacteristicResolver(
       throw new GraphQLError("Place not found");
     }
     const existingInteraction = await Interaction.findOne({
-      userId: user.id,
+      ...actor.owner,
       placeId,
     });
 
     if (existingInteraction) {
+      // Toggling stays open to guests: it is how a review is composed, and it
+      // destroys nothing that cannot be put back.
       existingInteraction.characteristics[characteristic] =
         !existingInteraction.characteristics[characteristic];
       await existingInteraction.save();
     } else {
+      if (actor.isGuest) {
+        consumeRateLimit("guestReview", clientIp(req));
+      }
       const newInteraction = new Interaction({
-        userId: user.id,
+        ...actor.owner,
         placeId,
         characteristics: {
           [characteristic]: true,
@@ -58,6 +62,9 @@ export async function toggleCharacteristicResolver(
       success: true,
     };
   } catch (error) {
+    if (error instanceof GraphQLError) {
+      throw error;
+    }
     console.error("Error toggling characteristic:", error);
     return false;
   }

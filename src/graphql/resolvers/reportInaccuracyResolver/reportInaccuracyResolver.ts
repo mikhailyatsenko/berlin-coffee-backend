@@ -4,6 +4,9 @@ import {
   FROM_EMAIL,
   FROM_NAME,
 } from "../contactFormResolver/constants/index.js";
+import { Request } from "express";
+import { clientIp } from "../../../utils/rateLimit.js";
+import { verifyRecaptcha } from "../../../utils/verifyRecaptcha.js";
 
 export async function reportInaccuracyResolver(
   _: never,
@@ -11,8 +14,17 @@ export async function reportInaccuracyResolver(
     placeId,
     placeName,
     message,
-  }: { placeId: string; placeName: string; message: string },
+    captchaToken,
+  }: {
+    placeId: string;
+    placeName: string;
+    message: string;
+    captchaToken?: string | null;
+  },
+  { req }: { req?: Request },
 ) {
+  await verifyRecaptcha(captchaToken ?? "", "report_inaccuracy", clientIp(req));
+
   if (!process.env.MAILERSEND_API_KEY) {
     throw new Error("MAILERSEND_API_KEY is not defined");
   }

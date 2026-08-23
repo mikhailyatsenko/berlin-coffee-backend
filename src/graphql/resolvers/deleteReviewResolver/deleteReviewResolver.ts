@@ -24,7 +24,9 @@ export async function deleteReviewResolver(
   try {
     const interaction = await Interaction.findById(reviewId);
 
-    if (!interaction || interaction.userId.toString() !== context.user.id) {
+    // Guest reviews have no userId, so this also keeps them out of reach until
+    // they are claimed by an account.
+    if (!interaction || interaction.userId?.toString() !== context.user.id) {
       return {
         success: false,
         message: "Review not found or you don't have permission to delete it",
@@ -33,7 +35,9 @@ export async function deleteReviewResolver(
 
     if (deleteOptions === "deleteReviewText") {
       interaction.reviewText = undefined;
-      deleteAllReviewImages(`3welle/review-images/${interaction.placeId}/${reviewId}`)
+      deleteAllReviewImages(
+        `3welle/review-images/${interaction.placeId}/${reviewId}`,
+      );
       interaction.reviewImages = 0;
     } else if (deleteOptions === "deleteRating") {
       interaction.rating = undefined;
@@ -41,7 +45,9 @@ export async function deleteReviewResolver(
       interaction.reviewText = undefined;
       interaction.rating = undefined;
       if (interaction.reviewImages && interaction.reviewImages > 0) {
-        deleteAllReviewImages(`3welle/review-images/${interaction.placeId}/${reviewId}`)
+        deleteAllReviewImages(
+          `3welle/review-images/${interaction.placeId}/${reviewId}`,
+        );
         interaction.reviewImages = 0;
       }
     }
