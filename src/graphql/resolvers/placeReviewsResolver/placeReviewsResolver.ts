@@ -2,6 +2,7 @@ import Interaction from "../../../models/Interaction.js";
 import User from "../../../models/User.js";
 import Place from "../../../models/Place.js";
 import { GraphQLError } from "graphql";
+import { GuestContext } from "../../../utils/guestAuth.js";
 
 interface UserMap {
   [key: string]: {
@@ -13,8 +14,13 @@ interface UserMap {
 export async function placeReviewsResolver(
   _: never,
   { placeId }: { placeId: string },
-  context: { user?: { id: string } },
+  context: { user?: { id: string }; guest?: GuestContext },
 ) {
+  // A guest owns a review through the secret it proved on the way in, exactly
+  // as an account owns one through its cookie.
+  const ownGuestId =
+    context.guest?.status === "valid" ? context.guest.identity.guestId : null;
+
   try {
     const interactions = await Interaction.find({ placeId })
       .sort({ date: -1 })
@@ -49,8 +55,9 @@ export async function placeReviewsResolver(
               : "Anonymous User",
           userAvatar: userId ? userMap[userId]?.avatar || null : null,
           createdAt: interaction.date.toISOString(),
-          isOwnReview:
-            context.user && userId ? userId === context.user.id : false,
+          isOwnReview: userId
+            ? Boolean(context.user) && userId === context.user?.id
+            : Boolean(ownGuestId) && interaction.guestId === ownGuestId,
           userRating: interaction.rating || null,
           reviewImages: interaction.reviewImages || 0,
           isGoogleReview: interaction.isGoogleReview || false,

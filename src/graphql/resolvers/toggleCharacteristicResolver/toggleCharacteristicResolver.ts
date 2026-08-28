@@ -4,6 +4,7 @@ import Interaction from "../../../models/Interaction.js";
 import Place from "../../../models/Place.js";
 import { IUser } from "../../../models/User.js";
 import { clientIp, consumeRateLimit } from "../../../utils/rateLimit.js";
+import { GuestContext } from "../../../utils/guestAuth.js";
 import { GuestArgs, resolveReviewActor } from "../../../utils/reviewActor.js";
 
 export type Characteristic =
@@ -24,9 +25,13 @@ interface ToggleCharacteristicArgs extends GuestArgs {
 export async function toggleCharacteristicResolver(
   _: never,
   { placeId, characteristic, guestId, guestSecret }: ToggleCharacteristicArgs,
-  { user, req }: { user?: IUser | null; req?: Request },
+  {
+    user,
+    guest,
+    req,
+  }: { user?: IUser | null; guest?: GuestContext; req?: Request },
 ) {
-  const actor = await resolveReviewActor(user, { guestId, guestSecret });
+  const actor = await resolveReviewActor(user, guest, { guestId, guestSecret });
 
   try {
     const place = await Place.findById(placeId);
@@ -39,8 +44,6 @@ export async function toggleCharacteristicResolver(
     });
 
     if (existingInteraction) {
-      // Toggling stays open to guests: it is how a review is composed, and it
-      // destroys nothing that cannot be put back.
       existingInteraction.characteristics[characteristic] =
         !existingInteraction.characteristics[characteristic];
       await existingInteraction.save();

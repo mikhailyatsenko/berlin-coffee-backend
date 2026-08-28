@@ -4,6 +4,7 @@ import Interaction from "../../../models/Interaction.js";
 import { IUser } from "../../../models/User.js";
 import { uploadReviewImage } from "../../../utils/imagekit.js";
 import { clientIp, consumeRateLimit } from "../../../utils/rateLimit.js";
+import { GuestContext } from "../../../utils/guestAuth.js";
 import { GuestArgs, resolveReviewActor } from "../../../utils/reviewActor.js";
 
 /** Matches the cap the picker enforces client-side. */
@@ -31,9 +32,13 @@ interface UploadReviewImageArgs extends GuestArgs {
 export async function uploadReviewImageResolver(
   _: never,
   { reviewId, fileBuffer, guestId, guestSecret }: UploadReviewImageArgs,
-  { user, req }: { user?: IUser | null; req?: Request },
+  {
+    user,
+    guest,
+    req,
+  }: { user?: IUser | null; guest?: GuestContext; req?: Request },
 ) {
-  const actor = await resolveReviewActor(user, { guestId, guestSecret });
+  const actor = await resolveReviewActor(user, guest, { guestId, guestSecret });
 
   if (!fileBuffer) {
     throw new GraphQLError("Invalid file data", {

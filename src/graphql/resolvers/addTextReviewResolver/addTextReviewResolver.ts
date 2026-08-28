@@ -3,11 +3,8 @@ import Interaction from "../../../models/Interaction.js";
 import { GraphQLError } from "graphql";
 import { IUser } from "../../../models/User.js";
 import { clientIp, consumeRateLimit } from "../../../utils/rateLimit.js";
-import {
-  GuestArgs,
-  rejectGuestOverwrite,
-  resolveReviewActor,
-} from "../../../utils/reviewActor.js";
+import { GuestContext } from "../../../utils/guestAuth.js";
+import { GuestArgs, resolveReviewActor } from "../../../utils/reviewActor.js";
 
 interface AddTextReviewArgs extends GuestArgs {
   placeId: string;
@@ -19,9 +16,13 @@ interface AddTextReviewArgs extends GuestArgs {
 export async function addTextReviewResolver(
   _: never,
   { text, placeId, reviewImages, guestId, guestSecret }: AddTextReviewArgs,
-  { user, req }: { user?: IUser | null; req?: Request },
+  {
+    user,
+    guest,
+    req,
+  }: { user?: IUser | null; guest?: GuestContext; req?: Request },
 ) {
-  const actor = await resolveReviewActor(user, { guestId, guestSecret });
+  const actor = await resolveReviewActor(user, guest, { guestId, guestSecret });
 
   try {
     const interaction = await Interaction.findOne({
@@ -29,11 +30,8 @@ export async function addTextReviewResolver(
       placeId,
     }).lean();
 
-    // A guest may fill in a review they have not written yet, but not replace
-    // one — editing is what the sign-up prompt is for. Checked before anything
-    // is created, so the client never uploads photos only to be refused.
-    rejectGuestOverwrite(actor, Boolean(interaction?.reviewText));
-
+    // Only a first review costs quota: a guest owns this document through its
+    // secret and may rewrite it, the same as an account may.
     if (actor.isGuest && !interaction) {
       consumeRateLimit("guestReview", clientIp(req));
     }

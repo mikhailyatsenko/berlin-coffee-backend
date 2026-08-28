@@ -1,5 +1,6 @@
 import Place from "../../../../models/Place.js";
 import mongoose from "mongoose";
+import { ActorRef, ownInteractionCond } from "../../../../utils/reviewActor.js";
 
 export interface PlaceWithStats {
   _id: mongoose.Types.ObjectId;
@@ -25,13 +26,13 @@ export interface PlaceWithStats {
 
 /**
  * Получает места с облегчённой статистикой через агрегацию MongoDB
- * @param userId - ID пользователя для определения его взаимодействий
+ * @param actor - Пользователь или гость, чьи взаимодействия нужно отметить
  * @param limit - Количество записей для возврата
  * @param offset - Смещение (пропуск) записей
  * @returns Объект с массивом мест и общим количеством
  */
 export async function getPlacesWithStats(
-  userId?: string,
+  actor?: ActorRef,
   limit?: number,
   offset: number = 0,
 ): Promise<{ places: PlaceWithStats[]; total: number }> {
@@ -63,12 +64,7 @@ export async function getPlacesWithStats(
         userInteractions: {
           $filter: {
             input: "$interactions",
-            cond: {
-              $eq: [
-                "$$this.userId",
-                userId ? new mongoose.Types.ObjectId(userId) : null,
-              ],
-            },
+            cond: ownInteractionCond(actor),
           },
         },
       },
