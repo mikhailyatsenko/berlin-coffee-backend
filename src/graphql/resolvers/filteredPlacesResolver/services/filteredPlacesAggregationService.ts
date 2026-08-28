@@ -1,5 +1,6 @@
 import Place from "../../../../models/Place.js";
 import mongoose from "mongoose";
+import { ActorRef, ownInteractionCond } from "../../../../utils/reviewActor.js";
 
 export interface PlaceWithStats {
     _id: mongoose.Types.ObjectId;
@@ -25,7 +26,7 @@ export interface PlaceWithStats {
 }
 
 export async function getFilteredPlacesWithStats(
-    userId?: string,
+    actor?: ActorRef,
     neighborhood?: string[],
     minRating?: number,
     additionalInfo?: string[],
@@ -139,12 +140,7 @@ export async function getFilteredPlacesWithStats(
                 userInteractions: {
                     $filter: {
                         input: "$interactions",
-                        cond: {
-                            $eq: [
-                                "$$this.userId",
-                                userId ? new mongoose.Types.ObjectId(userId) : null,
-                            ],
-                        },
+                        cond: ownInteractionCond(actor),
                     },
                 },
             },

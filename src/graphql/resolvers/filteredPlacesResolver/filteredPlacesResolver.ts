@@ -1,4 +1,6 @@
 import { GraphQLError } from "graphql";
+import { GuestContext } from "../../../utils/guestAuth.js";
+import { resolveActorRef } from "../../../utils/reviewActor.js";
 import { getFilteredPlacesWithStats } from "./services/filteredPlacesAggregationService.js";
 
 
@@ -24,7 +26,7 @@ export async function filteredPlacesResolver(
         minRating?: number;
         additionalInfo?: string[];
     },
-    { user }: { user?: { id: string } },
+    { user, guest }: { user?: { id: string }; guest?: GuestContext },
 ) {
     try {
         // Валидация параметров
@@ -38,7 +40,7 @@ export async function filteredPlacesResolver(
         const normalizedNeighborhood = normalizeNeighborhood(neighborhood);
 
         const { places, total } = await getFilteredPlacesWithStats(
-            user?.id,
+            resolveActorRef(user, guest),
             normalizedNeighborhood,
             minRating,
             additionalInfo,

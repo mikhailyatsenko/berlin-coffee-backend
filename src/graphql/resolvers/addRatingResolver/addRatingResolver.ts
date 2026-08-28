@@ -4,11 +4,8 @@ import { GraphQLError } from "graphql";
 import mongoose from "mongoose";
 import { IUser } from "../../../models/User.js";
 import { clientIp, consumeRateLimit } from "../../../utils/rateLimit.js";
-import {
-  GuestArgs,
-  rejectGuestOverwrite,
-  resolveReviewActor,
-} from "../../../utils/reviewActor.js";
+import { GuestContext } from "../../../utils/guestAuth.js";
+import { GuestArgs, resolveReviewActor } from "../../../utils/reviewActor.js";
 
 interface AddRatingArgs extends GuestArgs {
   placeId: string;
@@ -18,9 +15,13 @@ interface AddRatingArgs extends GuestArgs {
 export async function addRatingResolver(
   _: never,
   { placeId, rating, guestId, guestSecret }: AddRatingArgs,
-  { user, req }: { user?: IUser | null; req?: Request },
+  {
+    user,
+    guest,
+    req,
+  }: { user?: IUser | null; guest?: GuestContext; req?: Request },
 ) {
-  const actor = await resolveReviewActor(user, { guestId, guestSecret });
+  const actor = await resolveReviewActor(user, guest, { guestId, guestSecret });
 
   try {
     const interaction = await Interaction.findOne({
@@ -28,9 +29,8 @@ export async function addRatingResolver(
       placeId,
     }).lean();
 
-    // Guests get one rating per place; changing it is what signing up is for.
-    rejectGuestOverwrite(actor, Boolean(interaction?.rating));
-
+    // Only a first rating costs quota: a guest owns this document through its
+    // secret and may revise it, the same as an account may.
     if (actor.isGuest && !interaction) {
       consumeRateLimit("guestReview", clientIp(req));
     }

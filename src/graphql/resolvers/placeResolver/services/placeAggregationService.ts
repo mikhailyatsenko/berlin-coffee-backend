@@ -1,5 +1,6 @@
 import Place from "../../../../models/Place.js";
 import mongoose from "mongoose";
+import { ActorRef, ownInteractionCond } from "../../../../utils/reviewActor.js";
 
 export interface PlaceWithStats {
   _id: mongoose.Types.ObjectId;
@@ -39,7 +40,7 @@ export interface PlaceWithStats {
 
 export async function getPlaceWithStatsById(
   placeId: string,
-  userId?: string,
+  actor?: ActorRef,
 ): Promise<PlaceWithStats | null> {
   const [place] = await Place.aggregate([
     { $match: { _id: new mongoose.Types.ObjectId(placeId) } },
@@ -74,12 +75,7 @@ export async function getPlaceWithStatsById(
         userInteractions: {
           $filter: {
             input: "$interactions",
-            cond: {
-              $eq: [
-                "$$this.userId",
-                userId ? new mongoose.Types.ObjectId(userId) : null,
-              ],
-            },
+            cond: ownInteractionCond(actor),
           },
         },
       },

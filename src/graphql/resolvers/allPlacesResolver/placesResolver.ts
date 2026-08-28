@@ -1,4 +1,6 @@
 import { GraphQLError } from "graphql";
+import { GuestContext } from "../../../utils/guestAuth.js";
+import { resolveActorRef } from "../../../utils/reviewActor.js";
 import { getPlacesWithStats } from "./services/placeAggregationService.js";
 
 interface PlacesResolverArgs {
@@ -9,12 +11,12 @@ interface PlacesResolverArgs {
 export async function placesResolver(
   _: never,
   { limit, offset = 0 }: PlacesResolverArgs,
-  { user }: { user?: { id: string } },
+  { user, guest }: { user?: { id: string }; guest?: GuestContext },
 ) {
   try {
     const resolvedLimit = typeof limit === "number" ? limit : undefined;
     const { places, total } = await getPlacesWithStats(
-      user?.id,
+      resolveActorRef(user, guest),
       resolvedLimit,
       offset,
     );

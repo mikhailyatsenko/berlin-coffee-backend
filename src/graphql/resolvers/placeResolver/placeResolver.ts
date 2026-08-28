@@ -1,4 +1,6 @@
 import { GraphQLError } from "graphql";
+import { GuestContext } from "../../../utils/guestAuth.js";
+import { resolveActorRef } from "../../../utils/reviewActor.js";
 import { getPlaceWithStatsById } from "./services/placeAggregationService.js";
 import { getPlaceImages } from "../../../utils/imagekit.js";
 import { cache } from "../../../utils/cache.js";
@@ -6,7 +8,7 @@ import { cache } from "../../../utils/cache.js";
 export async function placeResolver(
   _: never,
   { placeId }: { placeId: string },
-  { user }: { user?: { id: string } },
+  { user, guest }: { user?: { id: string }; guest?: GuestContext },
 ) {
   // Validate placeId presence and format (Mongo ObjectId 24-hex)
   if (!placeId || typeof placeId !== "string") {
@@ -23,7 +25,7 @@ export async function placeResolver(
   }
 
   try {
-    const place = await getPlaceWithStatsById(placeId, user?.id);
+    const place = await getPlaceWithStatsById(placeId, resolveActorRef(user, guest));
     if (!place) {
       throw new GraphQLError("Place not found", {
         extensions: { code: "NOT_FOUND", http: { status: 404 } },

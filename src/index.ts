@@ -24,8 +24,16 @@ import {
   clearAuthCookies,
   getUserFromToken,
 } from "./utils/tokenUtils.js";
+import {
+  GUEST_ID_HEADER,
+  GUEST_SECRET_HEADER,
+  GuestContext,
+  guestContextFromRequest,
+} from "./utils/guestAuth.js";
 export interface Context {
   user?: IUser | null;
+  /** Absent for signed-in users: an account always wins over guest headers. */
+  guest?: GuestContext;
   req?: Request;
   res: Response;
 }
@@ -87,7 +95,13 @@ const bootstrapServer = async () => {
           ? ["https://3welle.com", "https://dev.3welle.com"]
           : "http://localhost:5173",
       credentials: true,
-      allowedHeaders: ["Content-Type", "Authorization", "Content-Length"],
+      allowedHeaders: [
+        "Content-Type",
+        "Authorization",
+        "Content-Length",
+        GUEST_ID_HEADER,
+        GUEST_SECRET_HEADER,
+      ],
       methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     }),
     express.json(),
@@ -113,7 +127,12 @@ const bootstrapServer = async () => {
           await updateLastActive(user);
         }
 
-        return { user: user ?? null, req, res };
+        // Resolved once here rather than per resolver: a single operation can
+        // touch several of them, and each would otherwise repeat the lookup.
+        // Skipped entirely for signed-in users, whose account is the identity.
+        const guest = user ? undefined : await guestContextFromRequest(req);
+
+        return { user: user ?? null, guest, req, res };
       },
     }),
   );
