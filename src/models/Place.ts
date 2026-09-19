@@ -26,8 +26,17 @@ export interface IPlace extends Document {
     openingHours?: IOpeningHour[];
     phone?: string | null;
     website?: string | null;
+    businessStatus?: BusinessStatus;
   };
 }
+
+export type BusinessStatus = "OPERATIONAL" | "CLOSED_TEMPORARILY" | "CLOSED_PERMANENTLY";
+
+// Places Google reports as closed stay in the database (reviews, favorites and
+// direct links keep working) but are left out of every listing.
+export const VISIBLE_PLACE_MATCH = {
+  "properties.businessStatus": { $nin: ["CLOSED_TEMPORARILY", "CLOSED_PERMANENTLY"] },
+};
 
 
 const OpeningHourSchema = new mongoose.Schema(
@@ -63,6 +72,7 @@ const PlaceSchema = new mongoose.Schema({
     openingHours: { type: [OpeningHourSchema], default: [] },
     phone: { type: String, default: null },
     website: { type: String, default: null },
+    businessStatus: { type: String, default: "OPERATIONAL" },
   },
 });
 

@@ -1,4 +1,4 @@
-import Place from "../../../../models/Place.js";
+import Place, { VISIBLE_PLACE_MATCH } from "../../../../models/Place.js";
 import { cache } from "../../../../utils/cache.js";
 
 const CACHE_KEY = "neighborhoods:all";
@@ -17,6 +17,7 @@ export async function getAvailableNeighborhoods(): Promise<string[]> {
 
     // Используем агрегацию для получения всех уникальных neighborhoods
     const pipeline: any[] = [
+        { $match: VISIBLE_PLACE_MATCH },
         // Получаем только поле neighborhood из properties
         {
             $project: {

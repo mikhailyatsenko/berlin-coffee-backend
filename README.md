@@ -19,6 +19,9 @@
 - **Rating System**: Rate your favorite coffee shops.
 - **Responsive Design**: Optimized for both desktop and mobile devices.
 
+## Scripts
+- [Google Places sync](docs/google-places-sync.md) — refreshes opening hours, phone, website and closed status of places from Google. Every run is billed: read the doc before running.
+
 
 
 ### Frontend:
