@@ -105,6 +105,33 @@ export async function getPlaceImages(placeId: string): Promise<string[]> {
 }
 
 /**
+ * Lists the file names in one Review's Photo folder, e.g. `image_1.jpg`.
+ * Unlike getPlaceImages, a failed request throws: the repair script must not
+ * mistake an ImageKit error for a folder with no Photos.
+ * @param placeId - Place the review belongs to
+ * @param reviewId - Interaction id of the review
+ * @returns Promise<string[]> - File names, folders skipped
+ */
+export async function listReviewPhotoNames(
+  placeId: string,
+  reviewId: string,
+): Promise<string[]> {
+  // Rate limiting
+  const now = Date.now();
+  const timeSinceLastRequest = now - lastRequestTime;
+  if (timeSinceLastRequest < MIN_REQUEST_INTERVAL) {
+    await delay(MIN_REQUEST_INTERVAL - timeSinceLastRequest);
+  }
+  lastRequestTime = Date.now();
+
+  const result = await imagekit.listFiles({
+    path: `3welle/review-images/${placeId}/${reviewId}`,
+  });
+
+  return result.filter(isFile).map((file) => file.name);
+}
+
+/**
  * Uploads avatar to ImageKit with resizing and compression
  * @param fileBuffer - File buffer
  * @param fileName - File name
