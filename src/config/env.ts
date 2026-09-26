@@ -13,6 +13,7 @@ export const {
   IMAGEKIT_PRIVATE_KEY,
   IMAGEKIT_URL_ENDPOINT,
   RECAPTCHA_V3_SECRET,
+  PLACE_SUGGESTION_REVIEW_SECRET,
 } = process.env;
 
 const requiredEnvVars = [
@@ -26,6 +27,7 @@ const requiredEnvVars = [
   "IMAGEKIT_PRIVATE_KEY",
   "IMAGEKIT_URL_ENDPOINT",
   "RECAPTCHA_V3_SECRET",
+  "PLACE_SUGGESTION_REVIEW_SECRET",
 ];
 
 for (const envVar of requiredEnvVars) {

@@ -87,3 +87,4 @@ The database and code predate the glossary in places. Use the glossary term in p
 | Amenity                 | `properties.additionalInfo`                                             |
 | Photo                   | `reviewImages` (a count on the Interaction; the client renders `image_1..image_N` from it, so it only grows after the file is stored) |
 | Guest identity          | `GuestIdentity` model                                                   |
+| Place suggestion        | `PlaceSuggestion` model (`src/models/PlaceSuggestion.ts`); its status is `pending`, `published` or `rejected` |
