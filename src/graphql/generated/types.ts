@@ -155,7 +155,6 @@ export type MutationAddRatingArgs = {
 
 export type MutationAddTextReviewArgs = {
   placeId: Scalars['ID']['input'];
-  reviewImages?: InputMaybe<Scalars['Int']['input']>;
   text: Scalars['String']['input'];
 };
 
