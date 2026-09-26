@@ -85,5 +85,5 @@ The database and code predate the glossary in places. Use the glossary term in p
 | Review, Favorite, Visit | one `Interaction` document per person and Place (`src/models/Interaction.ts`); a Favorite is `isFavorite`, a Visit is an Interaction with a Rating or Review text |
 | Place                   | `NewPlace` model, `newplaces` collection                                |
 | Amenity                 | `properties.additionalInfo`                                             |
-| Photo                   | `reviewImages` (a count on the Interaction)                             |
+| Photo                   | `reviewImages` (a count on the Interaction; the client renders `image_1..image_N` from it, so it only grows after the file is stored) |
 | Guest identity          | `GuestIdentity` model                                                   |

@@ -1,8 +1,12 @@
+import { randomUUID } from "node:crypto";
 import { Request } from "express";
 import { GraphQLError } from "graphql";
 import Interaction from "../../../models/Interaction.js";
 import { IUser } from "../../../models/User.js";
-import { uploadReviewImage } from "../../../utils/imagekit.js";
+import {
+  getReviewImageUploadTimeoutMs,
+  uploadReviewImage,
+} from "../../../utils/imagekit.js";
 import { clientIp, consumeRateLimit } from "../../../utils/rateLimit.js";
 import { GuestContext } from "../../../utils/guestAuth.js";
 import { GuestArgs, resolveReviewActor } from "../../../utils/reviewActor.js";
@@ -11,6 +15,8 @@ import { GuestArgs, resolveReviewActor } from "../../../utils/reviewActor.js";
 const MAX_IMAGES_PER_REVIEW = 10;
 /** Client already downscales to 1440px WebP; this is a sanity bound. */
 const MAX_DECODED_BYTES = 3 * 1024 * 1024;
+/** What the lease outlasts the upload timeout by: image processing plus the commit. */
+const LEASE_MARGIN_MS = 15_000;
 
 interface UploadReviewImageArgs extends GuestArgs {
   reviewId: string;
@@ -24,10 +30,13 @@ interface UploadReviewImageArgs extends GuestArgs {
  * upload signature covers only token+expire, so a path can only be enforced by
  * never handing the credentials out in the first place.
  *
- * The stored counter is the source of truth for image URLs, so the slot is
- * reserved with an atomic $inc before the upload and released if it fails —
- * that keeps names contiguous (image_1.jpg, image_2.jpg, ...) and makes a
- * half-finished upload a review with fewer photos rather than a broken one.
+ * The stored counter is the source of truth for image URLs: the frontend renders
+ * image_1.jpg .. image_<reviewImages>.jpg, so every one of those files must
+ * exist. The counter therefore only moves after the file is stored. Names stay
+ * contiguous because one upload at a time holds a short lease on the review;
+ * a concurrent upload would otherwise pick the same name and overwrite the file.
+ * A failed, stalled or crashed upload never touches the counter, and the lease
+ * expires on its own, so the review just has fewer photos.
  */
 export async function uploadReviewImageResolver(
   _: never,
@@ -58,43 +67,95 @@ export async function uploadReviewImageResolver(
     consumeRateLimit("guestPhoto", clientIp(req));
   }
 
-  // Reserve the next slot only if the review belongs to this actor and still
-  // has room. Doing it in one update avoids two clients racing for a name.
-  const reserved = await Interaction.findOneAndUpdate(
+  // Take the lease only if the review belongs to this actor, still has room and
+  // no other upload is in flight. One update, so two clients cannot both win.
+  const now = new Date();
+  const token = randomUUID();
+  const leased = await Interaction.findOneAndUpdate(
     {
       _id: reviewId,
       ...actor.owner,
       reviewImages: { $lt: MAX_IMAGES_PER_REVIEW },
+      $or: [
+        { "photoUploadLease.until": { $exists: false } },
+        { "photoUploadLease.until": { $lte: now } },
+      ],
     },
-    { $inc: { reviewImages: 1 } },
+    {
+      $set: {
+        photoUploadLease: {
+          token,
+          until: new Date(
+            now.getTime() + getReviewImageUploadTimeoutMs() + LEASE_MARGIN_MS,
+          ),
+        },
+      },
+    },
     { new: true },
   );
 
-  if (!reserved) {
-    const exists = await Interaction.exists({ _id: reviewId, ...actor.owner });
-    throw new GraphQLError(
-      exists
-        ? "This review already has the maximum number of images"
-        : "Review not found or you don't have permission to edit it",
-      { extensions: { code: exists ? "IMAGE_LIMIT_REACHED" : "FORBIDDEN" } },
-    );
+  if (!leased) {
+    const current = await Interaction.findOne({
+      _id: reviewId,
+      ...actor.owner,
+    }).select("reviewImages");
+
+    if (!current) {
+      throw new GraphQLError(
+        "Review not found or you don't have permission to edit it",
+        { extensions: { code: "FORBIDDEN" } },
+      );
+    }
+    if ((current.reviewImages ?? 0) >= MAX_IMAGES_PER_REVIEW) {
+      throw new GraphQLError(
+        "This review already has the maximum number of images",
+        { extensions: { code: "IMAGE_LIMIT_REACHED" } },
+      );
+    }
+    throw new GraphQLError("Another image of this review is still uploading", {
+      extensions: { code: "UPLOAD_IN_PROGRESS" },
+    });
   }
 
-  const index = reserved.reviewImages ?? 1;
+  const previous = leased.reviewImages ?? 0;
+  const index = previous + 1;
+
+  const releaseLease = () =>
+    Interaction.updateOne(
+      { _id: reviewId, "photoUploadLease.token": token },
+      { $unset: { photoUploadLease: "" } },
+    ).catch((error) => {
+      // The lease expires by itself; this only saves the next upload the wait.
+      console.error("Error releasing review image lease:", error);
+    });
 
   try {
-    await uploadReviewImage(
-      buffer,
-      reserved.placeId.toString(),
-      reviewId,
-      index,
-    );
+    await uploadReviewImage(buffer, leased.placeId.toString(), reviewId, index);
   } catch (error) {
-    await Interaction.updateOne(
-      { _id: reviewId },
-      { $inc: { reviewImages: -1 } },
-    );
+    await releaseLease();
     console.error("Error uploading review image:", error);
+    throw new GraphQLError("Failed to upload image", {
+      extensions: { code: "INTERNAL_SERVER_ERROR" },
+    });
+  }
+
+  // The file exists now: count it, but only if nothing changed under us. A
+  // lease that ran out and was taken over, or a review whose photos were
+  // deleted meanwhile, leaves the counter alone.
+  const committed = await Interaction.updateOne(
+    {
+      _id: reviewId,
+      "photoUploadLease.token": token,
+      reviewImages: previous,
+    },
+    { $set: { reviewImages: index }, $unset: { photoUploadLease: "" } },
+  );
+
+  if (committed.modifiedCount !== 1) {
+    await releaseLease();
+    console.error(
+      `Review image ${index} of review ${reviewId} was uploaded but not counted`,
+    );
     throw new GraphQLError("Failed to upload image", {
       extensions: { code: "INTERNAL_SERVER_ERROR" },
     });

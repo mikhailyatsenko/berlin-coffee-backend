@@ -24,6 +24,8 @@ export interface IInteraction extends Document {
   };
   date: Date;
   reviewImages?: number;
+  /** Held while a Photo upload is in flight, see uploadReviewImageResolver. */
+  photoUploadLease?: { token?: string; until?: Date };
   isGoogleReview?: boolean;
 }
 
@@ -50,6 +52,7 @@ const InteractionSchema = new mongoose.Schema({
   },
   date: { type: Date, default: Date.now },
   reviewImages: { type: Number, default: 0 },
+  photoUploadLease: { token: String, until: Date },
   isGoogleReview: { type: Boolean, default: false },
 });
 

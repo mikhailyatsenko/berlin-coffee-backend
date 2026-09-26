@@ -17,6 +17,36 @@ const imagekit = new ImageKit({
 let lastRequestTime = 0;
 const MIN_REQUEST_INTERVAL = 50; // 50ms between requests (20 requests per second)
 
+const DEFAULT_REVIEW_IMAGE_UPLOAD_TIMEOUT_MS = 30_000;
+
+/** How long a review image upload may take before it counts as failed. */
+export function getReviewImageUploadTimeoutMs(): number {
+  return (
+    Number(process.env.REVIEW_IMAGE_UPLOAD_TIMEOUT_MS) ||
+    DEFAULT_REVIEW_IMAGE_UPLOAD_TIMEOUT_MS
+  );
+}
+
+/**
+ * Stops waiting for a promise after `ms`. The ImageKit SDK (axios underneath)
+ * has no timeout or abort option, so the request itself cannot be cancelled;
+ * it is only abandoned.
+ */
+function withTimeout<T>(
+  promise: Promise<T>,
+  ms: number,
+  what: string,
+): Promise<T> {
+  let timer: NodeJS.Timeout;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(
+      () => reject(new Error(`${what} timed out after ${ms} ms`)),
+      ms,
+    );
+  });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+}
+
 /**
  * Function for delay between requests
  */
@@ -153,12 +183,16 @@ export async function uploadReviewImage(
       })
       .toBuffer();
 
-    const result = await imagekit.upload({
-      file: processedBuffer,
-      fileName: `image_${index}.jpg`,
-      folder: `3welle/review-images/${placeId}/${reviewId}`,
-      useUniqueFileName: false,
-    });
+    const result = await withTimeout(
+      imagekit.upload({
+        file: processedBuffer,
+        fileName: `image_${index}.jpg`,
+        folder: `3welle/review-images/${placeId}/${reviewId}`,
+        useUniqueFileName: false,
+      }),
+      getReviewImageUploadTimeoutMs(),
+      `ImageKit upload of image_${index}.jpg`,
+    );
 
     return result.filePath;
   } catch (error) {
