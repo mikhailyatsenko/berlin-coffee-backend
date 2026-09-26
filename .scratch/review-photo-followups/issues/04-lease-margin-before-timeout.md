@@ -1,6 +1,6 @@
 # The upload lease's margin is measured before the slow part of the request starts
 
-Status: ready-for-agent
+Status: done
 
 ## Problem
 
@@ -17,6 +17,33 @@ Prefer the structural fix over just enlarging the constant: move the lease's `un
 
 ## Acceptance criteria
 
-- [ ] A comment or measurement records what `sharp` + rate-limit delay actually cost for a near-`MAX_DECODED_BYTES` input, so the margin isn't a guess.
-- [ ] The lease cannot lapse solely because of `sharp`/rate-limit time when the ImageKit call itself is fast.
-- [ ] Existing lease/timeout tests in `tests/uploadReviewImage.test.ts` still pass.
+- [x] A comment or measurement records what `sharp` + rate-limit delay actually cost for a near-`MAX_DECODED_BYTES` input, so the margin isn't a guess.
+- [x] The lease cannot lapse solely because of `sharp`/rate-limit time when the ImageKit call itself is fast.
+- [x] Existing lease/timeout tests in `tests/uploadReviewImage.test.ts` still pass.
+
+## Comments
+
+- 2026-09-26: Implemented on `fix/lease-margin-before-timeout` with the "pass the
+  deadline down" route. The resolver computes `uploadDeadline(now)` (upload timeout
+  from the lease's own `now`) and `uploadLeaseUntil(now)` is now that deadline plus
+  `LEASE_MARGIN_MS`, so the two cannot drift. `uploadReviewImage` takes the deadline:
+  the rate-limit wait and the sharp resize run on its clock, `withTimeout` gets only
+  the time left, and ImageKit is not called at all once the deadline has passed (a
+  plain error, so the lease is released straight away; nothing is in flight).
+- `LEASE_MARGIN_MS` stays 15 s: processing is now paid out of the upload timeout,
+  so the margin only covers the one Mongo write after the ImageKit call (commit or
+  abandoned hold). The comment next to it records the measurement: sharp resize
+  (1440px, mozjpeg) of near-limit inputs on an Apple M2 took 0.1–0.8 s (worst: a
+  1.4 MB noisy 1440×1080 WebP; a 2.9 MB PNG 0.35 s; a 16000px flat PNG 0.65 s).
+  The rate-limit wait is at most `MIN_REQUEST_INTERVAL` (50 ms).
+- Side effect: the ImageKit call now gets the timeout minus processing time, not the
+  full timeout. With processing under a second against 30 s, that is accepted.
+- Tests (`tests/uploadReviewImage.test.ts`, sharp slowed via `toBuffer`): processing
+  plus a slow ImageKit call together exceed the timeout → treated as an abandoned
+  upload, lease held; processing alone outlasts the timeout → ImageKit never called,
+  slot free again.
+- Not done, from code review: (1) a deadline with only a few ms left still starts
+  the ImageKit call, which is abandoned at once and takes the 10-minute hold; a
+  minimum remaining time could skip it. (2) `deleteAllReviewImages` has no timeout,
+  so a folder delete longer than timeout + margin lets deleteReview's fence lapse
+  mid-delete; worth its own ticket.

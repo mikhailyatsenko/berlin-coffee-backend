@@ -173,14 +173,14 @@ export async function uploadAvatar(
  * File names must stay `image_1.jpg`, `image_2.jpg`, ... — the frontend derives
  * review image URLs from the stored counter (see getReviewImages.ts).
  *
- * @param fileBuffer - Decoded file buffer
- * @param placeId - Place the review belongs to
- * @param reviewId - Interaction id of the review
  * The rate-limit wait and the resize run on the clock of `deadline`, not
  * before it: the caller's lease is measured from the same moment, so time
  * spent here cannot eat into the margin the lease keeps past the timeout.
  * Once the deadline has passed, ImageKit is not called at all.
  *
+ * @param fileBuffer - Decoded file buffer
+ * @param placeId - Place the review belongs to
+ * @param reviewId - Interaction id of the review
  * @param index - 1-based position of the image within the review
  * @param deadline - When the ImageKit call is abandoned
  * @returns Promise<string> - ImageKit file path

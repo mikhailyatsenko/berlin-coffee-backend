@@ -52,21 +52,21 @@ let behavior: (call: UploadCall, n: number) => Promise<void> = async () => {};
   return { filePath };
 };
 
-// --- slow image processing -------------------------------------------------
-
-/** Extra time the server's sharp step takes before ImageKit is called. */
-let processingDelayMs = 0;
-const realToBuffer = sharp.prototype.toBuffer;
-(sharp.prototype as any).toBuffer = async function (...args: unknown[]) {
-  await sleep(processingDelayMs);
-  return realToBuffer.apply(this, args as any);
-};
-
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const hang = () => new Promise<void>(() => {});
 const fails = async (ms = 0) => {
   await sleep(ms);
   throw new Error("ImageKit 500");
+};
+
+// --- slow photo processing -------------------------------------------------
+
+/** Extra time the server's sharp resize takes before ImageKit is called. */
+let processingDelayMs = 0;
+const realToBuffer = sharp.prototype.toBuffer;
+(sharp.prototype as any).toBuffer = async function (...args: unknown[]) {
+  await sleep(processingDelayMs);
+  return realToBuffer.apply(this, args as any);
 };
 
 // --- mongod ----------------------------------------------------------------
@@ -254,7 +254,7 @@ test("a timed-out upload that lands late does not overwrite a counted photo", as
   await assertCounterMatchesFiles(review, [late, meanwhile, next]);
 });
 
-test("time spent processing the image counts against the upload timeout", async () => {
+test("time spent processing the photo counts against the upload timeout", async () => {
   const review = await createReview(4);
   seedFiles(review, 4);
 

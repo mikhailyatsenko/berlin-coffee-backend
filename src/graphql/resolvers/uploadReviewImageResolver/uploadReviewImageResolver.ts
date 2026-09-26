@@ -17,10 +17,10 @@ const MAX_IMAGES_PER_REVIEW = 10;
 /** Client already downscales to 1440px WebP; this is a sanity bound. */
 const MAX_DECODED_BYTES = 3 * 1024 * 1024;
 /**
- * What the lease outlasts the upload timeout by. The rate-limit wait (at most
- * 50 ms) and the sharp resize run inside the timeout, on a deadline taken from
- * the same `now` as the lease, so the margin only has to cover what follows
- * the ImageKit call: the commit, or the hold on an abandoned upload.
+ * What the lease outlasts the upload deadline by. The rate-limit wait and the
+ * sharp resize run before the deadline, not after it, so the margin only has
+ * to cover the one Mongo write that follows the ImageKit call: the commit, or
+ * the hold on an abandoned upload. 15 s is ample for that even under load.
  * For scale, measured 2026-09-26 on an Apple M2: resizing near-limit inputs
  * (a 1.4 MB noisy 1440px WebP, a 2.9 MB PNG, a 16000px flat PNG) took 0.1–0.8 s.
  */
@@ -28,14 +28,17 @@ const LEASE_MARGIN_MS = 15_000;
 /** The longest a timed-out upload keeps the lease while ImageKit may still store its file. */
 const DEFAULT_ABANDONED_LEASE_MS = 10 * 60_000;
 
+/** When an upload whose lease was taken at `now` stops waiting for ImageKit. */
+function uploadDeadline(now: Date): Date {
+  return new Date(now.getTime() + getReviewImageUploadTimeoutMs());
+}
+
 /**
  * When a lease taken at `now` runs out. deleteReview holds its fence to the
  * same horizon, so the fence always outlasts any upload lease taken before it.
  */
 export function uploadLeaseUntil(now: Date): Date {
-  return new Date(
-    now.getTime() + getReviewImageUploadTimeoutMs() + LEASE_MARGIN_MS,
-  );
+  return new Date(uploadDeadline(now).getTime() + LEASE_MARGIN_MS);
 }
 
 function getAbandonedLeaseMs(): number {
@@ -205,13 +208,12 @@ export async function uploadReviewImageResolver(
 
   try {
     // The upload's clock starts with the lease's, not after the resize.
-    const deadline = new Date(now.getTime() + getReviewImageUploadTimeoutMs());
     await uploadReviewImage(
       buffer,
       leased.placeId.toString(),
       reviewId,
       index,
-      deadline,
+      uploadDeadline(now),
     );
   } catch (error) {
     if (error instanceof UploadTimeoutError) {
