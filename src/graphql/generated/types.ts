@@ -405,15 +405,24 @@ export type PlaceSuggestionForReview = {
   suggestedBy: PlaceSuggester;
 };
 
+/**
+ * Text is trimmed; a blank optional field counts as missing. Longer input fails
+ * with BAD_USER_INPUT.
+ */
 export type PlaceSuggestionInput = {
+  /** Required, at most 300 characters. */
   address: Scalars['String']['input'];
+  /** At most 500 characters. */
   description?: InputMaybe<Scalars['String']['input']>;
   /**
    * Where to tell a Guest that their Place was added. Ignored for signed-in
-   * Users, whose account email is used instead.
+   * Users, whose account email is used instead. At most 254 characters and must
+   * look like an email.
    */
   email?: InputMaybe<Scalars['String']['input']>;
+  /** At most 200 characters. */
   instagram?: InputMaybe<Scalars['String']['input']>;
+  /** Required, at most 200 characters. */
   name: Scalars['String']['input'];
 };
 

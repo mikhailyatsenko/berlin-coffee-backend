@@ -95,7 +95,6 @@ export async function submitPlaceSuggestionResolver(
     ...(description && { description }),
     ...(instagram && { instagram }),
     ...(guestEmail && { guestEmail }),
-    status: "pending",
   });
 
   await sendAdminSuggestionEmail({

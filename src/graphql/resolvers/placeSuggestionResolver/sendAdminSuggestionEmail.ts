@@ -48,7 +48,7 @@ export async function sendAdminSuggestionEmail(
 
   try {
     await new MailerSend({
-      apiKey: process.env.MAILERSEND_API_KEY as string,
+      apiKey: env.mailerSendApiKey,
     }).email.send(
       new EmailParams()
         .setFrom(new Sender(FROM_EMAIL, FROM_NAME))

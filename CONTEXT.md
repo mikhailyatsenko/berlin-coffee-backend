@@ -1,6 +1,6 @@
 # Berlin Coffee Map: Backend
 
-The API behind a map of Berlin's specialty coffee places where people can find, rate and review them. The domain language is shared with the frontend repo (`../berlincoffeemap/CONTEXT.md`); terms below must match it. Frontend-only terms (Filters, Search, Quiz, Shortlist, Journal, Article, Place suggestion) live there.
+The API behind a map of Berlin's specialty coffee places where people can find, rate and review them. The domain language is shared with the frontend repo (`../berlincoffeemap/CONTEXT.md`); terms below must match it. Frontend-only terms (Filters, Search, Quiz, Shortlist, Journal, Article, Place photo) live there.
 
 ## Language
 
@@ -23,6 +23,10 @@ _Avoid_: Bookmark, saved place, like
 **Visit**:
 A Place a person has been to, known from their own Review of it. Not marked separately; Guests and Users have Visits alike.
 _Avoid_: Check-in, been there, visited place
+
+**Place suggestion**:
+A proposal from a User or Guest to add a Place that is not yet on the map, with its name, address and optionally Place photos. Not shown on the map until the admin publishes it; the admin completes the Place's details before publishing.
+_Avoid_: Submission, request, new place
 
 **Inaccuracy report**:
 A message from anyone that a Place's details are wrong, such as its opening hours or address.
@@ -87,4 +91,4 @@ The database and code predate the glossary in places. Use the glossary term in p
 | Amenity                 | `properties.additionalInfo`                                             |
 | Photo                   | `reviewImages` (a count on the Interaction; the client renders `image_1..image_N` from it, so it only grows after the file is stored) |
 | Guest identity          | `GuestIdentity` model                                                   |
-| Place suggestion        | `PlaceSuggestion` model (`src/models/PlaceSuggestion.ts`); its status is `pending`, `published` or `rejected` |
+| Place suggestion        | `PlaceSuggestion` model (`src/models/PlaceSuggestion.ts`); its status is `pending`, `published` or `rejected`; its photos are Place photos, never Photos |
