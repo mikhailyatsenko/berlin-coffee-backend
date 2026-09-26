@@ -1,0 +1,62 @@
+name: CI
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+        timeout-minutes: 5
+
+      - name: Type-check
+        run: npx tsc --noEmit
+        timeout-minutes: 5
+
+      - name: Regenerate GraphQL types
+        run: npm run generate
+        timeout-minutes: 2
+
+      - name: Fail if generated types are out of date
+        run: |
+          if ! git diff --exit-code -- src/graphql/generated/types.ts; then
+            echo "::error::src/graphql/generated/types.ts is out of date with the schema. Run 'npm run generate' and commit the result."
+            exit 1
+          fi
+
+      # tests/*.test.ts spawns its own throwaway mongod per suite (see
+      # tests/support/mongod.ts), so the runner just needs the mongod binary
+      # on PATH, not a running service.
+      - name: Install MongoDB Server
+        run: |
+          curl -fsSL https://pgp.mongodb.com/server-8.0.asc | sudo gpg --dearmor -o /usr/share/keyrings/mongodb-server-8.0.gpg
+          echo "deb [ arch=amd64 signed-by=/usr/share/keyrings/mongodb-server-8.0.gpg ] https://repo.mongodb.org/apt/ubuntu noble/mongodb-org/8.0 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-8.0.list
+          sudo apt-get update
+          sudo apt-get install -y mongodb-org-server
+        timeout-minutes: 5
+
+      - name: Run tests
+        run: npm test
+        timeout-minutes: 5
