@@ -69,12 +69,13 @@ match — right before delete's own unconditional `$set reviewImages: 0` then
 overwrites that just-committed count back to 0. This is the same race class
 the ticket describes, just narrower; the ticket explicitly scopes out extra
 lease-coordination for the case it does describe ("no extra lease-awareness
-is needed here"), and closing this narrower window would need either a
-lease-aware guard on delete's own update or collapsing both writes into one
-transaction — real added coordination, not something implied by the four
-acceptance criteria above. Left unaddressed as out of scope; worth a
-follow-up ticket if it matters in practice (the window is two in-process
-`await`s wide, no network latency between them).
+is needed here"). Closing it needs real added coordination that the four
+acceptance criteria above don't ask for, so it was left out of scope here
+and filed as ticket 07 (`07-deletereview-fence-upload-lease.md`): delete
+takes the upload lease as a fence while it clears Photos. That ticket also
+records why the cheaper-looking fixes (unsetting the lease, a conditional
+counter clear, reordering the two writes) don't close the window.
 
-Committed on `fix/deletereview-lease-race` (from `main`), not yet merged or
-opened as a PR.
+Committed on `fix/deletereview-lease-race` (from `main`) and merged into
+local `main` without a PR (merge commit `d913450`); not pushed to `origin`
+yet.
