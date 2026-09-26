@@ -1,0 +1,89 @@
+# Berlin Coffee Map: Backend
+
+The API behind a map of Berlin's specialty coffee places where people can find, rate and review them. The domain language is shared with the frontend repo (`../berlincoffeemap/CONTEXT.md`); terms below must match it. Frontend-only terms (Filters, Search, Quiz, Shortlist, Journal, Article, Place suggestion) live there.
+
+## Language
+
+**Place**:
+A venue listed on the map. Coffee shops are the typical kind, but not the only one. Closed Places (Google `businessStatus` closed temporarily or permanently) are hidden from the map.
+_Avoid_: Coffee shop, cafe, spot, location
+
+**Neighborhood**:
+The Berlin Bezirk a Place is in, one of the city's twelve, e.g. Friedrichshain-Kreuzberg.
+_Avoid_: District, area, Kiez, Ortsteil
+
+**Amenity**:
+A factual feature of a Place imported from Google, such as dine-in or wheelchair access. Data, not opinion. Stored as `additionalInfo` on a Place.
+_Avoid_: Tag, additional info
+
+**Favorite**:
+A Place a person has saved to come back to. Guests and Users have Favorites alike. Saving a Favorite is not a Visit.
+_Avoid_: Bookmark, saved place, like
+
+**Visit**:
+A Place a person has been to, known from their own Review of it. Not marked separately; Guests and Users have Visits alike.
+_Avoid_: Check-in, been there, visited place
+
+**Inaccuracy report**:
+A message from anyone that a Place's details are wrong, such as its opening hours or address.
+_Avoid_: Complaint, feedback, correction
+
+### People
+
+**User**:
+A person with an account, signed in by email or Google.
+_Avoid_: Account, member
+
+**Guest**:
+A person without an account who has rated, reviewed or saved something. Identified only by their Guest identity.
+_Avoid_: Anonymous, visitor
+
+**Guest identity**:
+The proof held in one browser that a Guest's Reviews and Favorites belong to them: a `guestId` plus a secret, of which only the hash is stored. Issued once after a reCAPTCHA check. Losing it leaves the Reviews public but no longer editable by that Guest.
+_Avoid_: Guest session, guest token
+
+**Claim**:
+Moving a Guest's Reviews and Favorites to the User account they sign in to. A Guest Review for a Place the User already reviewed is not moved and stays anonymous.
+_Avoid_: Merge, migrate, transfer
+
+### Reviews
+
+**Review**:
+One opinion about one Place: a Rating, Review text, Characteristics and Photos, any of which may be missing. Left by a User or Guest (at most one per Place), or imported as a Google review.
+_Avoid_: Feedback, comment, interaction (in prose and API names)
+
+**Google review**:
+A Review imported from Google. No User or Guest stands behind it, and it cannot be edited here.
+_Avoid_: External review, imported review
+
+**Rating**:
+The numeric score inside a Review, 1 to 5.
+_Avoid_: Review (for the score alone), stars, vote
+
+**Average rating**:
+The mean of all Ratings for a Place, Google reviews included.
+_Avoid_: Score, overall rating
+
+**Review text**:
+The written part of a Review.
+_Avoid_: Text review, comment
+
+**Photo**:
+An image attached to a Review, stored in ImageKit. Users and Guests add their own; Google reviews bring theirs from Google.
+_Avoid_: Image, picture, review image
+
+**Characteristic**:
+One of a fixed set of qualities (e.g. free Wi-Fi, pet friendly) that a person marks for a Place in their Review. The community's opinion, counted per Place.
+_Avoid_: Feature, tag, attribute
+
+## Code names
+
+The database and code predate the glossary in places. Use the glossary term in prose, issues and new API names; use the code name only when pointing at code.
+
+| Term                    | Code                                                                    |
+| ----------------------- | ----------------------------------------------------------------------- |
+| Review, Favorite, Visit | one `Interaction` document per person and Place (`src/models/Interaction.ts`); a Favorite is `isFavorite`, a Visit is an Interaction with a Rating or Review text |
+| Place                   | `NewPlace` model, `newplaces` collection                                |
+| Amenity                 | `properties.additionalInfo`                                             |
+| Photo                   | `reviewImages` (a count on the Interaction)                             |
+| Guest identity          | `GuestIdentity` model                                                   |
