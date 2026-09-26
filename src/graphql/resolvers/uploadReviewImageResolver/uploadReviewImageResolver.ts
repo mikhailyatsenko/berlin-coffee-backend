@@ -16,7 +16,14 @@ import { GuestArgs, resolveReviewActor } from "../../../utils/reviewActor.js";
 const MAX_IMAGES_PER_REVIEW = 10;
 /** Client already downscales to 1440px WebP; this is a sanity bound. */
 const MAX_DECODED_BYTES = 3 * 1024 * 1024;
-/** What the lease outlasts the upload timeout by: image processing plus the commit. */
+/**
+ * What the lease outlasts the upload timeout by. The rate-limit wait (at most
+ * 50 ms) and the sharp resize run inside the timeout, on a deadline taken from
+ * the same `now` as the lease, so the margin only has to cover what follows
+ * the ImageKit call: the commit, or the hold on an abandoned upload.
+ * For scale, measured 2026-09-26 on an Apple M2: resizing near-limit inputs
+ * (a 1.4 MB noisy 1440px WebP, a 2.9 MB PNG, a 16000px flat PNG) took 0.1–0.8 s.
+ */
 const LEASE_MARGIN_MS = 15_000;
 /** The longest a timed-out upload keeps the lease while ImageKit may still store its file. */
 const DEFAULT_ABANDONED_LEASE_MS = 10 * 60_000;
@@ -197,7 +204,15 @@ export async function uploadReviewImageResolver(
   };
 
   try {
-    await uploadReviewImage(buffer, leased.placeId.toString(), reviewId, index);
+    // The upload's clock starts with the lease's, not after the resize.
+    const deadline = new Date(now.getTime() + getReviewImageUploadTimeoutMs());
+    await uploadReviewImage(
+      buffer,
+      leased.placeId.toString(),
+      reviewId,
+      index,
+      deadline,
+    );
   } catch (error) {
     if (error instanceof UploadTimeoutError) {
       await holdLeaseWhileAbandoned();

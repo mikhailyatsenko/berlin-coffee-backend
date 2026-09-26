@@ -176,7 +176,13 @@ export async function uploadAvatar(
  * @param fileBuffer - Decoded file buffer
  * @param placeId - Place the review belongs to
  * @param reviewId - Interaction id of the review
+ * The rate-limit wait and the resize run on the clock of `deadline`, not
+ * before it: the caller's lease is measured from the same moment, so time
+ * spent here cannot eat into the margin the lease keeps past the timeout.
+ * Once the deadline has passed, ImageKit is not called at all.
+ *
  * @param index - 1-based position of the image within the review
+ * @param deadline - When the ImageKit call is abandoned
  * @returns Promise<string> - ImageKit file path
  */
 export async function uploadReviewImage(
@@ -184,6 +190,7 @@ export async function uploadReviewImage(
   placeId: string,
   reviewId: string,
   index: number,
+  deadline: Date,
 ): Promise<string> {
   try {
     // Rate limiting
@@ -206,6 +213,13 @@ export async function uploadReviewImage(
       })
       .toBuffer();
 
+    const remainingMs = deadline.getTime() - Date.now();
+    if (remainingMs <= 0) {
+      throw new Error(
+        `Processing image_${index}.jpg used up the upload timeout before ImageKit was called`,
+      );
+    }
+
     const result = await withTimeout(
       imagekit.upload({
         file: processedBuffer,
@@ -213,7 +227,7 @@ export async function uploadReviewImage(
         folder: `3welle/review-images/${placeId}/${reviewId}`,
         useUniqueFileName: false,
       }),
-      getReviewImageUploadTimeoutMs(),
+      remainingMs,
       `ImageKit upload of image_${index}.jpg`,
     );
 
