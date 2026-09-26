@@ -86,9 +86,6 @@ type Mutation {
   addTextReview(
     placeId: ID!
     text: String!
-    # Deprecated: the server counts uploaded images itself. Kept so the previous
-    # frontend build keeps working during the rollout.
-    reviewImages: Int
     guestId: String
     guestSecret: String
   ): AddTextReviewResponse!

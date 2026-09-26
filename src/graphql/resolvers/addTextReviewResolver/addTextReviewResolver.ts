@@ -9,13 +9,11 @@ import { GuestArgs, resolveReviewActor } from "../../../utils/reviewActor.js";
 interface AddTextReviewArgs extends GuestArgs {
   placeId: string;
   text: string;
-  /** Deprecated: only the previous frontend build still sends this. */
-  reviewImages?: number;
 }
 
 export async function addTextReviewResolver(
   _: never,
-  { text, placeId, reviewImages, guestId, guestSecret }: AddTextReviewArgs,
+  { text, placeId, guestId, guestSecret }: AddTextReviewArgs,
   {
     user,
     guest,
@@ -39,10 +37,6 @@ export async function addTextReviewResolver(
     const updateData = {
       date: new Date(),
       reviewText: text,
-      // Guests never take the legacy client-side upload path, so a counter from
-      // them would be meaningless. Drop this branch once the old frontend build
-      // is gone and the server owns the counter outright.
-      ...(!actor.isGuest && reviewImages ? { reviewImages } : {}),
     };
 
     let reviewId: string | null = null;
