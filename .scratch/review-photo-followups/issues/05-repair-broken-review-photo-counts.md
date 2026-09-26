@@ -24,7 +24,8 @@ Write a one-off script under `src/scripts/`, in the dry-run/`--apply` style `doc
 
 ## Comments
 
-Implemented on `chore/repair-broken-review-photo-counts` (not merged yet):
+Implemented on `chore/repair-broken-review-photo-counts`, merged to `main`
+via `626ca31`:
 `src/scripts/repairReviewPhotoCounts.ts` (entry point, dry run by default,
 `--apply` to write), logic in `src/scripts/reviewPhotoCounts.ts`, the
 ImageKit listing in `listReviewPhotoNames` (`src/utils/imagekit.ts`), tests
@@ -53,4 +54,12 @@ image_5 (404). `68d7c394…`: image_1 404, and ImageKit's folder for Place
 `68861721af72dc0dcf7c0195` is empty, with no `image_1.jpg` for that Review
 anywhere under `3welle/`, so 0 is right.
 
-**`--apply` has not been run.** It waits for the owner's go-ahead.
+`--apply` run by the owner on 2026-09-26, after the merge:
+
+```
+Repairing 2 of 1613 Reviews with Photos
+Repaired 2 Reviews
+```
+
+Both Reviews above now have the repaired count (4 and 0); none had changed
+since the listing.
