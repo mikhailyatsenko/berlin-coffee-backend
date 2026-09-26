@@ -176,18 +176,25 @@ export async function uploadReviewImageResolver(
       console.error("Error releasing review image lease:", error);
     });
 
-  const holdLeaseWhileAbandoned = () =>
-    Interaction.updateOne(
-      { _id: reviewId, "photoUploadLease.token": token },
+  // Our lease is still live when the upload times out, so whatever holds it
+  // now is either us or deleteReview's fence, and the late file must be held
+  // off either way. Someone else's lease is only ever extended, never cut short.
+  const holdLeaseWhileAbandoned = () => {
+    const holdUntil = new Date(Date.now() + getAbandonedLeaseMs());
+    return Interaction.updateOne(
       {
-        $set: {
-          "photoUploadLease.until": new Date(Date.now() + getAbandonedLeaseMs()),
-        },
+        _id: reviewId,
+        $or: [
+          { "photoUploadLease.token": token },
+          { "photoUploadLease.until": { $lte: holdUntil } },
+        ],
       },
+      { $set: { "photoUploadLease.until": holdUntil } },
     ).catch((error) => {
       // The lease then runs out on its original schedule, as before this hold existed.
       console.error("Error holding review image lease:", error);
     });
+  };
 
   try {
     await uploadReviewImage(buffer, leased.placeId.toString(), reviewId, index);
