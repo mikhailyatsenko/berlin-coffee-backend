@@ -21,6 +21,16 @@ const LEASE_MARGIN_MS = 15_000;
 /** The longest a timed-out upload keeps the lease while ImageKit may still store its file. */
 const DEFAULT_ABANDONED_LEASE_MS = 10 * 60_000;
 
+/**
+ * When a lease taken at `now` runs out. deleteReview holds its fence to the
+ * same horizon, so the fence always outlasts any upload lease taken before it.
+ */
+export function uploadLeaseUntil(now: Date): Date {
+  return new Date(
+    now.getTime() + getReviewImageUploadTimeoutMs() + LEASE_MARGIN_MS,
+  );
+}
+
 function getAbandonedLeaseMs(): number {
   return (
     Number(process.env.REVIEW_IMAGE_ABANDONED_LEASE_MS) ||
@@ -72,6 +82,9 @@ interface UploadReviewImageArgs extends GuestArgs {
  * no later upload takes the same name and has its counted file overwritten by
  * the late one. The late file is never counted (the client was told it failed,
  * and a Retry would count it twice); the next upload simply overwrites it.
+ *
+ * deleteReview takes the same lease as a fence while it clears Photos, so an
+ * upload arriving meanwhile gets UPLOAD_IN_PROGRESS like any other.
  */
 export async function uploadReviewImageResolver(
   _: never,
@@ -122,12 +135,7 @@ export async function uploadReviewImageResolver(
     },
     {
       $set: {
-        photoUploadLease: {
-          token,
-          until: new Date(
-            now.getTime() + getReviewImageUploadTimeoutMs() + LEASE_MARGIN_MS,
-          ),
-        },
+        photoUploadLease: { token, until: uploadLeaseUntil(now) },
       },
     },
     { new: true },
@@ -168,18 +176,25 @@ export async function uploadReviewImageResolver(
       console.error("Error releasing review image lease:", error);
     });
 
-  const holdLeaseWhileAbandoned = () =>
-    Interaction.updateOne(
-      { _id: reviewId, "photoUploadLease.token": token },
+  // Our lease is still live when the upload times out, so whatever holds it
+  // now is either us or deleteReview's fence, and the late file must be held
+  // off either way. Someone else's lease is only ever extended, never cut short.
+  const holdLeaseWhileAbandoned = () => {
+    const holdUntil = new Date(Date.now() + getAbandonedLeaseMs());
+    return Interaction.updateOne(
       {
-        $set: {
-          "photoUploadLease.until": new Date(Date.now() + getAbandonedLeaseMs()),
-        },
+        _id: reviewId,
+        $or: [
+          { "photoUploadLease.token": token },
+          { "photoUploadLease.until": { $lte: holdUntil } },
+        ],
       },
+      { $set: { "photoUploadLease.until": holdUntil } },
     ).catch((error) => {
       // The lease then runs out on its original schedule, as before this hold existed.
       console.error("Error holding review image lease:", error);
     });
+  };
 
   try {
     await uploadReviewImage(buffer, leased.placeId.toString(), reviewId, index);

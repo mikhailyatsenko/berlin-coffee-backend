@@ -43,13 +43,40 @@ Alternative, if the abandoned-hold interplay proves too fiddly: **delete refuses
 
 ## Acceptance criteria
 
-- [ ] An upload that starts while `deleteReview` is waiting on the folder delete fails with `UPLOAD_IN_PROGRESS`; afterwards the counter is 0 and the client was never told it succeeded.
-- [ ] The ticket 02 regression test (`tests/deleteReviewLeaseRace.test.ts`: lease taken before delete, commit after) still passes.
-- [ ] An upload started after `deleteReview` returns succeeds as `image_1`.
-- [ ] Deleting while a timed-out upload holds an extended lease doesn't shorten that hold.
-- [ ] `deleteRating` leaves an in-flight upload's lease alone and that upload commits normally.
-- [ ] `deleteReviewText`/`deleteAll` on a review with no Photos still skip both ImageKit and the lease.
+- [x] An upload that starts while `deleteReview` is waiting on the folder delete fails with `UPLOAD_IN_PROGRESS`; afterwards the counter is 0 and the client was never told it succeeded.
+- [x] The ticket 02 regression test (`tests/deleteReviewLeaseRace.test.ts`: lease taken before delete, commit after) still passes.
+- [x] An upload started after `deleteReview` returns succeeds as `image_1`.
+- [x] Deleting while a timed-out upload holds an extended lease doesn't shorten that hold.
+- [x] `deleteRating` leaves an in-flight upload's lease alone and that upload commits normally.
+- [x] `deleteReviewText`/`deleteAll` on a review with no Photos still skip both ImageKit and the lease.
 
 ## Notes
 
 - Builds on ticket 01 (`fix/missing-reviewimages-field`, commit `11e5288`, merged into `main` in `be27473`). It rewrote the upload's lease/commit filters to treat a missing `reviewImages` as 0 (`reviewImagesBelow`/`reviewImagesEquals` in `uploadReviewImageResolver.ts`); keep delete's lease handling consistent with those.
+
+## Comments
+
+- 2026-09-26: Implemented on `fix/deletereview-fence-upload-lease` with the proposed
+  fence, not the "delete refuses" alternative, so the frontend needs no change.
+  `deleteReview` (`clearPhotosBehindFence`) clears text/rating, sets `reviewImages: 0`
+  and puts its own token on `photoUploadLease` in one `findOneAndUpdate`, raising
+  `until` with `$max` to `uploadLeaseUntil(now)` (exported from the upload resolver,
+  so the fence always outlasts any regular upload lease). After the folder delete it
+  hands the lease back. If nobody moved `until` past the fence, it restores the
+  pre-fence lease when that was still live, and unsets it otherwise. If a longer hold
+  owns `until`, it only gives the earlier holder its token back.
+- Code review (Spec axis) found two ways the first version cut an abandoned hold
+  short. (1) A hold ending before the fence got raised to it and then unset. (2) An
+  upload fenced mid-flight that later timed out could no longer set its hold, because
+  its token was gone. The fix covers both: the restore above, plus
+  `holdLeaseWhileAbandoned` now also extends a lease it doesn't own, but only upward
+  (`$or: token match | until <= holdUntil`). Tests cover both, and a timeout during
+  the fence.
+- `tests/deleteReviewLeaseRace.test.ts` now runs with a 1 s upload timeout (was 5 s)
+  so the timeout scenarios stay fast.
+- Accepted cost (per this ticket): an upload that was fenced and then timed out
+  can't release its hold early once the fence raised `until` past its own; the lease
+  runs out on the hold's schedule.
+- Not done, possible follow-up: the lease rules now live in two resolvers. Moving
+  take/hold/release plus `uploadLeaseUntil` into one lease module would keep them
+  together.
