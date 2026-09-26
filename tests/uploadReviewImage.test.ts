@@ -175,6 +175,22 @@ test("an ImageKit call that never answers ends with an error, not a hang", async
   );
 });
 
+test("2026-09-26: a document whose reviewImages field was never written still accepts an upload", async () => {
+  const review = await createReview();
+  // Simulates a document that pre-dates the schema default: the field is
+  // entirely absent, not set to 0.
+  await Interaction.updateOne(
+    { _id: review.reviewId },
+    { $unset: { reviewImages: "" } },
+  );
+
+  const result = await settle(upload(review));
+
+  assert.deepEqual(result, { status: "ok", reviewImages: 1 });
+  assert.equal(writers.get(filePathOf(review, 1)), 1);
+  await assertCounterMatchesFiles(review, [result]);
+});
+
 test("2026-09-26: image_5 stalls, later uploads must not leave the counter past a missing file", async () => {
   const review = await createReview(4);
   seedFiles(review, 4);
