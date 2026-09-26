@@ -28,6 +28,25 @@ function getAbandonedLeaseMs(): number {
   );
 }
 
+/**
+ * A document that never had `reviewImages` written (pre-dates the schema
+ * default, or was inserted by something that skipped it) has no field for
+ * Mongo to compare against, even though the Mongoose default and the JS-side
+ * `?? 0` both treat it as 0. These two helpers keep that "missing means 0"
+ * equivalence in one place instead of restating it at every filter.
+ */
+function reviewImagesBelow(max: number) {
+  return {
+    $or: [{ reviewImages: { $lt: max } }, { reviewImages: { $exists: false } }],
+  };
+}
+
+function reviewImagesEquals(value: number) {
+  return value === 0
+    ? { $or: [{ reviewImages: 0 }, { reviewImages: { $exists: false } }] }
+    : { reviewImages: value };
+}
+
 interface UploadReviewImageArgs extends GuestArgs {
   reviewId: string;
   fileBuffer: string;
@@ -91,10 +110,14 @@ export async function uploadReviewImageResolver(
     {
       _id: reviewId,
       ...actor.owner,
-      reviewImages: { $lt: MAX_IMAGES_PER_REVIEW },
-      $or: [
-        { "photoUploadLease.until": { $exists: false } },
-        { "photoUploadLease.until": { $lte: now } },
+      $and: [
+        reviewImagesBelow(MAX_IMAGES_PER_REVIEW),
+        {
+          $or: [
+            { "photoUploadLease.until": { $exists: false } },
+            { "photoUploadLease.until": { $lte: now } },
+          ],
+        },
       ],
     },
     {
@@ -180,7 +203,7 @@ export async function uploadReviewImageResolver(
     {
       _id: reviewId,
       "photoUploadLease.token": token,
-      reviewImages: previous,
+      ...reviewImagesEquals(previous),
     },
     { $set: { reviewImages: index }, $unset: { photoUploadLease: "" } },
   );

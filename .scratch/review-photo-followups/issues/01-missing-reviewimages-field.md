@@ -21,6 +21,18 @@ Such a document can never take the lease, so every upload attempt on it gets the
 
 ## Acceptance criteria
 
-- [ ] A regression test creates an `Interaction` document with `reviewImages` unset (not `0` — actually absent) and confirms an upload on it succeeds and lands at `image_1.jpg`.
-- [ ] The lease-acquire and commit filters both treat "missing" the same as "zero".
-- [ ] The real count of affected documents (if any) is noted in the resolution.
+- [x] A regression test creates an `Interaction` document with `reviewImages` unset (not `0` — actually absent) and confirms an upload on it succeeds and lands at `image_1.jpg`.
+- [x] The lease-acquire and commit filters both treat "missing" the same as "zero".
+- [x] The real count of affected documents (if any) is noted in the resolution.
+
+## Comments
+
+- 2026-09-26: Fixed in `uploadReviewImageResolver.ts`. The lease-acquire filter now
+  uses `$and` of two `$or` branches (image-count vs. lease) so `reviewImages: { $lt:
+  MAX_IMAGES_PER_REVIEW }` also accepts `{ $exists: false }`; the commit filter
+  matches `{ reviewImages: 0 }` OR `{ $exists: false }` whenever `previous === 0`.
+  Regression test added: "a document whose reviewImages field was never written
+  still accepts an upload" in `tests/uploadReviewImage.test.ts`.
+- Ran a one-off read-only `Interaction.countDocuments({ reviewImages: { $exists:
+  false } })` against the real database: **count = 0**. No documents are affected
+  today; the fix is defensive/cheap as the ticket anticipated, not urgent.
