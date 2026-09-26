@@ -52,4 +52,4 @@ Alternative, if the abandoned-hold interplay proves too fiddly: **delete refuses
 
 ## Notes
 
-- Overlaps with ticket 01 (`fix/missing-reviewimages-field`, commit `11e5288`, **not merged into `main` yet**). It rewrites the upload's lease/commit filters to treat a missing `reviewImages` as 0. Land it first, or rebase onto it, so both resolvers agree on the lease shape.
+- Builds on ticket 01 (`fix/missing-reviewimages-field`, commit `11e5288`, merged into `main` in `be27473`). It rewrote the upload's lease/commit filters to treat a missing `reviewImages` as 0 (`reviewImagesBelow`/`reviewImagesEquals` in `uploadReviewImageResolver.ts`); keep delete's lease handling consistent with those.
