@@ -382,6 +382,7 @@ export type Query = {
   currentUser?: Maybe<User>;
   favoritePlaces: Array<FavoritePlace>;
   filteredPlaces: PlacesResponse;
+  neighborhoodShortlists: Array<Shortlist>;
   place: Place;
   placeReviews: PlaceReviews;
   places: PlacesResponse;
@@ -393,6 +394,11 @@ export type QueryFilteredPlacesArgs = {
   additionalInfo?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   minRating?: InputMaybe<Scalars['Float']['input']>;
   neighborhood?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+};
+
+
+export type QueryNeighborhoodShortlistsArgs = {
+  neighborhood: Scalars['String']['input'];
 };
 
 
@@ -439,6 +445,24 @@ export type Review = {
   userName: Scalars['String']['output'];
   userRating?: Maybe<Scalars['Float']['output']>;
 };
+
+export type Shortlist = {
+  __typename?: 'Shortlist';
+  /** Canonical Amenity names, for the map's Filters. */
+  amenities: Array<Scalars['String']['output']>;
+  id: ShortlistId;
+  /** Top 5 by Average rating. */
+  places: Array<Place>;
+  /** All Places that qualify. */
+  total: Scalars['Int']['output'];
+};
+
+export enum ShortlistId {
+  BreakfastBrunch = 'breakfastBrunch',
+  DogFriendly = 'dogFriendly',
+  OutdoorSeating = 'outdoorSeating',
+  Work = 'work'
+}
 
 export type SuccessResponse = {
   __typename?: 'SuccessResponse';
@@ -583,6 +607,8 @@ export type ResolversTypes = {
   RefreshTokenResponse: ResolverTypeWrapper<Omit<RefreshTokenResponse, 'user'> & { user: ResolversTypes['User'] }>;
   ReportInaccuracyResponse: ResolverTypeWrapper<ReportInaccuracyResponse>;
   Review: ResolverTypeWrapper<IInteraction>;
+  Shortlist: ResolverTypeWrapper<Omit<Shortlist, 'places'> & { places: Array<ResolversTypes['Place']> }>;
+  ShortlistId: ShortlistId;
   String: ResolverTypeWrapper<Scalars['String']['output']>;
   SuccessResponse: ResolverTypeWrapper<SuccessResponse>;
   UploadAvatarResponse: ResolverTypeWrapper<UploadAvatarResponse>;
@@ -624,6 +650,7 @@ export type ResolversParentTypes = {
   RefreshTokenResponse: Omit<RefreshTokenResponse, 'user'> & { user: ResolversParentTypes['User'] };
   ReportInaccuracyResponse: ReportInaccuracyResponse;
   Review: IInteraction;
+  Shortlist: Omit<Shortlist, 'places'> & { places: Array<ResolversParentTypes['Place']> };
   String: Scalars['String']['output'];
   SuccessResponse: SuccessResponse;
   UploadAvatarResponse: UploadAvatarResponse;
@@ -831,6 +858,7 @@ export type QueryResolvers<ContextType = Context, ParentType extends ResolversPa
   currentUser?: Resolver<Maybe<ResolversTypes['User']>, ParentType, ContextType>;
   favoritePlaces?: Resolver<Array<ResolversTypes['FavoritePlace']>, ParentType, ContextType>;
   filteredPlaces?: Resolver<ResolversTypes['PlacesResponse'], ParentType, ContextType, Partial<QueryFilteredPlacesArgs>>;
+  neighborhoodShortlists?: Resolver<Array<ResolversTypes['Shortlist']>, ParentType, ContextType, RequireFields<QueryNeighborhoodShortlistsArgs, 'neighborhood'>>;
   place?: Resolver<ResolversTypes['Place'], ParentType, ContextType, RequireFields<QueryPlaceArgs, 'placeId'>>;
   placeReviews?: Resolver<ResolversTypes['PlaceReviews'], ParentType, ContextType, RequireFields<QueryPlaceReviewsArgs, 'placeId'>>;
   places?: Resolver<ResolversTypes['PlacesResponse'], ParentType, ContextType, RequireFields<QueryPlacesArgs, 'offset'>>;
@@ -862,6 +890,14 @@ export type ReviewResolvers<ContextType = Context, ParentType extends ResolversP
   userId?: Resolver<Maybe<ResolversTypes['ID']>, ParentType, ContextType>;
   userName?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   userRating?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
+};
+
+export type ShortlistResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Shortlist'] = ResolversParentTypes['Shortlist']> = {
+  amenities?: Resolver<Array<ResolversTypes['String']>, ParentType, ContextType>;
+  id?: Resolver<ResolversTypes['ShortlistId'], ParentType, ContextType>;
+  places?: Resolver<Array<ResolversTypes['Place']>, ParentType, ContextType>;
+  total?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 };
 
@@ -932,6 +968,7 @@ export type Resolvers<ContextType = Context> = {
   RefreshTokenResponse?: RefreshTokenResponseResolvers<ContextType>;
   ReportInaccuracyResponse?: ReportInaccuracyResponseResolvers<ContextType>;
   Review?: ReviewResolvers<ContextType>;
+  Shortlist?: ShortlistResolvers<ContextType>;
   SuccessResponse?: SuccessResponseResolvers<ContextType>;
   UploadAvatarResponse?: UploadAvatarResponseResolvers<ContextType>;
   UploadReviewImageResponse?: UploadReviewImageResponseResolvers<ContextType>;

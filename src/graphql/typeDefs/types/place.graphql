@@ -10,6 +10,23 @@ type PlacesResponse {
   total: Int!
 }
 
+enum ShortlistId {
+  work
+  dogFriendly
+  outdoorSeating
+  breakfastBrunch
+}
+
+type Shortlist {
+  id: ShortlistId!
+  "Canonical Amenity names, for the map's Filters."
+  amenities: [String!]!
+  "Top 5 by Average rating."
+  places: [Place!]!
+  "All Places that qualify."
+  total: Int!
+}
+
 type FavoritePlace {
   id: ID!
   name: String!
