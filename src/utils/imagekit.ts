@@ -17,16 +17,6 @@ const imagekit = new ImageKit({
 let lastRequestTime = 0;
 const MIN_REQUEST_INTERVAL = 50; // 50ms between requests (20 requests per second)
 
-const DEFAULT_REVIEW_IMAGE_UPLOAD_TIMEOUT_MS = 30_000;
-
-/** How long a review image upload may take before it counts as failed. */
-export function getReviewImageUploadTimeoutMs(): number {
-  return (
-    Number(process.env.REVIEW_IMAGE_UPLOAD_TIMEOUT_MS) ||
-    DEFAULT_REVIEW_IMAGE_UPLOAD_TIMEOUT_MS
-  );
-}
-
 /**
  * An upload we stopped waiting for. It may still land later: `settled`
  * resolves once the abandoned request has actually finished, either way.
@@ -164,7 +154,7 @@ export async function uploadAvatar(
 }
 
 /**
- * Uploads a single review image to ImageKit.
+ * Uploads a single Photo of a Review to ImageKit.
  *
  * The folder and the file name are built here, on the server: the client-side
  * upload signature cannot be scoped to a path, so the only way to keep review

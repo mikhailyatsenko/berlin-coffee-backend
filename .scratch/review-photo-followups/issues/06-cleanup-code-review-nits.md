@@ -1,6 +1,6 @@
 # Cleanup: code-review nits on the upload fix
 
-Status: ready-for-agent
+Status: done
 
 ## Problem
 
@@ -22,7 +22,15 @@ Small quality findings from reviewing `9ce727a`/`0a085dd`, independent of each o
 
 ## Acceptance criteria
 
-- [ ] `npx eslint tests/` passes with no `no-explicit-any` on these lines.
-- [ ] `tests/` is included in `tsc --noEmit`'s check, and `npm run build` still produces the same `dist/` output as before (no test files leak in).
-- [ ] User-facing and doc-comment wording says "Photo" where `CONTEXT.md` would.
-- [ ] The two new env vars are read the way the rest of the repo's config is, or the resolution says why not.
+- [x] `npx eslint tests/` passes with no `no-explicit-any` on these lines.
+- [x] `tests/` is included in `tsc --noEmit`'s check, and `npm run build` still produces the same `dist/` output as before (no test files leak in).
+- [x] User-facing and doc-comment wording says "Photo" where `CONTEXT.md` would.
+- [x] The two new env vars are read the way the rest of the repo's config is, or the resolution says why not.
+
+## Comments
+
+- 2026-09-26: Done on `chore/cleanup-code-review-nits` (not merged yet).
+  - Tests: `tsconfig.json` now includes `tests/**/*`. The build and `watch` scripts use a new `tsconfig.build.json` (only `src/`, `rootDir: src`), because otherwise `rootDir` would move to the repo root and `dist/` would get `src/` and `tests/` subtrees. `npm run build` gives the same file list as `main`; only `config/env.js`, the upload resolver and `utils/imagekit.js` differ, as expected. Test fakes are now cast through `unknown` to the narrow shape they replace, and the fake user through `Pick<IUser, "id">`. That covers both upload test files, not just the two lines named above, so `npx eslint tests/` passes as a whole; `eslint --fix` also rewrapped `neighborhoodShortlists.test.ts`.
+  - Env: both variables are now read in `src/config/env.ts`, the module that already holds the ImageKit settings, not `utils/env.utils.ts`. They are exported constants with defaults and are not in the required-variables list: the defaults are what production runs with, and only tests override them. They are now read once at module load instead of on every call, which is fine because tests set them before their dynamic imports. The env var names keep `REVIEW_IMAGE_`, like the `reviewImages` field, so deployments need no change.
+  - Wording: all user-facing messages in the upload resolver now say "photo" (lowercase, as in the frontend's own copy; the frontend maps on `extensions.code`, not on the message). The resolver's and `uploadReviewImage`'s doc comments say "Photo".
+  - Left for later: the four `any`s in `src/utils/imagekit.ts` (avatar and URL code) predate this ticket. The fake-ImageKit types and the fake-user cast are still duplicated across the two test files and could move into `tests/support/`.
