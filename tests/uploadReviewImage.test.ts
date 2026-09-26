@@ -33,6 +33,7 @@ Object.assign(process.env, {
   IMAGEKIT_URL_ENDPOINT: "https://ik.invalid/test",
   RECAPTCHA_V3_SECRET: "test",
   REVIEW_IMAGE_UPLOAD_TIMEOUT_MS: "300",
+  REVIEW_IMAGE_ABANDONED_LEASE_MS: "800",
 });
 
 const { default: ImageKit } = await import("imagekit");
@@ -49,6 +50,8 @@ interface UploadCall {
 }
 
 const bucket = new Map<string, Buffer>();
+/** Which upload call last wrote each file. */
+const writers = new Map<string, number>();
 let calls = 0;
 /** Decides what one upload does; resolve = stored, reject = failed, never settle = hang. */
 let behavior: (call: UploadCall, n: number) => Promise<void> = async () => {};
@@ -62,6 +65,7 @@ let behavior: (call: UploadCall, n: number) => Promise<void> = async () => {};
   await behavior({ fileName: opts.fileName, folder: opts.folder }, n);
   const filePath = `/${opts.folder}/${opts.fileName}`;
   bucket.set(filePath, opts.file);
+  writers.set(filePath, n);
   return { filePath };
 };
 
@@ -105,6 +109,7 @@ after(async () => {
 
 beforeEach(async () => {
   bucket.clear();
+  writers.clear();
   calls = 0;
   behavior = async () => {};
   await Interaction.deleteMany({});
@@ -235,9 +240,35 @@ test("2026-09-26: image_5 stalls, later uploads must not leave the counter past 
     "error",
     "the stalled call must end with an error",
   );
+  // This stall never ends, so its lease holds until the abandoned-upload cap runs out.
+  await sleep(800);
   const retry = await settle(upload(review));
   assert.deepEqual(retry, { status: "ok", reviewImages: 5 });
   await assertCounterMatchesFiles(review, [retry]);
+});
+
+test("a timed-out upload that lands late does not overwrite a counted photo", async () => {
+  const review = await createReview(4);
+  seedFiles(review, 4);
+
+  // The first call answers only after the 300 ms timeout, then stores image_5 anyway.
+  behavior = async (_call, n) => (n === 1 ? sleep(500) : undefined);
+  const late = await settle(upload(review));
+  assert.equal(late.status, "error");
+
+  // While the late request may still land, nobody else gets image_5.
+  const meanwhile = await settle(upload(review));
+  assert.equal(meanwhile.status, "error");
+
+  await sleep(300);
+  const next = await settle(upload(review));
+  assert.deepEqual(next, { status: "ok", reviewImages: 5 });
+  assert.equal(
+    writers.get(filePathOf(review, 5)),
+    calls,
+    "image_5 must hold the counted upload, not the late one",
+  );
+  await assertCounterMatchesFiles(review, [late, meanwhile, next]);
 });
 
 test("a failed upload after a later one succeeded must not drop the later photo", async () => {

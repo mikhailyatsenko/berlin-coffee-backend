@@ -28,9 +28,23 @@ export function getReviewImageUploadTimeoutMs(): number {
 }
 
 /**
+ * An upload we stopped waiting for. It may still land later: `settled`
+ * resolves once the abandoned request has actually finished, either way.
+ */
+export class UploadTimeoutError extends Error {
+  constructor(
+    message: string,
+    readonly settled: Promise<void>,
+  ) {
+    super(message);
+    this.name = "UploadTimeoutError";
+  }
+}
+
+/**
  * Stops waiting for a promise after `ms`. The ImageKit SDK (axios underneath)
  * has no timeout or abort option, so the request itself cannot be cancelled;
- * it is only abandoned.
+ * it is only abandoned, and the UploadTimeoutError says when it is really over.
  */
 function withTimeout<T>(
   promise: Promise<T>,
@@ -40,7 +54,16 @@ function withTimeout<T>(
   let timer: NodeJS.Timeout;
   const timeout = new Promise<never>((_, reject) => {
     timer = setTimeout(
-      () => reject(new Error(`${what} timed out after ${ms} ms`)),
+      () =>
+        reject(
+          new UploadTimeoutError(
+            `${what} timed out after ${ms} ms`,
+            promise.then(
+              () => {},
+              () => {},
+            ),
+          ),
+        ),
       ms,
     );
   });
@@ -197,6 +220,8 @@ export async function uploadReviewImage(
     return result.filePath;
   } catch (error) {
     console.error("Error uploading review image to ImageKit:", error);
+    // The caller needs to know when an abandoned upload is really over.
+    if (error instanceof UploadTimeoutError) throw error;
     throw new Error("Failed to upload review image to ImageKit");
   }
 }

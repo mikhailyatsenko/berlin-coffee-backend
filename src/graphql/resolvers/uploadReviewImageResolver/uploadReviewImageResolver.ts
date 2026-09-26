@@ -6,6 +6,7 @@ import { IUser } from "../../../models/User.js";
 import {
   getReviewImageUploadTimeoutMs,
   uploadReviewImage,
+  UploadTimeoutError,
 } from "../../../utils/imagekit.js";
 import { clientIp, consumeRateLimit } from "../../../utils/rateLimit.js";
 import { GuestContext } from "../../../utils/guestAuth.js";
@@ -17,6 +18,15 @@ const MAX_IMAGES_PER_REVIEW = 10;
 const MAX_DECODED_BYTES = 3 * 1024 * 1024;
 /** What the lease outlasts the upload timeout by: image processing plus the commit. */
 const LEASE_MARGIN_MS = 15_000;
+/** The longest a timed-out upload keeps the lease while ImageKit may still store its file. */
+const DEFAULT_ABANDONED_LEASE_MS = 10 * 60_000;
+
+function getAbandonedLeaseMs(): number {
+  return (
+    Number(process.env.REVIEW_IMAGE_ABANDONED_LEASE_MS) ||
+    DEFAULT_ABANDONED_LEASE_MS
+  );
+}
 
 interface UploadReviewImageArgs extends GuestArgs {
   reviewId: string;
@@ -37,6 +47,12 @@ interface UploadReviewImageArgs extends GuestArgs {
  * a concurrent upload would otherwise pick the same name and overwrite the file.
  * A failed, stalled or crashed upload never touches the counter, and the lease
  * expires on its own, so the review just has fewer photos.
+ *
+ * A timed-out upload cannot be cancelled, and ImageKit may still store its
+ * image_<index> later. It keeps the lease until that request is really over, so
+ * no later upload takes the same name and has its counted file overwritten by
+ * the late one. The late file is never counted (the client was told it failed,
+ * and a Retry would count it twice); the next upload simply overwrites it.
  */
 export async function uploadReviewImageResolver(
   _: never,
@@ -129,10 +145,28 @@ export async function uploadReviewImageResolver(
       console.error("Error releasing review image lease:", error);
     });
 
+  const holdLeaseWhileAbandoned = () =>
+    Interaction.updateOne(
+      { _id: reviewId, "photoUploadLease.token": token },
+      {
+        $set: {
+          "photoUploadLease.until": new Date(Date.now() + getAbandonedLeaseMs()),
+        },
+      },
+    ).catch((error) => {
+      // The lease then runs out on its original schedule, as before this hold existed.
+      console.error("Error holding review image lease:", error);
+    });
+
   try {
     await uploadReviewImage(buffer, leased.placeId.toString(), reviewId, index);
   } catch (error) {
-    await releaseLease();
+    if (error instanceof UploadTimeoutError) {
+      await holdLeaseWhileAbandoned();
+      void error.settled.then(releaseLease);
+    } else {
+      await releaseLease();
+    }
     console.error("Error uploading review image:", error);
     throw new GraphQLError("Failed to upload image", {
       extensions: { code: "INTERNAL_SERVER_ERROR" },
