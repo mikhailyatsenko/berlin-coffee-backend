@@ -1,6 +1,6 @@
 # Remove the deprecated client-supplied `reviewImages` on `addTextReview`
 
-Status: ready-for-agent
+Status: done
 
 ## Problem
 
