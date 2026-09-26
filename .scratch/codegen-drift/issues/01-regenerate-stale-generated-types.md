@@ -46,13 +46,33 @@ CI (see ticket 02).
 
 **Status:** ready-for-agent
 
-- [ ] `npm ci` (or otherwise getting `node_modules/graphql` back to the
+- [x] `npm ci` (or otherwise getting `node_modules/graphql` back to the
       lockfile's `16.9.0`) is confirmed to fix the `getNodeComment` crash;
       note this in the PR description as the known fix if the crash recurs
       for someone else
-- [ ] `npm run generate` runs with no errors
-- [ ] The regenerated `src/graphql/generated/types.ts` is reviewed (it will be
+- [x] `npm run generate` runs with no errors
+- [x] The regenerated `src/graphql/generated/types.ts` is reviewed (it will be
       a large diff — mostly additions for the operations listed above) and
       committed
-- [ ] `tsc --noEmit` passes
-- [ ] `npm test` passes
+- [x] `tsc --noEmit` passes
+- [x] `npm test` passes
+
+## Comments
+
+`node_modules/graphql` was already at the pinned `16.9.0` in this working
+tree when work started, so the `getNodeComment` crash didn't reproduce here
+— nothing to fix beyond running `npm run generate`. The known fix
+(`npm ci` to reinstall the pinned version from the lockfile) is documented
+in the PR description for whoever hits it next.
+
+Regenerated diff matches the ticket's prediction: only the listed mutations
+(`createGuestIdentity`, `claimGuestReviews`, `refreshToken`,
+`reportInaccuracy`, `uploadReviewImage`), listed types
+(`AdditionalInfoTagsResponse`, `AvailableNeighborhoodsResponse`,
+`ClaimGuestReviewsResponse`, `GuestIdentityPayload`, `RefreshTokenResponse`,
+`ReportInaccuracyResponse`, `UploadReviewImageResponse`), and
+`guestId?`/`guestSecret?` args across several `Mutation*Args` types, plus a
+few incidental schema-drift byproducts (`Review.userId` → nullable,
+`QueryPlacesArgs.neighborhood` → array, `additionalInfo` arg added). `tsc
+--noEmit` and `npm test` (8/8) both pass. Committed on
+`fix/regenerate-stale-graphql-types` (commit `c30a67e`).
