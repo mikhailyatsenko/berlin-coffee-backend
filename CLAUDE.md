@@ -18,4 +18,8 @@ Single-context: one `CONTEXT.md` + `docs/adr/` at the repo root. See `docs/agent
 
 The client lives in a separate repo, checked out locally as a sibling directory: `../berlincoffeemap` (GitHub: `mikhailyatsenko/coffeemapberlin`). React + Vite + Apollo Client. It talks to this API over GraphQL; when a schema change here (`src/graphql/typeDefs/`) alters an operation the client uses, the client-side change goes there, not in this repo. Domain terms are shared with its `CONTEXT.md`.
 
-When a backend task turns out to need a frontend change, don't make it on your own. Ask the user whether to do it in the current session or to file it as a separate ticket in the frontend repo (its local tracker: `../berlincoffeemap/.scratch/<feature>/issues/NN-<slug>.md`, see `../berlincoffeemap/docs/agents/issue-tracker.md`).
+Before the first edit in `../berlincoffeemap` from a session started in this repo, ask the user whether to make the change in the current session or to hand it to a separate frontend session. This holds even when the task, ticket or prompt itself says the work is on the frontend: that tells you where the change goes, not that this session should make it. Ask once per session, and don't edit the frontend until the user answers.
+
+When the user hands it off, write it into the frontend's local tracker (`../berlincoffeemap/.scratch/<feature>/`, see `../berlincoffeemap/docs/agents/issue-tracker.md`) in the form that fits how clear the work is; choose it yourself and say which you chose:
+- the work is fully decided (operations, UI, tests known, e.g. from a backend spec): a ready-for-agent ticket, `issues/NN-<slug>.md`, that `/mattpocock-skills:implement` can take as is;
+- open questions remain (design, data, scope): a short `problem.md` with what the backend change needs from the frontend and why, links to the backend spec and ticket, and the open questions listed, no solution design. The user takes it to tickets in the frontend session.
