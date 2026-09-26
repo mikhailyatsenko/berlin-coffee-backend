@@ -1,6 +1,6 @@
 # Documents whose `reviewImages` field is entirely missing never get to upload again
 
-Status: ready-for-agent
+Status: done
 
 ## Problem
 
@@ -36,3 +36,6 @@ Such a document can never take the lease, so every upload attempt on it gets the
 - Ran a one-off read-only `Interaction.countDocuments({ reviewImages: { $exists:
   false } })` against the real database: **count = 0**. No documents are affected
   today; the fix is defensive/cheap as the ticket anticipated, not urgent.
+- 2026-09-26: Merged into local `main` without a PR (merge commit on top of
+  `91946ca`, together with ticket 02); full suite 16/16 and `tsc --noEmit` clean
+  on the merged result. Not pushed to `origin` yet.
