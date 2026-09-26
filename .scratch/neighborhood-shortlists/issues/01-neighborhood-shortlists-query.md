@@ -95,3 +95,4 @@ When done, tell the frontend session: the frontend part of ticket 03 then runs c
   (34 pass), `tsc` and `npm run generate` (no drift) are green.
 - Frontend session: the frontend part of ticket 03 can now run codegen against this
   schema.
+- 2026-09-26: Merged into `main` in `ad5bd3e` (commit `74da6c5`).
