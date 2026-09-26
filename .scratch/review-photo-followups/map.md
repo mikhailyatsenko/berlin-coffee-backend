@@ -33,3 +33,4 @@ Every finding from diagnosing and reviewing the review-photo upload hang (`fix/r
 
 - `uploadAvatar` has the same missing-timeout defect as `uploadReviewImage` had. Real, but a different feature; revisit as its own effort if it causes a symptom.
 - A separate dev/prod MongoDB or ImageKit split. Surfaced while researching how to run the repair script (`docs/google-places-sync.md:19-23`; this repo has exactly one `MONGO_URI` and one `IMAGEKIT_URL_ENDPOINT`, no dev/prod distinction anywhere). Infra work, not a review-photo fix.
+- Replacing the `reviewImages` count with a list of Photo records, which would remove the lease and the contiguous-files requirement. Backlogged as [its own idea](../review-photos-as-list/issues/01-photo-list-instead-of-count.md), awaiting a grilling round.
