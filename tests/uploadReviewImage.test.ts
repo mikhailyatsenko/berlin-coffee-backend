@@ -59,6 +59,16 @@ const fails = async (ms = 0) => {
   throw new Error("ImageKit 500");
 };
 
+// --- slow photo processing -------------------------------------------------
+
+/** Extra time the server's sharp resize takes before ImageKit is called. */
+let processingDelayMs = 0;
+const realToBuffer = sharp.prototype.toBuffer;
+(sharp.prototype as any).toBuffer = async function (...args: unknown[]) {
+  await sleep(processingDelayMs);
+  return realToBuffer.apply(this, args as any);
+};
+
 // --- mongod ----------------------------------------------------------------
 
 useThrowawayMongod();
@@ -68,6 +78,7 @@ beforeEach(async () => {
   writers.clear();
   calls = 0;
   behavior = async () => {};
+  processingDelayMs = 0;
   await Interaction.deleteMany({});
 });
 
@@ -241,6 +252,42 @@ test("a timed-out upload that lands late does not overwrite a counted photo", as
     "image_5 must hold the counted upload, not the late one",
   );
   await assertCounterMatchesFiles(review, [late, meanwhile, next]);
+});
+
+test("time spent processing the photo counts against the upload timeout", async () => {
+  const review = await createReview(4);
+  seedFiles(review, 4);
+
+  // Neither step alone reaches the 300 ms timeout; together they pass it, so
+  // the lease, which started its clock before processing, would be the one to run short.
+  // Processing stays well short of the timeout, so a loaded machine still reaches ImageKit.
+  processingDelayMs = 100;
+  behavior = async (_call, n) => (n === 1 ? sleep(280) : undefined);
+  const slow = await settle(upload(review));
+  assert.equal(calls, 1, "processing alone must not use up the timeout here");
+  assert.equal(slow.status, "error", "the upload must time out");
+
+  // It is treated as an abandoned upload: image_5 stays held while it may still land.
+  processingDelayMs = 0;
+  const meanwhile = await settle(upload(review));
+  assert.equal(meanwhile.status, "error");
+  await assertCounterMatchesFiles(review, [slow, meanwhile]);
+});
+
+test("processing that outlasts the upload timeout never starts the ImageKit call", async () => {
+  const review = await createReview(4);
+  seedFiles(review, 4);
+
+  processingDelayMs = 400;
+  const slow = await settle(upload(review));
+  assert.equal(slow.status, "error");
+  assert.equal(calls, 0, "ImageKit must not be called once the lease's upload window is over");
+
+  // Nothing is in flight, so the slot is free again straight away.
+  processingDelayMs = 0;
+  const next = await settle(upload(review));
+  assert.deepEqual(next, { status: "ok", reviewImages: 5 });
+  await assertCounterMatchesFiles(review, [slow, next]);
 });
 
 test("a failed upload after a later one succeeded must not drop the later photo", async () => {
