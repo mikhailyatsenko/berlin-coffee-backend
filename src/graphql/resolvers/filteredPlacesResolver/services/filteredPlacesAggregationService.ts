@@ -1,6 +1,7 @@
 import Place, { VISIBLE_PLACE_MATCH } from "../../../../models/Place.js";
 import mongoose from "mongoose";
 import { ActorRef, ownInteractionCond } from "../../../../utils/reviewActor.js";
+import { amenitySpellings } from "../../../../amenities/synonyms.js";
 
 export interface PlaceWithStats {
     _id: mongoose.Types.ObjectId;
@@ -25,6 +26,69 @@ export interface PlaceWithStats {
     isFavorite: boolean;
 }
 
+/**
+ * Динамически ищет Amenity в ЛЮБОЙ категории additionalInfo.
+ * Структура additionalInfo:
+ * {
+ *   "Category 1": [ { "Amenity 1": true }, { "Amenity 2": true } ],
+ *   "Category 2": [ { "Amenity 3": true } ],
+ *   ...
+ * }
+ *
+ * - конвертируем additionalInfo в массив пар { k, v } через $objectToArray
+ * - проходим по всем категориям (v - массив объектов)
+ * - внутри каждой категории ищем элемент, где поле с этим написанием === true
+ */
+function hasAmenity(spelling: string) {
+    return {
+        $gt: [
+            {
+                $size: {
+                    $ifNull: [
+                        {
+                            $filter: {
+                                input: { $objectToArray: "$properties.additionalInfo" },
+                                as: "category",
+                                cond: {
+                                    $gt: [
+                                        {
+                                            $size: {
+                                                $ifNull: [
+                                                    {
+                                                        $filter: {
+                                                            input: "$$category.v",
+                                                            as: "item",
+                                                            cond: {
+                                                                $eq: [
+                                                                    {
+                                                                        $getField: {
+                                                                            field: spelling,
+                                                                            input: "$$item",
+                                                                        },
+                                                                    },
+                                                                    true,
+                                                                ],
+                                                            },
+                                                        },
+                                                    },
+                                                    [],
+                                                ],
+                                            },
+                                        },
+                                        0,
+                                    ],
+                                },
+                            },
+                        },
+                        [],
+                    ],
+                },
+            },
+            0,
+        ],
+    };
+}
+
 export async function getFilteredPlacesWithStats(
     actor?: ActorRef,
     neighborhood?: string[],
@@ -43,76 +107,15 @@ export async function getFilteredPlacesWithStats(
         });
     }
     if (additionalInfo && additionalInfo.length > 0) {
-        // Динамически ищем тег в ЛЮБОЙ категории additionalInfo
-        // Структура additionalInfo:
-        // {
-        //   "Category 1": [ { "Tag 1": true }, { "Tag 2": true } ],
-        //   "Category 2": [ { "Tag 3": true } ],
-        //   ...
-        // }
-        //
-        // Для каждого выбранного тега (value) строим условие:
-        // - конвертируем additionalInfo в массив пар { k, v } через $objectToArray
-        // - проходим по всем категориям (v - массив объектов)
-        // - внутри каждой категории ищем элемент, где поле с именем тега === true
-        const additionalInfoConditions = additionalInfo.map((value) => ({
-            $expr: {
-                $gt: [
-                    {
-                        $size: {
-                            $ifNull: [
-                                {
-                                    $filter: {
-                                        input: {
-                                            $objectToArray:
-                                                "$properties.additionalInfo",
-                                        },
-                                        as: "category",
-                                        cond: {
-                                            $gt: [
-                                                {
-                                                    $size: {
-                                                        $ifNull: [
-                                                            {
-                                                                $filter: {
-                                                                    input: "$$category.v",
-                                                                    as: "item",
-                                                                    cond: {
-                                                                        $eq: [
-                                                                            {
-                                                                                $getField:
-                                                                                    {
-                                                                                        field: value,
-                                                                                        input: "$$item",
-                                                                                    },
-                                                                            },
-                                                                            true,
-                                                                        ],
-                                                                    },
-                                                                },
-                                                            },
-                                                            [],
-                                                        ],
-                                                    },
-                                                },
-                                                0,
-                                            ],
-                                        },
-                                    },
-                                },
-                                [],
-                            ],
-                        },
-                    },
-                    0,
-                ],
-            },
-        }));
-
-        // Все условия должны выполняться (AND логика)
+        // Каждая Amenity совпадает по любому своему написанию (OR),
+        // а все выбранные Amenities должны выполняться (AND логика)
         pipeline.push({
             $match: {
-                $and: additionalInfoConditions,
+                $and: additionalInfo.map((name) => ({
+                    $or: amenitySpellings(name).map((spelling) => ({
+                        $expr: hasAmenity(spelling),
+                    })),
+                })),
             },
         });
     }

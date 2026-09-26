@@ -8,30 +8,13 @@
  *
  * Run: npm test
  */
-import { after, before, beforeEach, test } from "node:test";
+import { beforeEach, test } from "node:test";
 import assert from "node:assert/strict";
-import { spawn, type ChildProcess } from "node:child_process";
-import { mkdtempSync, rmSync } from "node:fs";
-import { tmpdir } from "node:os";
-import path from "node:path";
 import mongoose from "mongoose";
 import sharp from "sharp";
+import { setTestEnv, useThrowawayMongod } from "./support/mongod.js";
 
-const PORT = 27000 + Math.floor(Math.random() * 1000);
-
-// Set before the app modules load: env.ts throws on missing variables and
-// dotenv never overrides what is already set, so a real .env cannot leak in.
-Object.assign(process.env, {
-  MONGO_URI: `mongodb://127.0.0.1:${PORT}/test`,
-  GOOGLE_CLIENT_ID: "test",
-  GOOGLE_CLIENT_SECRET: "test",
-  JWT_SECRET: "test",
-  MAILERSEND_API_KEY: "test",
-  NODE_ENV: "test",
-  IMAGEKIT_PUBLIC_KEY: "test",
-  IMAGEKIT_PRIVATE_KEY: "test",
-  IMAGEKIT_URL_ENDPOINT: "https://ik.invalid/test",
-  RECAPTCHA_V3_SECRET: "test",
+setTestEnv({
   REVIEW_IMAGE_UPLOAD_TIMEOUT_MS: "300",
   REVIEW_IMAGE_ABANDONED_LEASE_MS: "800",
 });
@@ -69,8 +52,8 @@ let behavior: (call: UploadCall, n: number) => Promise<void> = async () => {};
   return { filePath };
 };
 
-const hang = () => new Promise<void>(() => {});
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+const hang = () => new Promise<void>(() => {});
 const fails = async (ms = 0) => {
   await sleep(ms);
   throw new Error("ImageKit 500");
@@ -78,34 +61,7 @@ const fails = async (ms = 0) => {
 
 // --- mongod ----------------------------------------------------------------
 
-let mongod: ChildProcess;
-let dbPath: string;
-
-before(async () => {
-  dbPath = mkdtempSync(path.join(tmpdir(), "review-photo-mongo-"));
-  mongod = spawn(
-    "mongod",
-    ["--dbpath", dbPath, "--port", String(PORT), "--bind_ip", "127.0.0.1"],
-    { stdio: "ignore" },
-  );
-  for (let attempt = 0; ; attempt++) {
-    try {
-      await mongoose.connect(process.env.MONGO_URI!, {
-        serverSelectionTimeoutMS: 500,
-      });
-      break;
-    } catch (error) {
-      if (attempt > 40) throw error;
-      await sleep(250);
-    }
-  }
-});
-
-after(async () => {
-  await mongoose.disconnect();
-  mongod.kill("SIGKILL");
-  rmSync(dbPath, { recursive: true, force: true });
-});
+useThrowawayMongod();
 
 beforeEach(async () => {
   bucket.clear();
