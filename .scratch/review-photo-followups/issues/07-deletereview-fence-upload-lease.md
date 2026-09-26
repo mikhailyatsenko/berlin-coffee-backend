@@ -1,6 +1,6 @@
 # `deleteReview` should fence off uploads while it clears Photos
 
-Status: ready-for-agent
+Status: done
 
 ## Problem
 
@@ -80,3 +80,4 @@ Alternative, if the abandoned-hold interplay proves too fiddly: **delete refuses
 - Not done, possible follow-up: the lease rules now live in two resolvers. Moving
   take/hold/release plus `uploadLeaseUntil` into one lease module would keep them
   together.
+- 2026-09-26: Merged into `main` in `da28d80` (commits `c973427`, `6a881ae`).
