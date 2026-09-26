@@ -1,4 +1,4 @@
-import Place from "../../../../models/Place.js";
+import Place, { VISIBLE_PLACE_MATCH } from "../../../../models/Place.js";
 import mongoose from "mongoose";
 import { ActorRef, ownInteractionCond } from "../../../../utils/reviewActor.js";
 
@@ -37,11 +37,12 @@ export async function getPlacesWithStats(
   offset: number = 0,
 ): Promise<{ places: PlaceWithStats[]; total: number }> {
   // Get the total number of places
-  const total = await Place.countDocuments();
+  const total = await Place.countDocuments(VISIBLE_PLACE_MATCH);
 
   // Агрегация с пагинацией
   // Calculate rating, sort, then apply pagination
   const aggregationPipeline: mongoose.PipelineStage[] = [
+    { $match: VISIBLE_PLACE_MATCH },
     // Calculate statistics by interactions
     {
       $lookup: {

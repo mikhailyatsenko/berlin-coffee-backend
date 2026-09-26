@@ -1,4 +1,4 @@
-import Place from "../../../../models/Place.js";
+import Place, { VISIBLE_PLACE_MATCH } from "../../../../models/Place.js";
 import mongoose from "mongoose";
 import { ActorRef, ownInteractionCond } from "../../../../utils/reviewActor.js";
 
@@ -32,7 +32,7 @@ export async function getFilteredPlacesWithStats(
     additionalInfo?: string[],
 ): Promise<{ places: PlaceWithStats[]; total: number }> {
     // Строим pipeline для агрегации
-    const pipeline: mongoose.PipelineStage[] = [];
+    const pipeline: mongoose.PipelineStage[] = [{ $match: VISIBLE_PLACE_MATCH }];
 
     // Фильтр по району (если указан) - применяем в начале
     if (neighborhood && neighborhood.length > 0) {

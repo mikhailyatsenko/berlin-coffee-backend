@@ -1,4 +1,4 @@
-import Place from "../../../../models/Place.js";
+import Place, { VISIBLE_PLACE_MATCH } from "../../../../models/Place.js";
 import { cache } from "../../../../utils/cache.js";
 
 const CACHE_KEY = "additionalInfo:tags";
@@ -19,6 +19,7 @@ export async function getAvailableAdditionalInfoTags(): Promise<string[]> {
     const pipeline: any[] = [
         {
             $match: {
+                ...VISIBLE_PLACE_MATCH,
                 "properties.additionalInfo": { $exists: true, $ne: null },
             },
         },

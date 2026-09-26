@@ -1,4 +1,4 @@
-import Place from "../../../../models/Place.js";
+import Place, { VISIBLE_PLACE_MATCH } from "../../../../models/Place.js";
 import mongoose from "mongoose";
 
 export interface FavoritePlaceWithStats {
@@ -37,6 +37,7 @@ export async function getFavoritePlacesWithStats(
 
   // Получаем общее количество избранных мест пользователя
   const total = await Place.aggregate([
+    { $match: VISIBLE_PLACE_MATCH },
     {
       $lookup: {
         from: "interactions",
@@ -64,6 +65,7 @@ export async function getFavoritePlacesWithStats(
 
   // Агрегация с пагинацией для избранных мест
   const places = await Place.aggregate([
+    { $match: VISIBLE_PLACE_MATCH },
     {
       $lookup: {
         from: "interactions",
