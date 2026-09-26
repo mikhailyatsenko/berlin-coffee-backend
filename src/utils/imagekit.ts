@@ -1,4 +1,5 @@
 import ImageKit from "imagekit";
+import type { FileObject, FolderObject } from "imagekit/dist/libs/interfaces";
 import sharp from "sharp";
 import {
   IMAGEKIT_PUBLIC_KEY,
@@ -12,6 +13,10 @@ const imagekit = new ImageKit({
   privateKey: IMAGEKIT_PRIVATE_KEY!,
   urlEndpoint: IMAGEKIT_URL_ENDPOINT!,
 });
+
+/** listFiles returns folders too; this keeps only the files. */
+const isFile = (item: FileObject | FolderObject): item is FileObject =>
+  item.type === "file";
 
 // Rate limiting
 let lastRequestTime = 0;
@@ -88,14 +93,8 @@ export async function getPlaceImages(placeId: string): Promise<string[]> {
       path: folderPath,
     });
 
-    // Extract only file names from full paths
-    const filePath = result
-      .filter((file) => file.type === "file") // Only files, not folders
-      .map((file) => {
-        // Remove folder path from file name
-        const fullPath = (file as any).filePath;
-        return fullPath;
-      });
+    // Full paths of the files; folders are skipped
+    const filePath = result.filter(isFile).map((file) => file.filePath);
 
     return filePath;
   } catch (error) {
@@ -251,15 +250,13 @@ export async function deleteAvatar(filePath: string): Promise<boolean> {
     });
 
     const file = files.find(
-      (item) => item.type === "file" && item.filePath === filePath,
+      (item): item is FileObject => isFile(item) && item.filePath === filePath,
     );
     if (!file) {
       return true; // File doesn't exist, consider it deleted
     }
 
-    const fileId = (file as any).fileId;
-
-    await imagekit.deleteFile(fileId);
+    await imagekit.deleteFile(file.fileId);
 
     return true;
   } catch (error) {
@@ -294,30 +291,4 @@ export async function deleteAllReviewImages(
     });
     return false;
   }
-}
-
-/**
- * Gets image URL from ImageKit
- * @param filePath - File path in ImageKit
- * @param transformations - Optional image transformations
- * @returns string - Image URL
- */
-export function getImageUrl(filePath: string, transformations?: any[]): string {
-  return imagekit.url({
-    path: filePath,
-    transformation: transformations,
-  });
-}
-
-/**
- * Gets avatar URL from ImageKit file ID
- * @param fileId - ImageKit file ID
- * @param transformations - Optional image transformations
- * @returns string - Avatar URL
- */
-export function getAvatarUrl(fileId: string, transformations?: any[]): string {
-  return imagekit.url({
-    path: fileId,
-    transformation: transformations,
-  });
 }
