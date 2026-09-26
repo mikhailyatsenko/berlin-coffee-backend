@@ -21,7 +21,7 @@ descoped independently of ticket 01.
 diff against — otherwise the first run of this check fails on pre-existing
 drift)
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [x] A CI workflow runs on pull requests (new workflow, e.g.
       `.github/workflows/ci.yml`, or extend the existing deploy workflow with

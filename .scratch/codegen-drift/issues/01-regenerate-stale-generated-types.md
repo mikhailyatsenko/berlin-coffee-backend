@@ -44,7 +44,7 @@ CI (see ticket 02).
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [x] `npm ci` (or otherwise getting `node_modules/graphql` back to the
       lockfile's `16.9.0`) is confirmed to fix the `getNodeComment` crash;

@@ -33,26 +33,40 @@ export async function deleteReviewResolver(
       };
     }
 
-    if (deleteOptions === "deleteReviewText") {
-      interaction.reviewText = undefined;
-      deleteAllReviewImages(
-        `3welle/review-images/${interaction.placeId}/${reviewId}`,
-      );
-      interaction.reviewImages = 0;
-    } else if (deleteOptions === "deleteRating") {
-      interaction.rating = undefined;
-    } else if (deleteOptions === "deleteAll") {
-      interaction.reviewText = undefined;
-      interaction.rating = undefined;
-      if (interaction.reviewImages && interaction.reviewImages > 0) {
-        deleteAllReviewImages(
-          `3welle/review-images/${interaction.placeId}/${reviewId}`,
-        );
-        interaction.reviewImages = 0;
-      }
+    const unset: Record<string, ""> = {};
+    const set: Record<string, unknown> = {};
+    const clearsText =
+      deleteOptions === "deleteReviewText" || deleteOptions === "deleteAll";
+    const clearsImages =
+      clearsText && !!interaction.reviewImages && interaction.reviewImages > 0;
+
+    if (clearsText) {
+      unset.reviewText = "";
+      if (clearsImages) set.reviewImages = 0;
+    }
+    if (deleteOptions === "deleteRating" || deleteOptions === "deleteAll") {
+      unset.rating = "";
     }
 
-    await interaction.save();
+    // Await so the client learns the review is deleted only once the folder is
+    // actually gone: otherwise an upload that starts right after this resolver
+    // returns could take the lease, land a file, and have it wiped out from
+    // under the just-saved photo by this still-in-flight call.
+    if (clearsImages) {
+      await deleteAllReviewImages(
+        `3welle/review-images/${interaction.placeId}/${reviewId}`,
+      );
+    }
+
+    // A single atomic update, not load-mutate-save: it can't race a concurrent
+    // write (another delete, or the upload resolver's own atomic commit) and
+    // lose it.
+    await Interaction.updateOne(
+      { _id: reviewId },
+      Object.keys(set).length > 0
+        ? { $set: set, $unset: unset }
+        : { $unset: unset },
+    );
 
     const aggregationResult = await Interaction.aggregate([
       {
