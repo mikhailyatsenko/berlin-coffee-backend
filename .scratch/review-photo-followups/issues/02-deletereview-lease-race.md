@@ -1,6 +1,6 @@
 # `deleteReview` races an in-flight upload's lease
 
-Status: ready-for-agent
+Status: done
 
 ## Problem
 
@@ -25,7 +25,56 @@ Status: ready-for-agent
 
 ## Acceptance criteria
 
-- [ ] `deleteReviewText` and `deleteAll` both clear `reviewImages` via an atomic update, not `save()`.
-- [ ] Both branches `await` `deleteAllReviewImages` before returning.
-- [ ] `deleteReviewText` skips the ImageKit call when `reviewImages` is already 0.
-- [ ] A regression test: an upload's lease is taken, then `deleteReview` runs to completion, then the upload's commit — the commit must fail (`INTERNAL_SERVER_ERROR` to the client) and the counter must stay at 0, no orphaned file.
+- [x] `deleteReviewText` and `deleteAll` both clear `reviewImages` via an atomic update, not `save()`.
+- [x] Both branches `await` `deleteAllReviewImages` before returning.
+- [x] `deleteReviewText` skips the ImageKit call when `reviewImages` is already 0.
+- [x] A regression test: an upload's lease is taken, then `deleteReview` runs to completion, then the upload's commit — the commit must fail (`INTERNAL_SERVER_ERROR` to the client) and the counter must stay at 0, no orphaned file.
+
+## Comments
+
+Replaced the `deleteReviewText`/`deleteAll` load-mutate-`save()` with a single
+`Interaction.updateOne` built from a shared `$unset`/`$set` computed per
+branch (`clearsText`/`clearsImages`), and moved the `deleteAllReviewImages`
+call to `await` before that update, gated on `clearsImages` so it's skipped
+for both branches when `reviewImages` is already 0. Used `updateOne`, not
+`findOneAndUpdate`: nothing here needs the returned document or an
+optimistic-concurrency match against a previous value (delete force-sets
+fixed values, not an increment), so the extra guard `findOneAndUpdate` adds
+for the upload resolver's lease-take doesn't apply — `updateOne` is equally
+atomic and simpler for this write shape.
+
+Added `tests/deleteReviewLeaseRace.test.ts`: stalls an upload mid-flight to
+prove it holds `photoUploadLease`, runs `deleteReviewResolver` to completion,
+then releases the upload and asserts its commit rejects with
+`INTERNAL_SERVER_ERROR`, the counter stays at 0, and the lease is cleared
+(no orphaned hold). `npm test` passes 15/15 (all pre-existing tests plus this
+one); `tsc --noEmit` and `eslint` are clean on both changed files.
+
+Passed `/mattpocock-skills:code-review` (Standards + Spec, vs `main`).
+Standards axis: no hard violations (no documented standards in this repo);
+flagged two judgement-call Duplicated Code smells — a repeated branch
+condition in the resolver (fixed by extracting `clearsText`) and the new
+test file re-declaring fixtures (`createReview`, the `png` buffer, `sleep`)
+that already exist in `tests/uploadReviewImage.test.ts` (left as-is: only
+two test files share them so far, premature to extract a shared-fixture
+module for that alone).
+
+Spec axis: no scope creep, no missing acceptance criteria. Raised one
+judgement call not asked for by this ticket: `await deleteAllReviewImages`
+and the counter-clearing `updateOne` are two separate awaits, so a narrow
+window exists *inside* `deleteReview`'s own execution (not after it
+returns) where a fresh upload could take a lease on the still-unzeroed
+counter, land a file, and have its commit's `reviewImages: previous` guard
+match — right before delete's own unconditional `$set reviewImages: 0` then
+overwrites that just-committed count back to 0. This is the same race class
+the ticket describes, just narrower; the ticket explicitly scopes out extra
+lease-coordination for the case it does describe ("no extra lease-awareness
+is needed here"), and closing this narrower window would need either a
+lease-aware guard on delete's own update or collapsing both writes into one
+transaction — real added coordination, not something implied by the four
+acceptance criteria above. Left unaddressed as out of scope; worth a
+follow-up ticket if it matters in practice (the window is two in-process
+`await`s wide, no network latency between them).
+
+Committed on `fix/deletereview-lease-race` (from `main`), not yet merged or
+opened as a PR.

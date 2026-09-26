@@ -35,12 +35,12 @@ export async function deleteReviewResolver(
 
     const unset: Record<string, ""> = {};
     const set: Record<string, unknown> = {};
+    const clearsText =
+      deleteOptions === "deleteReviewText" || deleteOptions === "deleteAll";
     const clearsImages =
-      (deleteOptions === "deleteReviewText" || deleteOptions === "deleteAll") &&
-      !!interaction.reviewImages &&
-      interaction.reviewImages > 0;
+      clearsText && !!interaction.reviewImages && interaction.reviewImages > 0;
 
-    if (deleteOptions === "deleteReviewText" || deleteOptions === "deleteAll") {
+    if (clearsText) {
       unset.reviewText = "";
       if (clearsImages) set.reviewImages = 0;
     }
