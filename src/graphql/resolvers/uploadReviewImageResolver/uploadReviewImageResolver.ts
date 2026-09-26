@@ -21,6 +21,16 @@ const LEASE_MARGIN_MS = 15_000;
 /** The longest a timed-out upload keeps the lease while ImageKit may still store its file. */
 const DEFAULT_ABANDONED_LEASE_MS = 10 * 60_000;
 
+/**
+ * When a lease taken at `now` runs out. deleteReview holds its fence to the
+ * same horizon, so the fence always outlasts any upload lease taken before it.
+ */
+export function uploadLeaseUntil(now: Date): Date {
+  return new Date(
+    now.getTime() + getReviewImageUploadTimeoutMs() + LEASE_MARGIN_MS,
+  );
+}
+
 function getAbandonedLeaseMs(): number {
   return (
     Number(process.env.REVIEW_IMAGE_ABANDONED_LEASE_MS) ||
@@ -72,6 +82,9 @@ interface UploadReviewImageArgs extends GuestArgs {
  * no later upload takes the same name and has its counted file overwritten by
  * the late one. The late file is never counted (the client was told it failed,
  * and a Retry would count it twice); the next upload simply overwrites it.
+ *
+ * deleteReview takes the same lease as a fence while it clears Photos, so an
+ * upload arriving meanwhile gets UPLOAD_IN_PROGRESS like any other.
  */
 export async function uploadReviewImageResolver(
   _: never,
@@ -122,12 +135,7 @@ export async function uploadReviewImageResolver(
     },
     {
       $set: {
-        photoUploadLease: {
-          token,
-          until: new Date(
-            now.getTime() + getReviewImageUploadTimeoutMs() + LEASE_MARGIN_MS,
-          ),
-        },
+        photoUploadLease: { token, until: uploadLeaseUntil(now) },
       },
     },
     { new: true },

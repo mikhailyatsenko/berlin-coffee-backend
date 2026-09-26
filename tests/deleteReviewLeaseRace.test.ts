@@ -32,6 +32,8 @@ const { deleteReviewResolver } = await import(
 
 /** Resolves once the caller decides the upload has "landed". */
 let releaseUpload: () => void = () => {};
+/** When false, uploads land at once instead of waiting for releaseUpload. */
+let holdUploads = true;
 let uploadCalls = 0;
 
 (ImageKit.prototype as any).upload = async function (opts: {
@@ -40,16 +42,27 @@ let uploadCalls = 0;
   folder: string;
 }) {
   uploadCalls++;
-  await new Promise<void>((resolve) => {
-    releaseUpload = resolve;
-  });
+  if (holdUploads) {
+    await new Promise<void>((resolve) => {
+      releaseUpload = resolve;
+    });
+  }
   return { filePath: `/${opts.folder}/${opts.fileName}` };
 };
 
 const deleteFolderCalls: string[] = [];
+/** Resolves once the caller decides the folder delete is over. */
+let releaseFolderDelete: () => void = () => {};
+/** When true, folder deletes wait for releaseFolderDelete. */
+let holdFolderDeletes = false;
 
 (ImageKit.prototype as any).deleteFolder = async function (folderPath: string) {
   deleteFolderCalls.push(folderPath);
+  if (holdFolderDeletes) {
+    await new Promise<void>((resolve) => {
+      releaseFolderDelete = resolve;
+    });
+  }
 };
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -62,6 +75,9 @@ beforeEach(async () => {
   uploadCalls = 0;
   deleteFolderCalls.length = 0;
   releaseUpload = () => {};
+  holdUploads = true;
+  releaseFolderDelete = () => {};
+  holdFolderDeletes = false;
   await Interaction.deleteMany({});
 });
 
@@ -88,7 +104,24 @@ async function createReview(reviewImages: number) {
 
 type Review = Awaited<ReturnType<typeof createReview>>;
 
-// --- test ----------------------------------------------------------------
+const upload = (r: Review) =>
+  uploadReviewImageResolver(
+    undefined as never,
+    { reviewId: r.reviewId, fileBuffer: png },
+    { user: { id: r.userId.toString() } as any },
+  );
+
+const deleteReview = (
+  r: Review,
+  deleteOptions: "deleteReviewText" | "deleteRating" | "deleteAll",
+) =>
+  deleteReviewResolver(
+    undefined as never,
+    { reviewId: r.reviewId, deleteOptions },
+    { user: { id: r.userId.toString() } },
+  );
+
+// --- tests ----------------------------------------------------------------
 
 test("deleteReview run to completion after an upload took its lease fails the upload's commit", async () => {
   const review: Review = await createReview(2);
@@ -142,4 +175,91 @@ test("deleteReview run to completion after an upload took its lease fails the up
     undefined,
     "the failed commit releases the lease, leaving no orphaned hold",
   );
+});
+
+test("an upload that starts while deleteReview is clearing the folder is refused, not lied to", async () => {
+  const review: Review = await createReview(2);
+  holdUploads = false;
+  holdFolderDeletes = true;
+
+  const deletePromise = deleteReview(review, "deleteAll");
+  while (deleteFolderCalls.length < 1) await sleep(5);
+
+  await assert.rejects(upload(review), (error: any) => {
+    assert.equal(error.extensions?.code, "UPLOAD_IN_PROGRESS");
+    return true;
+  });
+  assert.equal(uploadCalls, 0, "nothing may reach ImageKit while the folder is being deleted");
+
+  releaseFolderDelete();
+  await deletePromise;
+
+  const final = await Interaction.findById(review.reviewId).lean();
+  assert.equal(final?.reviewImages, 0);
+});
+
+test("an upload started after deleteReview returns lands as image_1", async () => {
+  const review: Review = await createReview(3);
+  holdUploads = false;
+
+  await deleteReview(review, "deleteReviewText");
+
+  assert.deepEqual(await upload(review), { reviewImages: 1 });
+  const final = await Interaction.findById(review.reviewId).lean();
+  assert.equal(final?.reviewImages, 1);
+  assert.equal(final?.photoUploadLease?.token, undefined);
+});
+
+test("deleteReview does not shorten a timed-out upload's abandoned hold", async () => {
+  const review: Review = await createReview(2);
+  holdUploads = false;
+  // Well past any regular lease: a timed-out upload whose file may still land.
+  const holdUntil = new Date(Date.now() + 10 * 60_000);
+  await Interaction.updateOne(
+    { _id: review.reviewId },
+    { $set: { photoUploadLease: { token: "abandoned", until: holdUntil } } },
+  );
+
+  await deleteReview(review, "deleteAll");
+
+  const after = await Interaction.findById(review.reviewId).lean();
+  assert.equal(after?.reviewImages, 0);
+  assert.equal(after?.photoUploadLease?.until?.getTime(), holdUntil.getTime());
+  await assert.rejects(upload(review), (error: any) => {
+    assert.equal(error.extensions?.code, "UPLOAD_IN_PROGRESS");
+    return true;
+  });
+  assert.equal(uploadCalls, 0, "no upload may take image_1 while the late file can still land");
+});
+
+test("deleteRating leaves an in-flight upload's lease alone and the upload commits", async () => {
+  const review: Review = await createReview(2);
+  await Interaction.updateOne({ _id: review.reviewId }, { rating: 4 });
+
+  const uploadPromise = upload(review);
+  while (uploadCalls < 1) await sleep(5);
+  const leased = await Interaction.findById(review.reviewId).lean();
+
+  await deleteReview(review, "deleteRating");
+
+  const afterDelete = await Interaction.findById(review.reviewId).lean();
+  assert.deepEqual(afterDelete?.photoUploadLease, leased?.photoUploadLease);
+  assert.equal(afterDelete?.rating, undefined);
+
+  releaseUpload();
+  assert.deepEqual(await uploadPromise, { reviewImages: 3 });
+  assert.deepEqual(deleteFolderCalls, []);
+});
+
+test("deleteReviewText and deleteAll on a review with no Photos skip ImageKit and the lease", async () => {
+  for (const deleteOptions of ["deleteReviewText", "deleteAll"] as const) {
+    const review: Review = await createReview(0);
+
+    await deleteReview(review, deleteOptions);
+
+    const after = await Interaction.findById(review.reviewId).lean();
+    assert.equal(after?.reviewText, undefined);
+    assert.equal(after?.photoUploadLease, undefined, deleteOptions);
+  }
+  assert.deepEqual(deleteFolderCalls, []);
 });
