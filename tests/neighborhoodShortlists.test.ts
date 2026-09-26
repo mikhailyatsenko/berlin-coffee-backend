@@ -268,3 +268,70 @@ test("filteredPlaces with a Shortlist's Amenities and minRating 4 agrees on the 
     [1, 1, 1, 2],
   );
 });
+
+test("ownRating and ownCharacteristics come from the caller's own Review, User or Guest", async () => {
+  const placeId = await seedPlace("Terrace", ["Outdoor seating"], [4, 5]);
+  const userId = new mongoose.Types.ObjectId();
+  await Interaction.create({
+    placeId,
+    userId,
+    rating: 5,
+    characteristics: { outdoorSeating: true, freeWifi: true },
+  });
+  await Interaction.create({ placeId, guestId: "own-guest", rating: 4 });
+  const asGuest: Ctx = {
+    guest: {
+      status: "valid",
+      identity: { guestId: "own-guest" },
+    } as Ctx["guest"],
+  };
+
+  const own = async (context: Ctx) => {
+    const [fromShortlist] = (
+      await shortlist("outdoorSeating", "Mitte", context)
+    ).places;
+    const {
+      places: [fromFilter],
+    } = await filteredPlacesResolver(
+      undefined as never,
+      { neighborhood: ["Mitte"] },
+      context,
+    );
+    assert.deepEqual(fromShortlist, fromFilter);
+    const { ownRating, ownCharacteristics } = fromShortlist.properties;
+    return { ownRating, ownCharacteristics };
+  };
+
+  assert.deepEqual(await own({ user: { id: userId.toString() } }), {
+    ownRating: 5,
+    ownCharacteristics: ["freeWifi", "outdoorSeating"],
+  });
+  assert.deepEqual(await own(asGuest), {
+    ownRating: 4,
+    ownCharacteristics: [],
+  });
+  // Someone with no Review of their own: the others' Reviews don't leak in
+  assert.deepEqual(
+    await own({ user: { id: new mongoose.Types.ObjectId().toString() } }),
+    { ownRating: null, ownCharacteristics: null },
+  );
+  assert.deepEqual(await own({}), {
+    ownRating: null,
+    ownCharacteristics: null,
+  });
+});
+
+test("a Favorite without a Rating gives no ownRating", async () => {
+  const placeId = await seedPlace("Terrace", ["Outdoor seating"], [5]);
+  const userId = new mongoose.Types.ObjectId();
+  await Interaction.create({ placeId, userId, isFavorite: true });
+
+  const [place] = (
+    await shortlist("outdoorSeating", "Mitte", {
+      user: { id: userId.toString() },
+    })
+  ).places;
+
+  assert.equal(place.properties.ownRating, null);
+  assert.deepEqual(place.properties.ownCharacteristics, []);
+});

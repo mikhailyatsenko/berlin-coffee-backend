@@ -21,6 +21,12 @@ export function formatFilteredPlace(place: PlaceWithStats) {
             ratingCount: place.ratingCount,
             favoriteCount: place.favoriteCount,
             isFavorite: place.isFavorite,
+            ownRating: place.ownReview?.rating ?? null,
+            ownCharacteristics: place.ownReview
+                ? Object.entries(place.ownReview.characteristics ?? {})
+                      .filter(([, marked]) => marked)
+                      .map(([characteristic]) => characteristic)
+                : null,
             googleId: place.properties.googleId || null,
             neighborhood: place.properties.neighborhood || null,
         },

@@ -24,6 +24,11 @@ export interface PlaceWithStats {
     averageRating: number;
     ratingCount: number;
     isFavorite: boolean;
+    /** The caller's own Review of the Place, absent when they have none. */
+    ownReview?: {
+        rating?: number | null;
+        characteristics?: Record<string, boolean> | null;
+    };
 }
 
 /**
@@ -181,6 +186,21 @@ export async function getFilteredPlacesWithStats(
                 },
                 ratingCount: {
                     $ifNull: [{ $arrayElemAt: ["$ratingStats.ratingCount", 0] }, 0],
+                },
+                // One Interaction per person and Place (unique indexes)
+                ownReview: {
+                    $arrayElemAt: [
+                        {
+                            $map: {
+                                input: "$userInteractions",
+                                in: {
+                                    rating: "$$this.rating",
+                                    characteristics: "$$this.characteristics",
+                                },
+                            },
+                        },
+                        0,
+                    ],
                 },
                 isFavorite: {
                     $cond: {

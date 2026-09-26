@@ -61,6 +61,10 @@ type PlaceProperties {
   ratingCount: Int!
   favoriteCount: Int!
   isFavorite: Boolean!
+  "The caller's own Rating (User or Guest). Filled by filteredPlaces and neighborhoodShortlists only, null elsewhere."
+  ownRating: Int
+  "The Characteristics the caller marked in their own Review. Filled by filteredPlaces and neighborhoodShortlists only, null elsewhere."
+  ownCharacteristics: [Characteristic!]
   reviews: [Review!]!
   characteristicCounts: CharacteristicCounts!
   additionalInfo: JSON

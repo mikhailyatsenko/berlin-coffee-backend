@@ -357,6 +357,10 @@ export type PlaceProperties = {
   name: Scalars['String']['output'];
   neighborhood?: Maybe<Scalars['String']['output']>;
   openingHours?: Maybe<Array<OpeningHour>>;
+  /** The Characteristics the caller marked in their own Review. Filled by filteredPlaces and neighborhoodShortlists only, null elsewhere. */
+  ownCharacteristics?: Maybe<Array<Characteristic>>;
+  /** The caller's own Rating (User or Guest). Filled by filteredPlaces and neighborhoodShortlists only, null elsewhere. */
+  ownRating?: Maybe<Scalars['Int']['output']>;
   phone?: Maybe<Scalars['String']['output']>;
   ratingCount: Scalars['Int']['output'];
   reviews: Array<Review>;
@@ -833,6 +837,8 @@ export type PlacePropertiesResolvers<ContextType = Context, ParentType extends R
   name?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   neighborhood?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   openingHours?: Resolver<Maybe<Array<ResolversTypes['OpeningHour']>>, ParentType, ContextType>;
+  ownCharacteristics?: Resolver<Maybe<Array<ResolversTypes['Characteristic']>>, ParentType, ContextType>;
+  ownRating?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   phone?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   ratingCount?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   reviews?: Resolver<Array<ResolversTypes['Review']>, ParentType, ContextType>;
