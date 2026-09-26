@@ -21,6 +21,7 @@
 
 ## Scripts
 - [Google Places sync](docs/google-places-sync.md) — refreshes opening hours, phone, website and closed status of places from Google. Every run is billed: read the doc before running.
+- `src/scripts/repairReviewPhotoCounts.ts` — one-off: lowers `reviewImages` of Reviews whose Photos stop at a missing file in ImageKit. Dry run by default; `--apply` only with the owner's go-ahead. Usage in the file header.
 
 
 

@@ -38,7 +38,7 @@ const repair = async () => {
   }
 
   console.log(
-    `\n${APPLY ? "Repairing" : "Would repair"} ${repairs.length} of ${checked} reviews with Photos`,
+    `\n${APPLY ? "Repairing" : "Would repair"} ${repairs.length} of ${checked} Reviews with Photos`,
   );
   if (failed.length) {
     console.log(
@@ -48,7 +48,7 @@ const repair = async () => {
 
   if (APPLY) {
     const { written, changedMeanwhile } = await applyPhotoCountRepairs(repairs);
-    console.log(`\nRepaired ${written.length} reviews`);
+    console.log(`\nRepaired ${written.length} Reviews`);
     if (changedMeanwhile.length) {
       console.log(
         `\nCount changed since listing, left alone:\n  ${changedMeanwhile.join("\n  ")}`,

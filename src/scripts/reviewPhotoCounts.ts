@@ -7,7 +7,7 @@ import Interaction from "../models/Interaction.js";
  */
 
 /** File names in one Review's Photo folder; throws when the listing fails. */
-export type ListReviewPhotos = (
+export type ListReviewPhotoNames = (
   placeId: string,
   reviewId: string,
 ) => Promise<string[]>;
@@ -32,7 +32,9 @@ const safePhotoCount = (fileNames: string[], stored: number) => {
   return count;
 };
 
-export async function findBrokenPhotoCounts(list: ListReviewPhotos) {
+export async function findBrokenPhotoCounts(
+  listPhotoNames: ListReviewPhotoNames,
+) {
   const reviews = await Interaction.find({ reviewImages: { $gt: 0 } })
     .select("placeId reviewImages")
     .sort({ _id: 1 })
@@ -49,7 +51,7 @@ export async function findBrokenPhotoCounts(list: ListReviewPhotos) {
 
     let fileNames: string[];
     try {
-      fileNames = await list(placeId, reviewId);
+      fileNames = await listPhotoNames(placeId, reviewId);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       failed.push({ reviewId, message });

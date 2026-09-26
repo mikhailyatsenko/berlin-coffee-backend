@@ -109,7 +109,7 @@ export async function getPlaceImages(placeId: string): Promise<string[]> {
  * Unlike getPlaceImages, a failed request throws: the repair script must not
  * mistake an ImageKit error for a folder with no Photos.
  * @param placeId - Place the review belongs to
- * @param reviewId - Interaction id of the review
+ * @param reviewId - Interaction id of the Review
  * @returns Promise<string[]> - File names, folders skipped
  */
 export async function listReviewPhotoNames(
