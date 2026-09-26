@@ -1,19 +1,9 @@
 import { GraphQLError } from "graphql";
 import { GuestContext } from "../../../utils/guestAuth.js";
 import { resolveActorRef } from "../../../utils/reviewActor.js";
+import { normalizeNeighborhood } from "../../../utils/neighborhood.js";
 import { getFilteredPlacesWithStats } from "./services/filteredPlacesAggregationService.js";
-
-
-function normalizeNeighborhood(input?: string[]): string[] | undefined {
-    if (!input || input.length === 0) return input;
-    return input.map(neighborhood =>
-        neighborhood
-            .trim()
-            .split('-')
-            .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-            .join('-')
-    );
-}
+import { formatFilteredPlace } from "./services/formatFilteredPlace.js";
 
 export async function filteredPlacesResolver(
     _: never,
@@ -47,33 +37,7 @@ export async function filteredPlacesResolver(
         );
 
         // Convert to GraphQL format
-        const formattedPlaces = places.map((place) => {
-            const averageRating = place.averageRating;
-            const ratingCount = place.ratingCount;
-            return {
-                id: place._id.toString(),
-                type: place.type || "Feature",
-                geometry: {
-                    type: place.geometry.type || "Point",
-                    coordinates: place.geometry.coordinates,
-                },
-                properties: {
-                    id: place._id.toString(),
-                    // slug: place.properties.slug || "",
-                    name: place.properties.name || "",
-                    description: place.properties.description || "",
-                    address: place.properties.address || "",
-                    image: place.properties.image || "",
-                    instagram: place.properties.instagram || "",
-                    averageRating: Number(averageRating.toFixed(1)),
-                    ratingCount: ratingCount,
-                    favoriteCount: place.favoriteCount,
-                    isFavorite: place.isFavorite,
-                    googleId: place.properties.googleId || null,
-                    neighborhood: place.properties.neighborhood || null,
-                },
-            };
-        });
+        const formattedPlaces = places.map(formatFilteredPlace);
 
         return {
             places: formattedPlaces,

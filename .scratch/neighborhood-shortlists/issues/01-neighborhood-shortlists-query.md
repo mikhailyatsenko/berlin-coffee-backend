@@ -1,6 +1,6 @@
 # 01: Query `neighborhoodShortlists` for the Neighborhood page
 
-**Status:** ready-for-agent
+**Status:** done
 
 **What to build:** a new query that returns the four Shortlists of a Neighborhood, so the frontend's Neighborhood page can show them between Top rated and the full list. A Place makes a Shortlist when it is visible, is in the Neighborhood, has all the Shortlist's Amenities (each through its synonyms) and has an Average rating of at least 4.0.
 
@@ -57,16 +57,41 @@ Run `npm run generate` after the schema change (CI checks the generated types fo
 
 `tests/neighborhoodShortlists.test.ts`, driving `neighborhoodShortlistsResolver` against a throwaway mongod (`tests/support/mongod.ts`, prior art `tests/filteredPlaces.test.ts`), seeding Places and Ratings. Assert what the query returns, not pipeline stages.
 
-- [ ] Shortlist definitions module (`src/amenities/shortlists.ts`), ids, order and Amenities as in the table
-- [ ] Schema, resolver registered in `resolvers.ts`, `npm run generate`
-- [ ] Neighborhood normalization and Place mapping shared with `filteredPlaces`
-- [ ] Test: a Place qualifies only with all Amenities of the set (Work needs both)
-- [ ] Test: 4.0 threshold (a Place at 3.9 is out, one at 4.0 is in; a Place with no Rating is out)
-- [ ] Test: order by Average rating, then Rating count, then name; at most 5 `places`; `total` counts all
-- [ ] Test: synonym spellings qualify (only "Free Wi-Fi" + laptop → Work; only "Dogs allowed inside" → Dog friendly; only "Brunch" → Breakfast & brunch)
-- [ ] Test: hidden (closed) Places and Places in other Neighborhoods are left out
-- [ ] Test: slug `friedrichshain-kreuzberg` normalized; unknown Neighborhood → four empty Shortlists in order
-- [ ] Test: `filteredPlaces` with the Shortlist's `amenities` and `minRating: 4` returns `total` equal to the Shortlist's `total`
-- [ ] `npm test` and `tsc` green
+- [x] Shortlist definitions module (`src/amenities/shortlists.ts`), ids, order and Amenities as in the table
+- [x] Schema, resolver registered in `resolvers.ts`, `npm run generate`
+- [x] Neighborhood normalization and Place mapping shared with `filteredPlaces`
+- [x] Test: a Place qualifies only with all Amenities of the set (Work needs both)
+- [x] Test: 4.0 threshold (a Place at 3.9 is out, one at 4.0 is in; a Place with no Rating is out)
+- [x] Test: order by Average rating, then Rating count, then name; at most 5 `places`; `total` counts all
+- [x] Test: synonym spellings qualify (only "Free Wi-Fi" + laptop → Work; only "Dogs allowed inside" → Dog friendly; only "Brunch" → Breakfast & brunch)
+- [x] Test: hidden (closed) Places and Places in other Neighborhoods are left out
+- [x] Test: slug `friedrichshain-kreuzberg` normalized; unknown Neighborhood → four empty Shortlists in order
+- [x] Test: `filteredPlaces` with the Shortlist's `amenities` and `minRating: 4` returns `total` equal to the Shortlist's `total`
+- [x] `npm test` and `tsc` green
 
 When done, tell the frontend session: the frontend part of ticket 03 then runs codegen against this schema.
+
+## Comments
+
+- 2026-09-26: Implemented on `feat/neighborhood-shortlists-query` (that branch name
+  was already taken by an old, fully merged pointer, so it was fast-forwarded to
+  `main` first).
+- `getFilteredPlacesWithStats` gained a `{ sortByRating, limit }` options argument
+  instead of a second pipeline: `$sort` (Average rating, Rating count, name, `_id`)
+  and `$limit` go after the `minRating` match and the count, so `total` counts every
+  match. The 4.0 threshold is the same `minRating: 4` on the unrounded Average
+  rating that `filteredPlaces` uses; a test covers 3.96 (shows as 4.0, stays out).
+- Shared with `filteredPlaces`: `normalizeNeighborhood` (`src/utils/neighborhood.ts`)
+  and the Place mapping (`formatFilteredPlace.ts`). `placesResolver`, `placeResolver`
+  and `favoritePlacesResolver` keep their own copies of the rounding; not touched.
+- Spellings checked: "Good for working on laptop" and "Outdoor seating" are the names
+  in `availableAdditionalInfoTags` (209 / 268 Places per the frontend's data-coverage
+  note); neither has a synonym.
+- The four Shortlists run as four parallel aggregations (each does a count and a
+  list, so eight in all). Fine at 408 Places; if the Neighborhood page gets slow,
+  the count and the list could share one `$facet`.
+- Tests: `tests/neighborhoodShortlists.test.ts` (10 tests), including
+  the `filteredPlaces` agreement on `total` for all four Shortlists. `npm test`
+  (34 pass), `tsc` and `npm run generate` (no drift) are green.
+- Frontend session: the frontend part of ticket 03 can now run codegen against this
+  schema.

@@ -1,5 +1,6 @@
 import { placesResolver } from "./allPlacesResolver/placesResolver.js";
 import { filteredPlacesResolver } from "./filteredPlacesResolver/filteredPlacesResolver.js";
+import { neighborhoodShortlistsResolver } from "./neighborhoodShortlistsResolver/neighborhoodShortlistsResolver.js";
 import { favoritePlacesResolver } from "./favoritePlacesResolver/favoritePlacesResolver.js";
 import { toggleFavoriteResolver } from "./toggleFavoriteResolver/toggleFavoriteResolver.js";
 import { deleteReviewResolver } from "./deleteReviewResolver/deleteReviewResolver.js";
@@ -39,6 +40,7 @@ export const resolvers = {
   Query: {
     places: placesResolver,
     filteredPlaces: filteredPlacesResolver,
+    neighborhoodShortlists: neighborhoodShortlistsResolver,
     favoritePlaces: favoritePlacesResolver,
     place: placeResolver,
     currentUser: currentUserResolver,

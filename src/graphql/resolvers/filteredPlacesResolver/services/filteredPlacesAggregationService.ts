@@ -89,11 +89,19 @@ function hasAmenity(spelling: string) {
     };
 }
 
+export interface FilteredPlacesOptions {
+    /** Best first: Average rating, then Rating count, then name. */
+    sortByRating?: boolean;
+    /** Caps the returned places; `total` still counts every match. */
+    limit?: number;
+}
+
 export async function getFilteredPlacesWithStats(
     actor?: ActorRef,
     neighborhood?: string[],
     minRating?: number,
     additionalInfo?: string[],
+    { sortByRating, limit }: FilteredPlacesOptions = {},
 ): Promise<{ places: PlaceWithStats[]; total: number }> {
     // Строим pipeline для агрегации
     const pipeline: mongoose.PipelineStage[] = [{ $match: VISIBLE_PLACE_MATCH }];
@@ -210,6 +218,21 @@ export async function getFilteredPlacesWithStats(
     const countPipeline = [...pipeline, { $count: "total" }];
     const countResult = await Place.aggregate(countPipeline);
     const total = countResult[0]?.total || 0;
+
+    if (sortByRating) {
+        // _id last, so the order (and the cut at `limit`) is stable
+        pipeline.push({
+            $sort: {
+                averageRating: -1,
+                ratingCount: -1,
+                "properties.name": 1,
+                _id: 1,
+            },
+        });
+    }
+    if (limit !== undefined) {
+        pipeline.push({ $limit: limit });
+    }
 
     // Добавляем финальную проекцию
     pipeline.push({

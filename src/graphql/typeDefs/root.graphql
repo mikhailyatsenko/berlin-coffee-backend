@@ -3,6 +3,7 @@ type Query {
   currentUser: User
   places(limit: Int, offset: Int = 0): PlacesResponse!
   filteredPlaces(neighborhood: [String], minRating: Float, additionalInfo: [String]): PlacesResponse!
+  neighborhoodShortlists(neighborhood: String!): [Shortlist!]!
   favoritePlaces: [FavoritePlace!]!
   placeReviews(placeId: ID!): PlaceReviews!
   userReviewActivity: [UserReviewActivity!]!
