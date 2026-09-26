@@ -154,7 +154,7 @@ export async function uploadAvatar(
 }
 
 /**
- * Uploads a single review image to ImageKit.
+ * Uploads a single Photo of a Review to ImageKit.
  *
  * The folder and the file name are built here, on the server: the client-side
  * upload signature cannot be scoped to a path, so the only way to keep review

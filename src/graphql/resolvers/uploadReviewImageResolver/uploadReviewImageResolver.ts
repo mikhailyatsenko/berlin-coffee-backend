@@ -110,7 +110,7 @@ export async function uploadReviewImageResolver(
   const buffer = Buffer.from(fileBuffer, "base64");
 
   if (buffer.length === 0 || buffer.length > MAX_DECODED_BYTES) {
-    throw new GraphQLError("Image is too large", {
+    throw new GraphQLError("Photo is too large", {
       extensions: { code: "BAD_USER_INPUT" },
     });
   }
@@ -159,11 +159,11 @@ export async function uploadReviewImageResolver(
     }
     if ((current.reviewImages ?? 0) >= MAX_IMAGES_PER_REVIEW) {
       throw new GraphQLError(
-        "This review already has the maximum number of images",
+        "This review already has the maximum number of photos",
         { extensions: { code: "IMAGE_LIMIT_REACHED" } },
       );
     }
-    throw new GraphQLError("Another Photo of this review is still uploading", {
+    throw new GraphQLError("Another photo of this review is still uploading", {
       extensions: { code: "UPLOAD_IN_PROGRESS" },
     });
   }
@@ -217,7 +217,7 @@ export async function uploadReviewImageResolver(
       await releaseLease();
     }
     console.error("Error uploading review image:", error);
-    throw new GraphQLError("Failed to upload image", {
+    throw new GraphQLError("Failed to upload photo", {
       extensions: { code: "INTERNAL_SERVER_ERROR" },
     });
   }
@@ -239,7 +239,7 @@ export async function uploadReviewImageResolver(
     console.error(
       `Review image ${index} of review ${reviewId} was uploaded but not counted`,
     );
-    throw new GraphQLError("Failed to upload image", {
+    throw new GraphQLError("Failed to upload photo", {
       extensions: { code: "INTERNAL_SERVER_ERROR" },
     });
   }
