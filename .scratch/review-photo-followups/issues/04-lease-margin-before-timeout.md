@@ -47,3 +47,4 @@ Prefer the structural fix over just enlarging the constant: move the lease's `un
   minimum remaining time could skip it. (2) `deleteAllReviewImages` has no timeout,
   so a folder delete longer than timeout + margin lets deleteReview's fence lapse
   mid-delete; worth its own ticket.
+- 2026-09-26: Merged into `main` in `59cce7e` (commits `3dc2c00`, `c3d064a`).
