@@ -4,7 +4,10 @@ import { GraphQLError } from "graphql";
 import Interaction from "../../../models/Interaction.js";
 import { IUser } from "../../../models/User.js";
 import {
-  getReviewImageUploadTimeoutMs,
+  REVIEW_IMAGE_ABANDONED_LEASE_MS,
+  REVIEW_IMAGE_UPLOAD_TIMEOUT_MS,
+} from "../../../config/env.js";
+import {
   uploadReviewImage,
   UploadTimeoutError,
 } from "../../../utils/imagekit.js";
@@ -25,12 +28,10 @@ const MAX_DECODED_BYTES = 3 * 1024 * 1024;
  * (a 1.4 MB noisy 1440px WebP, a 2.9 MB PNG, a 16000px flat PNG) took 0.1–0.8 s.
  */
 const LEASE_MARGIN_MS = 15_000;
-/** The longest a timed-out upload keeps the lease while ImageKit may still store its file. */
-const DEFAULT_ABANDONED_LEASE_MS = 10 * 60_000;
 
 /** When an upload whose lease was taken at `now` stops waiting for ImageKit. */
 function uploadDeadline(now: Date): Date {
-  return new Date(now.getTime() + getReviewImageUploadTimeoutMs());
+  return new Date(now.getTime() + REVIEW_IMAGE_UPLOAD_TIMEOUT_MS);
 }
 
 /**
@@ -39,13 +40,6 @@ function uploadDeadline(now: Date): Date {
  */
 export function uploadLeaseUntil(now: Date): Date {
   return new Date(uploadDeadline(now).getTime() + LEASE_MARGIN_MS);
-}
-
-function getAbandonedLeaseMs(): number {
-  return (
-    Number(process.env.REVIEW_IMAGE_ABANDONED_LEASE_MS) ||
-    DEFAULT_ABANDONED_LEASE_MS
-  );
 }
 
 /**
@@ -73,7 +67,7 @@ interface UploadReviewImageArgs extends GuestArgs {
 }
 
 /**
- * Uploads one review image through the server, the way avatars already work.
+ * Uploads one Photo of a Review through the server, the way avatars already work.
  *
  * The client cannot choose the folder or the file name: ImageKit's client-side
  * upload signature covers only token+expire, so a path can only be enforced by
@@ -169,7 +163,7 @@ export async function uploadReviewImageResolver(
         { extensions: { code: "IMAGE_LIMIT_REACHED" } },
       );
     }
-    throw new GraphQLError("Another image of this review is still uploading", {
+    throw new GraphQLError("Another Photo of this review is still uploading", {
       extensions: { code: "UPLOAD_IN_PROGRESS" },
     });
   }
@@ -190,7 +184,7 @@ export async function uploadReviewImageResolver(
   // now is either us or deleteReview's fence, and the late file must be held
   // off either way. Someone else's lease is only ever extended, never cut short.
   const holdLeaseWhileAbandoned = () => {
-    const holdUntil = new Date(Date.now() + getAbandonedLeaseMs());
+    const holdUntil = new Date(Date.now() + REVIEW_IMAGE_ABANDONED_LEASE_MS);
     return Interaction.updateOne(
       {
         _id: reviewId,

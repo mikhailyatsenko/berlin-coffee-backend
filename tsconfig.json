@@ -11,6 +11,6 @@
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
   },
-  "include": ["src/**/*", "importPlaces.js"],
+  "include": ["src/**/*", "tests/**/*", "importPlaces.js"],
   "exclude": ["node_modules"]
 }

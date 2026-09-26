@@ -6,12 +6,12 @@
   "type": "module",
   "scripts": {
     "test": "TS_NODE_TRANSPILE_ONLY=true node --loader ts-node/esm --no-warnings --test --test-force-exit tests/*.test.ts",
-    "watch": "tsc -w",
+    "watch": "tsc -w -p tsconfig.build.json",
     "clean": "rimraf dist/graphql/typeDefs",
     "copy-files": "copyfiles -u 1 src/**/*.graphql dist/",
     "dev": "nodemon ./dist/index.js",
     "generate": "graphql-codegen --config codegen.yml",
-    "build": "rimraf dist && tsc && npm run copy-files",
+    "build": "rimraf dist && tsc -p tsconfig.build.json && npm run copy-files",
     "start": "node dist/index.js"
   },
   "keywords": [],

@@ -12,6 +12,7 @@ import { beforeEach, test } from "node:test";
 import assert from "node:assert/strict";
 import mongoose from "mongoose";
 import sharp from "sharp";
+import type { IUser } from "../src/models/User.js";
 import { setTestEnv, useThrowawayMongod } from "./support/mongod.js";
 
 setTestEnv({
@@ -39,20 +40,23 @@ let calls = 0;
 /** Decides what one upload does; resolve = stored, reject = failed, never settle = hang. */
 let behavior: (call: UploadCall, n: number) => Promise<void> = async () => {};
 
-(ImageKit.prototype as any).upload = async function (opts: {
+type FakeUpload = (opts: {
   file: Buffer;
   fileName: string;
   folder: string;
-}) {
-  const n = ++calls;
-  await behavior({ fileName: opts.fileName, folder: opts.folder }, n);
-  const filePath = `/${opts.folder}/${opts.fileName}`;
-  bucket.set(filePath, opts.file);
-  writers.set(filePath, n);
-  return { filePath };
-};
+}) => Promise<{ filePath: string }>;
 
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+(ImageKit.prototype as unknown as { upload: FakeUpload }).upload =
+  async function (opts) {
+    const n = ++calls;
+    await behavior({ fileName: opts.fileName, folder: opts.folder }, n);
+    const filePath = `/${opts.folder}/${opts.fileName}`;
+    bucket.set(filePath, opts.file);
+    writers.set(filePath, n);
+    return { filePath };
+  };
+
+const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 const hang = () => new Promise<void>(() => {});
 const fails = async (ms = 0) => {
   await sleep(ms);
@@ -63,10 +67,13 @@ const fails = async (ms = 0) => {
 
 /** Extra time the server's sharp resize takes before ImageKit is called. */
 let processingDelayMs = 0;
-const realToBuffer = sharp.prototype.toBuffer;
-(sharp.prototype as any).toBuffer = async function (...args: unknown[]) {
+const sharpPrototype = sharp.prototype as unknown as {
+  toBuffer: (...args: unknown[]) => Promise<Buffer>;
+};
+const realToBuffer = sharpPrototype.toBuffer;
+sharpPrototype.toBuffer = async function (this: unknown, ...args) {
   await sleep(processingDelayMs);
-  return realToBuffer.apply(this, args as any);
+  return realToBuffer.apply(this, args);
 };
 
 // --- mongod ----------------------------------------------------------------
@@ -118,7 +125,7 @@ const upload = (r: Review) =>
   uploadReviewImageResolver(
     undefined as never,
     { reviewId: r.reviewId, fileBuffer: png },
-    { user: { id: r.userId.toString() } as any },
+    { user: { id: r.userId.toString() } as Pick<IUser, "id"> as IUser },
   );
 
 type Settled =
@@ -281,7 +288,11 @@ test("processing that outlasts the upload timeout never starts the ImageKit call
   processingDelayMs = 400;
   const slow = await settle(upload(review));
   assert.equal(slow.status, "error");
-  assert.equal(calls, 0, "ImageKit must not be called once the lease's upload window is over");
+  assert.equal(
+    calls,
+    0,
+    "ImageKit must not be called once the lease's upload window is over",
+  );
 
   // Nothing is in flight, so the slot is free again straight away.
   processingDelayMs = 0;

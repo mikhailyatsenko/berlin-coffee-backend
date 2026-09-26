@@ -13,6 +13,8 @@ import { beforeEach, test } from "node:test";
 import assert from "node:assert/strict";
 import mongoose from "mongoose";
 import sharp from "sharp";
+import { GraphQLError } from "graphql";
+import type { IUser } from "../src/models/User.js";
 import { setTestEnv, useThrowawayMongod } from "./support/mongod.js";
 
 setTestEnv({
@@ -36,11 +38,18 @@ let releaseUpload: () => void = () => {};
 let holdUploads = true;
 let uploadCalls = 0;
 
-(ImageKit.prototype as any).upload = async function (opts: {
-  file: Buffer;
-  fileName: string;
-  folder: string;
-}) {
+/** The slice of the ImageKit client these tests replace. */
+type FakeImageKit = {
+  upload: (opts: {
+    file: Buffer;
+    fileName: string;
+    folder: string;
+  }) => Promise<{ filePath: string }>;
+  deleteFolder: (folderPath: string) => Promise<void>;
+};
+const fakeImageKit = ImageKit.prototype as unknown as FakeImageKit;
+
+fakeImageKit.upload = async function (opts) {
   uploadCalls++;
   if (holdUploads) {
     await new Promise<void>((resolve) => {
@@ -56,7 +65,7 @@ let releaseFolderDelete: () => void = () => {};
 /** When true, folder deletes wait for releaseFolderDelete. */
 let holdFolderDeletes = false;
 
-(ImageKit.prototype as any).deleteFolder = async function (folderPath: string) {
+fakeImageKit.deleteFolder = async function (folderPath) {
   deleteFolderCalls.push(folderPath);
   if (holdFolderDeletes) {
     await new Promise<void>((resolve) => {
@@ -65,7 +74,14 @@ let holdFolderDeletes = false;
   }
 };
 
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+
+/** An assert.rejects validator for a GraphQLError with this extensions.code. */
+const withCode = (code: string) => (error: unknown) => {
+  assert.ok(error instanceof GraphQLError, String(error));
+  assert.equal(error.extensions.code, code);
+  return true;
+};
 
 // --- mongod ------------------------------------------------------------
 
@@ -108,7 +124,7 @@ const upload = (r: Review) =>
   uploadReviewImageResolver(
     undefined as never,
     { reviewId: r.reviewId, fileBuffer: png },
-    { user: { id: r.userId.toString() } as any },
+    { user: { id: r.userId.toString() } as Pick<IUser, "id"> as IUser },
   );
 
 const deleteReview = (
@@ -141,7 +157,8 @@ test("deleteReview run to completion after an upload took its lease fails the up
   // deleteReview now runs to completion: it clears the counter atomically
   // and awaits the ImageKit folder delete, all before it returns.
   const deleteResult = await deleteReview(review, "deleteAll");
-  assert.equal((deleteResult as any).reviewId, review.reviewId);
+  assert.ok("reviewId" in deleteResult, deleteResult.message);
+  assert.equal(deleteResult.reviewId, review.reviewId);
 
   const afterDelete = await Interaction.findById(review.reviewId).lean();
   assert.equal(afterDelete?.reviewImages, 0);
@@ -153,10 +170,7 @@ test("deleteReview run to completion after an upload took its lease fails the up
   releaseUpload();
   await assert.rejects(
     uploadPromise,
-    (error: any) => {
-      assert.equal(error.extensions?.code, "INTERNAL_SERVER_ERROR");
-      return true;
-    },
+    withCode("INTERNAL_SERVER_ERROR"),
     "the commit must fail once the counter has moved out from under it",
   );
 
@@ -177,11 +191,12 @@ test("an upload that starts while deleteReview is clearing the folder is refused
   const deletePromise = deleteReview(review, "deleteAll");
   while (deleteFolderCalls.length < 1) await sleep(5);
 
-  await assert.rejects(upload(review), (error: any) => {
-    assert.equal(error.extensions?.code, "UPLOAD_IN_PROGRESS");
-    return true;
-  });
-  assert.equal(uploadCalls, 0, "nothing may reach ImageKit while the folder is being deleted");
+  await assert.rejects(upload(review), withCode("UPLOAD_IN_PROGRESS"));
+  assert.equal(
+    uploadCalls,
+    0,
+    "nothing may reach ImageKit while the folder is being deleted",
+  );
 
   releaseFolderDelete();
   await deletePromise;
@@ -217,11 +232,12 @@ test("deleteReview does not shorten a timed-out upload's abandoned hold", async 
   const after = await Interaction.findById(review.reviewId).lean();
   assert.equal(after?.reviewImages, 0);
   assert.equal(after?.photoUploadLease?.until?.getTime(), holdUntil.getTime());
-  await assert.rejects(upload(review), (error: any) => {
-    assert.equal(error.extensions?.code, "UPLOAD_IN_PROGRESS");
-    return true;
-  });
-  assert.equal(uploadCalls, 0, "no upload may take image_1 while the late file can still land");
+  await assert.rejects(upload(review), withCode("UPLOAD_IN_PROGRESS"));
+  assert.equal(
+    uploadCalls,
+    0,
+    "no upload may take image_1 while the late file can still land",
+  );
 });
 
 test("deleteRating leaves an in-flight upload's lease alone and the upload commits", async () => {
@@ -272,10 +288,7 @@ test("deleteReview hands back an abandoned hold that ends before its own fence",
   assert.equal(after?.reviewImages, 0);
   assert.equal(after?.photoUploadLease?.token, "abandoned");
   assert.equal(after?.photoUploadLease?.until?.getTime(), holdUntil.getTime());
-  await assert.rejects(upload(review), (error: any) => {
-    assert.equal(error.extensions?.code, "UPLOAD_IN_PROGRESS");
-    return true;
-  });
+  await assert.rejects(upload(review), withCode("UPLOAD_IN_PROGRESS"));
 });
 
 test("an upload fenced by deleteReview still holds its lease once it times out", async () => {

@@ -33,3 +33,14 @@ for (const envVar of requiredEnvVars) {
     throw new Error(`Missing required environment variable: ${envVar}`);
   }
 }
+
+// Optional, unlike the ones above: the defaults are what production runs with,
+// and tests shorten them so that timeouts play out in milliseconds.
+
+/** How long a Photo upload may take before it counts as failed. */
+export const REVIEW_IMAGE_UPLOAD_TIMEOUT_MS =
+  Number(process.env.REVIEW_IMAGE_UPLOAD_TIMEOUT_MS) || 30_000;
+
+/** The longest a timed-out Photo upload keeps the lease while ImageKit may still store its file. */
+export const REVIEW_IMAGE_ABANDONED_LEASE_MS =
+  Number(process.env.REVIEW_IMAGE_ABANDONED_LEASE_MS) || 10 * 60_000;

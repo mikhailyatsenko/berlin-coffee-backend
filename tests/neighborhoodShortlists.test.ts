@@ -145,7 +145,11 @@ test("places are ordered by Average rating, then Rating count, then name; five a
 });
 
 test("every spelling of an Amenity qualifies", async () => {
-  await seedPlace("Free wifi", ["Good for working on laptop", "Free Wi-Fi"], [5]);
+  await seedPlace(
+    "Free wifi",
+    ["Good for working on laptop", "Free Wi-Fi"],
+    [5],
+  );
   await seedPlace("Dogs inside", ["Dogs allowed inside"], [5]);
   await seedPlace("Dogs outside", ["Dogs allowed outside"], [5]);
   await seedPlace("Brunch", ["Brunch"], [5]);
@@ -179,10 +183,7 @@ test("the Neighborhood slug is normalized", async () => {
     neighborhood: "Friedrichshain-Kreuzberg",
   });
 
-  const outdoor = await shortlist(
-    "outdoorSeating",
-    "friedrichshain-kreuzberg",
-  );
+  const outdoor = await shortlist("outdoorSeating", "friedrichshain-kreuzberg");
 
   assert.deepEqual(names(outdoor), ["Kreuzberg Terrace"]);
 });
@@ -213,10 +214,14 @@ test("places have the shape filteredPlaces gives them, and isFavorite is the cal
   });
 
   const [fromShortlist] = (
-    await shortlist("outdoorSeating", "Mitte", { user: { id: userId.toString() } })
+    await shortlist("outdoorSeating", "Mitte", {
+      user: { id: userId.toString() },
+    })
   ).places;
   const anonymous = (await shortlist("outdoorSeating")).places[0];
-  const { places: [fromFilter] } = await filteredPlacesResolver(
+  const {
+    places: [fromFilter],
+  } = await filteredPlacesResolver(
     undefined as never,
     { neighborhood: ["Mitte"], additionalInfo: ["Outdoor seating"] },
     { user: { id: userId.toString() } },
@@ -230,12 +235,17 @@ test("places have the shape filteredPlaces gives them, and isFavorite is the cal
 });
 
 test("filteredPlaces with a Shortlist's Amenities and minRating 4 agrees on the total", async () => {
-  await seedPlace("Work both", ["Good for working on laptop", "Free Wi-Fi"], [5]);
+  await seedPlace(
+    "Work both",
+    ["Good for working on laptop", "Free Wi-Fi"],
+    [5],
+  );
   await seedPlace("Work laptop", ["Good for working on laptop"], [5]);
-  await seedPlace("Work almost", ["Good for working on laptop", "Wi-Fi"], [
-    ...Array(24).fill(4),
-    3,
-  ]);
+  await seedPlace(
+    "Work almost",
+    ["Good for working on laptop", "Wi-Fi"],
+    [...Array(24).fill(4), 3],
+  );
   await seedPlace("Dogs", ["Dogs allowed inside"], [4]);
   await seedPlace("Dogs low", ["Dogs allowed"], [3]);
   await seedPlace("Dogs elsewhere", ["Dogs allowed"], [5], {
