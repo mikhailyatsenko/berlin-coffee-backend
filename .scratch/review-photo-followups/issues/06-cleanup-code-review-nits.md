@@ -35,3 +35,4 @@ Small quality findings from reviewing `9ce727a`/`0a085dd`, independent of each o
   - Wording: all user-facing messages in the upload resolver now say "photo" (lowercase, as in the frontend's own copy; the frontend maps on `extensions.code`, not on the message). The resolver's and `uploadReviewImage`'s doc comments say "Photo".
   - Left for later: the four `any`s in `src/utils/imagekit.ts` (avatar and URL code) predate this ticket. The fake-ImageKit types and the fake-user cast are still duplicated across the two test files and could move into `tests/support/`.
 - 2026-09-26: Merged into `main` in `96894d1` (commits `03bbcb1`, `9748add`).
+- 2026-09-26: The four `any`s in `src/utils/imagekit.ts` left over above are fixed on `chore/imagekit-drop-any` (`6702511`): a `FileObject` type guard replaces the casts, and the unused `getImageUrl`/`getAvatarUrl` are removed.
