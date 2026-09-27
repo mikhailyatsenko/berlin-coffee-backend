@@ -9,6 +9,11 @@ type Query {
   userReviewActivity: [UserReviewActivity!]!
   availableAdditionalInfoTags: AdditionalInfoTagsResponse!
   availableNeighborhoods: AvailableNeighborhoodsResponse!
+  """
+  Opens a Place suggestion from the admin's review link. The token is the only
+  authorization; a wrong token and an unknown id fail the same way.
+  """
+  placeSuggestionForReview(id: ID!, token: String!): PlaceSuggestionForReview!
 }
 
 type AdditionalInfoTagsResponse {
@@ -104,6 +109,15 @@ type Mutation {
     guestId: String
     guestSecret: String
   ): SuccessResponse!
+
+  # Place suggestions
+  # guestId/guestSecret are used only when there is no signed-in user.
+  """Returns the id of the new suggestion."""
+  submitPlaceSuggestion(
+    input: PlaceSuggestionInput!
+    guestId: String
+    guestSecret: String
+  ): ID!
 
   # Contact Form Mutation
   contactForm(

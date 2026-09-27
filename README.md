@@ -24,6 +24,20 @@
 - `src/scripts/repairReviewPhotoCounts.ts` — one-off: lowers `reviewImages` of Reviews whose Photos stop at a missing file in ImageKit. Dry run by default; `--apply` only with the owner's go-ahead. Usage in the file header.
 
 
+## Place suggestions
+
+Anyone can suggest a missing Place (`submitPlaceSuggestion`); the admin gets an
+email with a link to a review page and acts on the suggestion from there, with no
+sign-in. The link carries an HMAC of the suggestion id, so the secret must stay
+the same across deploys or every link already emailed stops working.
+
+### Required environment variable
+
+    PLACE_SUGGESTION_REVIEW_SECRET=...   # e.g. `openssl rand -hex 32`
+
+The server refuses to boot without it. Set it in the server's `.env` **before**
+deploying. Suggestions are capped at 3 per day per IP (`placeSuggestion` in
+`src/utils/rateLimit.ts`).
 
 ## Guest reviews rollout
 

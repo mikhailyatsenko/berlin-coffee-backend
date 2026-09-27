@@ -1,0 +1,54 @@
+"""
+Text is trimmed; a blank optional field counts as missing. Longer input fails
+with BAD_USER_INPUT.
+"""
+input PlaceSuggestionInput {
+  "Required, at most 200 characters."
+  name: String!
+  "Required, at most 300 characters."
+  address: String!
+  "At most 500 characters."
+  description: String
+  "At most 200 characters."
+  instagram: String
+  """
+  Where to tell a Guest that their Place was added. Ignored for signed-in
+  Users, whose account email is used instead. At most 254 characters and must
+  look like an email.
+  """
+  email: String
+}
+
+enum PlaceSuggestionStatus {
+  pending
+  published
+  rejected
+}
+
+enum PlaceSuggester {
+  user
+  guest
+}
+
+"""What the admin sees on the review page. Never carries the Guest's email."""
+type PlaceSuggestionForReview {
+  id: ID!
+  name: String!
+  address: String!
+  description: String
+  instagram: String
+  suggestedBy: PlaceSuggester!
+  status: PlaceSuggestionStatus!
+  """Set once the suggestion is published."""
+  publishedPlaceId: ID
+  """Paths of the photos sent with the suggestion."""
+  photos: [String!]!
+  """Other pending suggestions with a similar name."""
+  similarPending: [SimilarPlaceSuggestion!]!
+}
+
+type SimilarPlaceSuggestion {
+  id: ID!
+  name: String!
+  address: String!
+}

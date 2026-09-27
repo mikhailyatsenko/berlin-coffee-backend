@@ -179,6 +179,8 @@ export type Mutation = {
   resetPassword: SuccessResponse;
   setNewPassword: SuccessResponse;
   signInWithEmail: AuthPayload;
+  /** Returns the id of the new suggestion. */
+  submitPlaceSuggestion: Scalars['ID']['output'];
   toggleCharacteristic: SuccessResponse;
   toggleFavorite: Scalars['Boolean']['output'];
   updatePersonalData: SuccessResponse;
@@ -286,6 +288,13 @@ export type MutationSignInWithEmailArgs = {
 };
 
 
+export type MutationSubmitPlaceSuggestionArgs = {
+  guestId?: InputMaybe<Scalars['String']['input']>;
+  guestSecret?: InputMaybe<Scalars['String']['input']>;
+  input: PlaceSuggestionInput;
+};
+
+
 export type MutationToggleCharacteristicArgs = {
   characteristic: Characteristic;
   guestId?: InputMaybe<Scalars['String']['input']>;
@@ -373,6 +382,56 @@ export type PlaceReviews = {
   reviews: Array<Review>;
 };
 
+export enum PlaceSuggester {
+  Guest = 'guest',
+  User = 'user'
+}
+
+/** What the admin sees on the review page. Never carries the Guest's email. */
+export type PlaceSuggestionForReview = {
+  __typename?: 'PlaceSuggestionForReview';
+  address: Scalars['String']['output'];
+  description?: Maybe<Scalars['String']['output']>;
+  id: Scalars['ID']['output'];
+  instagram?: Maybe<Scalars['String']['output']>;
+  name: Scalars['String']['output'];
+  /** Paths of the photos sent with the suggestion. */
+  photos: Array<Scalars['String']['output']>;
+  /** Set once the suggestion is published. */
+  publishedPlaceId?: Maybe<Scalars['ID']['output']>;
+  /** Other pending suggestions with a similar name. */
+  similarPending: Array<SimilarPlaceSuggestion>;
+  status: PlaceSuggestionStatus;
+  suggestedBy: PlaceSuggester;
+};
+
+/**
+ * Text is trimmed; a blank optional field counts as missing. Longer input fails
+ * with BAD_USER_INPUT.
+ */
+export type PlaceSuggestionInput = {
+  /** Required, at most 300 characters. */
+  address: Scalars['String']['input'];
+  /** At most 500 characters. */
+  description?: InputMaybe<Scalars['String']['input']>;
+  /**
+   * Where to tell a Guest that their Place was added. Ignored for signed-in
+   * Users, whose account email is used instead. At most 254 characters and must
+   * look like an email.
+   */
+  email?: InputMaybe<Scalars['String']['input']>;
+  /** At most 200 characters. */
+  instagram?: InputMaybe<Scalars['String']['input']>;
+  /** Required, at most 200 characters. */
+  name: Scalars['String']['input'];
+};
+
+export enum PlaceSuggestionStatus {
+  Pending = 'pending',
+  Published = 'published',
+  Rejected = 'rejected'
+}
+
 export type PlacesResponse = {
   __typename?: 'PlacesResponse';
   places: Array<Place>;
@@ -389,6 +448,11 @@ export type Query = {
   neighborhoodShortlists: Array<Shortlist>;
   place: Place;
   placeReviews: PlaceReviews;
+  /**
+   * Opens a Place suggestion from the admin's review link. The token is the only
+   * authorization; a wrong token and an unknown id fail the same way.
+   */
+  placeSuggestionForReview: PlaceSuggestionForReview;
   places: PlacesResponse;
   userReviewActivity: Array<UserReviewActivity>;
 };
@@ -413,6 +477,12 @@ export type QueryPlaceArgs = {
 
 export type QueryPlaceReviewsArgs = {
   placeId: Scalars['ID']['input'];
+};
+
+
+export type QueryPlaceSuggestionForReviewArgs = {
+  id: Scalars['ID']['input'];
+  token: Scalars['String']['input'];
 };
 
 
@@ -467,6 +537,13 @@ export enum ShortlistId {
   OutdoorSeating = 'outdoorSeating',
   Work = 'work'
 }
+
+export type SimilarPlaceSuggestion = {
+  __typename?: 'SimilarPlaceSuggestion';
+  address: Scalars['String']['output'];
+  id: Scalars['ID']['output'];
+  name: Scalars['String']['output'];
+};
 
 export type SuccessResponse = {
   __typename?: 'SuccessResponse';
@@ -606,6 +683,10 @@ export type ResolversTypes = {
   Place: ResolverTypeWrapper<IPlace>;
   PlaceProperties: ResolverTypeWrapper<Omit<PlaceProperties, 'reviews'> & { reviews: Array<ResolversTypes['Review']> }>;
   PlaceReviews: ResolverTypeWrapper<Omit<PlaceReviews, 'reviews'> & { reviews: Array<ResolversTypes['Review']> }>;
+  PlaceSuggester: PlaceSuggester;
+  PlaceSuggestionForReview: ResolverTypeWrapper<PlaceSuggestionForReview>;
+  PlaceSuggestionInput: PlaceSuggestionInput;
+  PlaceSuggestionStatus: PlaceSuggestionStatus;
   PlacesResponse: ResolverTypeWrapper<Omit<PlacesResponse, 'places'> & { places: Array<ResolversTypes['Place']> }>;
   Query: ResolverTypeWrapper<{}>;
   RefreshTokenResponse: ResolverTypeWrapper<Omit<RefreshTokenResponse, 'user'> & { user: ResolversTypes['User'] }>;
@@ -613,6 +694,7 @@ export type ResolversTypes = {
   Review: ResolverTypeWrapper<IInteraction>;
   Shortlist: ResolverTypeWrapper<Omit<Shortlist, 'places'> & { places: Array<ResolversTypes['Place']> }>;
   ShortlistId: ShortlistId;
+  SimilarPlaceSuggestion: ResolverTypeWrapper<SimilarPlaceSuggestion>;
   String: ResolverTypeWrapper<Scalars['String']['output']>;
   SuccessResponse: ResolverTypeWrapper<SuccessResponse>;
   UploadAvatarResponse: ResolverTypeWrapper<UploadAvatarResponse>;
@@ -649,12 +731,15 @@ export type ResolversParentTypes = {
   Place: IPlace;
   PlaceProperties: Omit<PlaceProperties, 'reviews'> & { reviews: Array<ResolversParentTypes['Review']> };
   PlaceReviews: Omit<PlaceReviews, 'reviews'> & { reviews: Array<ResolversParentTypes['Review']> };
+  PlaceSuggestionForReview: PlaceSuggestionForReview;
+  PlaceSuggestionInput: PlaceSuggestionInput;
   PlacesResponse: Omit<PlacesResponse, 'places'> & { places: Array<ResolversParentTypes['Place']> };
   Query: {};
   RefreshTokenResponse: Omit<RefreshTokenResponse, 'user'> & { user: ResolversParentTypes['User'] };
   ReportInaccuracyResponse: ReportInaccuracyResponse;
   Review: IInteraction;
   Shortlist: Omit<Shortlist, 'places'> & { places: Array<ResolversParentTypes['Place']> };
+  SimilarPlaceSuggestion: SimilarPlaceSuggestion;
   String: Scalars['String']['output'];
   SuccessResponse: SuccessResponse;
   UploadAvatarResponse: UploadAvatarResponse;
@@ -799,6 +884,7 @@ export type MutationResolvers<ContextType = Context, ParentType extends Resolver
   resetPassword?: Resolver<ResolversTypes['SuccessResponse'], ParentType, ContextType, RequireFields<MutationResetPasswordArgs, 'email' | 'newPassword' | 'token'>>;
   setNewPassword?: Resolver<ResolversTypes['SuccessResponse'], ParentType, ContextType, RequireFields<MutationSetNewPasswordArgs, 'newPassword' | 'userId'>>;
   signInWithEmail?: Resolver<ResolversTypes['AuthPayload'], ParentType, ContextType, RequireFields<MutationSignInWithEmailArgs, 'email' | 'password'>>;
+  submitPlaceSuggestion?: Resolver<ResolversTypes['ID'], ParentType, ContextType, RequireFields<MutationSubmitPlaceSuggestionArgs, 'input'>>;
   toggleCharacteristic?: Resolver<ResolversTypes['SuccessResponse'], ParentType, ContextType, RequireFields<MutationToggleCharacteristicArgs, 'characteristic' | 'placeId'>>;
   toggleFavorite?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationToggleFavoriteArgs, 'placeId'>>;
   updatePersonalData?: Resolver<ResolversTypes['SuccessResponse'], ParentType, ContextType, RequireFields<MutationUpdatePersonalDataArgs, 'userId'>>;
@@ -852,6 +938,20 @@ export type PlaceReviewsResolvers<ContextType = Context, ParentType extends Reso
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 };
 
+export type PlaceSuggestionForReviewResolvers<ContextType = Context, ParentType extends ResolversParentTypes['PlaceSuggestionForReview'] = ResolversParentTypes['PlaceSuggestionForReview']> = {
+  address?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  description?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+  instagram?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  name?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  photos?: Resolver<Array<ResolversTypes['String']>, ParentType, ContextType>;
+  publishedPlaceId?: Resolver<Maybe<ResolversTypes['ID']>, ParentType, ContextType>;
+  similarPending?: Resolver<Array<ResolversTypes['SimilarPlaceSuggestion']>, ParentType, ContextType>;
+  status?: Resolver<ResolversTypes['PlaceSuggestionStatus'], ParentType, ContextType>;
+  suggestedBy?: Resolver<ResolversTypes['PlaceSuggester'], ParentType, ContextType>;
+  __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
+};
+
 export type PlacesResponseResolvers<ContextType = Context, ParentType extends ResolversParentTypes['PlacesResponse'] = ResolversParentTypes['PlacesResponse']> = {
   places?: Resolver<Array<ResolversTypes['Place']>, ParentType, ContextType>;
   total?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
@@ -867,6 +967,7 @@ export type QueryResolvers<ContextType = Context, ParentType extends ResolversPa
   neighborhoodShortlists?: Resolver<Array<ResolversTypes['Shortlist']>, ParentType, ContextType, RequireFields<QueryNeighborhoodShortlistsArgs, 'neighborhood'>>;
   place?: Resolver<ResolversTypes['Place'], ParentType, ContextType, RequireFields<QueryPlaceArgs, 'placeId'>>;
   placeReviews?: Resolver<ResolversTypes['PlaceReviews'], ParentType, ContextType, RequireFields<QueryPlaceReviewsArgs, 'placeId'>>;
+  placeSuggestionForReview?: Resolver<ResolversTypes['PlaceSuggestionForReview'], ParentType, ContextType, RequireFields<QueryPlaceSuggestionForReviewArgs, 'id' | 'token'>>;
   places?: Resolver<ResolversTypes['PlacesResponse'], ParentType, ContextType, RequireFields<QueryPlacesArgs, 'offset'>>;
   userReviewActivity?: Resolver<Array<ResolversTypes['UserReviewActivity']>, ParentType, ContextType>;
 };
@@ -904,6 +1005,13 @@ export type ShortlistResolvers<ContextType = Context, ParentType extends Resolve
   id?: Resolver<ResolversTypes['ShortlistId'], ParentType, ContextType>;
   places?: Resolver<Array<ResolversTypes['Place']>, ParentType, ContextType>;
   total?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
+};
+
+export type SimilarPlaceSuggestionResolvers<ContextType = Context, ParentType extends ResolversParentTypes['SimilarPlaceSuggestion'] = ResolversParentTypes['SimilarPlaceSuggestion']> = {
+  address?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+  name?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 };
 
@@ -969,12 +1077,14 @@ export type Resolvers<ContextType = Context> = {
   Place?: PlaceResolvers<ContextType>;
   PlaceProperties?: PlacePropertiesResolvers<ContextType>;
   PlaceReviews?: PlaceReviewsResolvers<ContextType>;
+  PlaceSuggestionForReview?: PlaceSuggestionForReviewResolvers<ContextType>;
   PlacesResponse?: PlacesResponseResolvers<ContextType>;
   Query?: QueryResolvers<ContextType>;
   RefreshTokenResponse?: RefreshTokenResponseResolvers<ContextType>;
   ReportInaccuracyResponse?: ReportInaccuracyResponseResolvers<ContextType>;
   Review?: ReviewResolvers<ContextType>;
   Shortlist?: ShortlistResolvers<ContextType>;
+  SimilarPlaceSuggestion?: SimilarPlaceSuggestionResolvers<ContextType>;
   SuccessResponse?: SuccessResponseResolvers<ContextType>;
   UploadAvatarResponse?: UploadAvatarResponseResolvers<ContextType>;
   UploadReviewImageResponse?: UploadReviewImageResponseResolvers<ContextType>;

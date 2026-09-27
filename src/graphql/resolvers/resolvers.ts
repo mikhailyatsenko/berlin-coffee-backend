@@ -34,6 +34,8 @@ import { reportInaccuracyResolver } from "./reportInaccuracyResolver/reportInacc
 import { createGuestIdentityResolver } from "./guestIdentityResolver/createGuestIdentityResolver.js";
 import { claimGuestReviewsResolver } from "./guestIdentityResolver/claimGuestReviewsResolver.js";
 import { uploadReviewImageResolver } from "./uploadReviewImageResolver/uploadReviewImageResolver.js";
+import { submitPlaceSuggestionResolver } from "./placeSuggestionResolver/submitPlaceSuggestionResolver.js";
+import { placeSuggestionForReviewResolver } from "./placeSuggestionResolver/placeSuggestionForReviewResolver.js";
 
 export const resolvers = {
   JSON: GraphQLJSON,
@@ -48,6 +50,7 @@ export const resolvers = {
     userReviewActivity: userReviewActivityResolver,
     availableAdditionalInfoTags: availableAdditionalInfoTagsResolver,
     availableNeighborhoods: availableNeighborhoodsResolver,
+    placeSuggestionForReview: placeSuggestionForReviewResolver,
   },
 
   Mutation: {
@@ -77,6 +80,7 @@ export const resolvers = {
     deleteReview: deleteReviewResolver,
     toggleCharacteristic: toggleCharacteristicResolver,
     uploadReviewImage: uploadReviewImageResolver,
+    submitPlaceSuggestion: submitPlaceSuggestionResolver,
 
     contactForm: contactFormResolver,
     reportInaccuracy: reportInaccuracyResolver,
