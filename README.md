@@ -31,13 +31,19 @@ email with a link to a review page and acts on the suggestion from there, with n
 sign-in. The link carries an HMAC of the suggestion id, so the secret must stay
 the same across deploys or every link already emailed stops working.
 
-### Required environment variable
+### Required environment variables
 
     PLACE_SUGGESTION_REVIEW_SECRET=...   # e.g. `openssl rand -hex 32`
+    GOOGLE_PLACES_API_KEY=...            # same key the Google Places sync script uses
 
-The server refuses to boot without it. Set it in the server's `.env` **before**
-deploying. Suggestions are capped at 3 per day per IP (`placeSuggestion` in
-`src/utils/rateLimit.ts`).
+The server refuses to boot without either. Set them in the server's `.env`
+**before** deploying, and never rotate `PLACE_SUGGESTION_REVIEW_SECRET`
+casually: it invalidates every review link already emailed. Suggestions are
+capped at 3 per day per IP (`placeSuggestion` in `src/utils/rateLimit.ts`).
+
+From the review page, "Find on Google" (`findGoogleIdsForSuggestion`) looks up
+to three Google Place ID candidates for free — see
+[Google Places sync](docs/google-places-sync.md#find-on-google-поиск-place-id-для-заявки-на-добавление-места).
 
 ## Guest reviews rollout
 

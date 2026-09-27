@@ -144,6 +144,16 @@ export type Geometry = {
 };
 
 /**
+ * A Google Place ID candidate for a suggestion, from the free "IDs Only" Text
+ * Search. existingPlaceId is set when a Place already carries this ID.
+ */
+export type GoogleIdCandidate = {
+  __typename?: 'GoogleIdCandidate';
+  existingPlaceId?: Maybe<Scalars['ID']['output']>;
+  googleId: Scalars['String']['output'];
+};
+
+/**
  * Credentials issued once after a successful captcha check. The client stores both
  * values in localStorage; the raw secret is never returned again.
  */
@@ -505,6 +515,11 @@ export type Query = {
   currentUser?: Maybe<User>;
   favoritePlaces: Array<FavoritePlace>;
   filteredPlaces: PlacesResponse;
+  /**
+   * Up to three Google Place ID candidates for a suggestion, free ("IDs Only"
+   * Text Search). A bad token fails like every other admin operation.
+   */
+  findGoogleIdsForSuggestion: Array<GoogleIdCandidate>;
   neighborhoodShortlists: Array<Shortlist>;
   place: Place;
   placeReviews: PlaceReviews;
@@ -522,6 +537,12 @@ export type QueryFilteredPlacesArgs = {
   additionalInfo?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   minRating?: InputMaybe<Scalars['Float']['input']>;
   neighborhood?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+};
+
+
+export type QueryFindGoogleIdsForSuggestionArgs = {
+  id: Scalars['ID']['input'];
+  token: Scalars['String']['input'];
 };
 
 
@@ -734,6 +755,7 @@ export type ResolversTypes = {
   FavoritePlacesResponse: ResolverTypeWrapper<FavoritePlacesResponse>;
   Float: ResolverTypeWrapper<Scalars['Float']['output']>;
   Geometry: ResolverTypeWrapper<Geometry>;
+  GoogleIdCandidate: ResolverTypeWrapper<GoogleIdCandidate>;
   GuestIdentityPayload: ResolverTypeWrapper<GuestIdentityPayload>;
   ID: ResolverTypeWrapper<Scalars['ID']['output']>;
   Int: ResolverTypeWrapper<Scalars['Int']['output']>;
@@ -785,6 +807,7 @@ export type ResolversParentTypes = {
   FavoritePlacesResponse: FavoritePlacesResponse;
   Float: Scalars['Float']['output'];
   Geometry: Geometry;
+  GoogleIdCandidate: GoogleIdCandidate;
   GuestIdentityPayload: GuestIdentityPayload;
   ID: Scalars['ID']['output'];
   Int: Scalars['Int']['output'];
@@ -915,6 +938,12 @@ export type GeometryResolvers<ContextType = Context, ParentType extends Resolver
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 };
 
+export type GoogleIdCandidateResolvers<ContextType = Context, ParentType extends ResolversParentTypes['GoogleIdCandidate'] = ResolversParentTypes['GoogleIdCandidate']> = {
+  existingPlaceId?: Resolver<Maybe<ResolversTypes['ID']>, ParentType, ContextType>;
+  googleId?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
+};
+
 export type GuestIdentityPayloadResolvers<ContextType = Context, ParentType extends ResolversParentTypes['GuestIdentityPayload'] = ResolversParentTypes['GuestIdentityPayload']> = {
   guestId?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   guestSecret?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
@@ -1038,6 +1067,7 @@ export type QueryResolvers<ContextType = Context, ParentType extends ResolversPa
   currentUser?: Resolver<Maybe<ResolversTypes['User']>, ParentType, ContextType>;
   favoritePlaces?: Resolver<Array<ResolversTypes['FavoritePlace']>, ParentType, ContextType>;
   filteredPlaces?: Resolver<ResolversTypes['PlacesResponse'], ParentType, ContextType, Partial<QueryFilteredPlacesArgs>>;
+  findGoogleIdsForSuggestion?: Resolver<Array<ResolversTypes['GoogleIdCandidate']>, ParentType, ContextType, RequireFields<QueryFindGoogleIdsForSuggestionArgs, 'id' | 'token'>>;
   neighborhoodShortlists?: Resolver<Array<ResolversTypes['Shortlist']>, ParentType, ContextType, RequireFields<QueryNeighborhoodShortlistsArgs, 'neighborhood'>>;
   place?: Resolver<ResolversTypes['Place'], ParentType, ContextType, RequireFields<QueryPlaceArgs, 'placeId'>>;
   placeReviews?: Resolver<ResolversTypes['PlaceReviews'], ParentType, ContextType, RequireFields<QueryPlaceReviewsArgs, 'placeId'>>;
@@ -1143,6 +1173,7 @@ export type Resolvers<ContextType = Context> = {
   FavoritePlace?: FavoritePlaceResolvers<ContextType>;
   FavoritePlacesResponse?: FavoritePlacesResponseResolvers<ContextType>;
   Geometry?: GeometryResolvers<ContextType>;
+  GoogleIdCandidate?: GoogleIdCandidateResolvers<ContextType>;
   GuestIdentityPayload?: GuestIdentityPayloadResolvers<ContextType>;
   JSON?: GraphQLScalarType;
   LogoutResponse?: LogoutResponseResolvers<ContextType>;

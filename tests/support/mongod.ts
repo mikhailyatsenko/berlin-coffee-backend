@@ -30,6 +30,7 @@ export function setTestEnv(extra: Record<string, string> = {}) {
     IMAGEKIT_URL_ENDPOINT: "https://ik.invalid/test",
     RECAPTCHA_V3_SECRET: "test",
     PLACE_SUGGESTION_REVIEW_SECRET: "test-review-secret",
+    GOOGLE_PLACES_API_KEY: "test-google-places-key",
     ...extra,
   });
 }

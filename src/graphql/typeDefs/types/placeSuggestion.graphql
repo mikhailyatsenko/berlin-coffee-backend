@@ -90,3 +90,12 @@ type PlaceSuggestionOutcome {
   """Set once the suggestion is published."""
   publishedPlaceId: ID
 }
+
+"""
+A Google Place ID candidate for a suggestion, from the free "IDs Only" Text
+Search. existingPlaceId is set when a Place already carries this ID.
+"""
+type GoogleIdCandidate {
+  googleId: String!
+  existingPlaceId: ID
+}
