@@ -118,6 +118,18 @@ type Mutation {
     guestId: String
     guestSecret: String
   ): ID!
+  """
+  Publishes a Place suggestion as a new Place and emails the suggester. A
+  repeat call changes nothing and returns the outcome already decided; a bad
+  token fails like every admin operation (ADR 0002 in the frontend repo).
+  """
+  publishPlaceSuggestion(
+    id: ID!
+    token: String!
+    input: PublishPlaceSuggestionInput!
+  ): PlaceSuggestionOutcome!
+  """Rejects a Place suggestion. A repeat call changes nothing."""
+  rejectPlaceSuggestion(id: ID!, token: String!): PlaceSuggestionOutcome!
 
   # Contact Form Mutation
   contactForm(

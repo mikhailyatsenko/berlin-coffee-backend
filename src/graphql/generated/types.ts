@@ -106,6 +106,11 @@ export type ContactFormResponse = {
   success: Scalars['Boolean']['output'];
 };
 
+export type CoordinatesInput = {
+  lat: Scalars['Float']['input'];
+  lng: Scalars['Float']['input'];
+};
+
 export type DeleteReviewResult = {
   __typename?: 'DeleteReviewResult';
   averageRating: Scalars['Float']['output'];
@@ -171,8 +176,16 @@ export type Mutation = {
   deleteReview: DeleteReviewResult;
   loginWithGoogle?: Maybe<AuthPayload>;
   logout?: Maybe<LogoutResponse>;
+  /**
+   * Publishes a Place suggestion as a new Place and emails the suggester. A
+   * repeat call changes nothing and returns the outcome already decided; a bad
+   * token fails like every admin operation (ADR 0002 in the frontend repo).
+   */
+  publishPlaceSuggestion: PlaceSuggestionOutcome;
   refreshToken: RefreshTokenResponse;
   registerUser: SuccessResponse;
+  /** Rejects a Place suggestion. A repeat call changes nothing. */
+  rejectPlaceSuggestion: PlaceSuggestionOutcome;
   reportInaccuracy: ReportInaccuracyResponse;
   requestPasswordReset: SuccessResponse;
   resendConfirmationEmail: SuccessResponse;
@@ -242,11 +255,24 @@ export type MutationLoginWithGoogleArgs = {
 };
 
 
+export type MutationPublishPlaceSuggestionArgs = {
+  id: Scalars['ID']['input'];
+  input: PublishPlaceSuggestionInput;
+  token: Scalars['String']['input'];
+};
+
+
 export type MutationRegisterUserArgs = {
   captchaToken?: InputMaybe<Scalars['String']['input']>;
   displayName: Scalars['String']['input'];
   email: Scalars['String']['input'];
   password: Scalars['String']['input'];
+};
+
+
+export type MutationRejectPlaceSuggestionArgs = {
+  id: Scalars['ID']['input'];
+  token: Scalars['String']['input'];
 };
 
 
@@ -426,6 +452,14 @@ export type PlaceSuggestionInput = {
   name: Scalars['String']['input'];
 };
 
+/** What Publish or Reject return: the outcome just decided, or, on a repeat call, the one already decided. */
+export type PlaceSuggestionOutcome = {
+  __typename?: 'PlaceSuggestionOutcome';
+  /** Set once the suggestion is published. */
+  publishedPlaceId?: Maybe<Scalars['ID']['output']>;
+  status: PlaceSuggestionStatus;
+};
+
 export enum PlaceSuggestionStatus {
   Pending = 'pending',
   Published = 'published',
@@ -436,6 +470,32 @@ export type PlacesResponse = {
   __typename?: 'PlacesResponse';
   places: Array<Place>;
   total: Scalars['Int']['output'];
+};
+
+/**
+ * What Publish needs to complete the Place. Text is trimmed; a blank optional
+ * field counts as missing.
+ */
+export type PublishPlaceSuggestionInput = {
+  /** Required. */
+  address: Scalars['String']['input'];
+  /** Required, inside Berlin's bounding box (lat 52.33–52.68, lng 13.08–13.77). */
+  coordinates: CoordinatesInput;
+  description?: InputMaybe<Scalars['String']['input']>;
+  /**
+   * Fails Publish with DUPLICATE_GOOGLE_PLACE_ID if it already belongs to a
+   * Place; the existing Place's id is the last word of the error message.
+   */
+  googlePlaceId?: InputMaybe<Scalars['String']['input']>;
+  instagram?: InputMaybe<Scalars['String']['input']>;
+  /** Required. */
+  name: Scalars['String']['input'];
+  /** Required, one of the twelve Berlin Neighborhoods, in the spelling Places use. */
+  neighborhood: Scalars['String']['input'];
+  phone?: InputMaybe<Scalars['String']['input']>;
+  /** Paths of the suggestion's photos to keep, in upload order. Ignored for now. */
+  photoPaths?: InputMaybe<Array<Scalars['String']['input']>>;
+  website?: InputMaybe<Scalars['String']['input']>;
 };
 
 export type Query = {
@@ -668,6 +728,7 @@ export type ResolversTypes = {
   ClaimGuestReviewsResponse: ResolverTypeWrapper<ClaimGuestReviewsResponse>;
   ContactForm: ResolverTypeWrapper<ContactForm>;
   ContactFormResponse: ResolverTypeWrapper<ContactFormResponse>;
+  CoordinatesInput: CoordinatesInput;
   DeleteReviewResult: ResolverTypeWrapper<DeleteReviewResult>;
   FavoritePlace: ResolverTypeWrapper<FavoritePlace>;
   FavoritePlacesResponse: ResolverTypeWrapper<FavoritePlacesResponse>;
@@ -686,8 +747,10 @@ export type ResolversTypes = {
   PlaceSuggester: PlaceSuggester;
   PlaceSuggestionForReview: ResolverTypeWrapper<PlaceSuggestionForReview>;
   PlaceSuggestionInput: PlaceSuggestionInput;
+  PlaceSuggestionOutcome: ResolverTypeWrapper<PlaceSuggestionOutcome>;
   PlaceSuggestionStatus: PlaceSuggestionStatus;
   PlacesResponse: ResolverTypeWrapper<Omit<PlacesResponse, 'places'> & { places: Array<ResolversTypes['Place']> }>;
+  PublishPlaceSuggestionInput: PublishPlaceSuggestionInput;
   Query: ResolverTypeWrapper<{}>;
   RefreshTokenResponse: ResolverTypeWrapper<Omit<RefreshTokenResponse, 'user'> & { user: ResolversTypes['User'] }>;
   ReportInaccuracyResponse: ResolverTypeWrapper<ReportInaccuracyResponse>;
@@ -716,6 +779,7 @@ export type ResolversParentTypes = {
   ClaimGuestReviewsResponse: ClaimGuestReviewsResponse;
   ContactForm: ContactForm;
   ContactFormResponse: ContactFormResponse;
+  CoordinatesInput: CoordinatesInput;
   DeleteReviewResult: DeleteReviewResult;
   FavoritePlace: FavoritePlace;
   FavoritePlacesResponse: FavoritePlacesResponse;
@@ -733,7 +797,9 @@ export type ResolversParentTypes = {
   PlaceReviews: Omit<PlaceReviews, 'reviews'> & { reviews: Array<ResolversParentTypes['Review']> };
   PlaceSuggestionForReview: PlaceSuggestionForReview;
   PlaceSuggestionInput: PlaceSuggestionInput;
+  PlaceSuggestionOutcome: PlaceSuggestionOutcome;
   PlacesResponse: Omit<PlacesResponse, 'places'> & { places: Array<ResolversParentTypes['Place']> };
+  PublishPlaceSuggestionInput: PublishPlaceSuggestionInput;
   Query: {};
   RefreshTokenResponse: Omit<RefreshTokenResponse, 'user'> & { user: ResolversParentTypes['User'] };
   ReportInaccuracyResponse: ReportInaccuracyResponse;
@@ -876,8 +942,10 @@ export type MutationResolvers<ContextType = Context, ParentType extends Resolver
   deleteReview?: Resolver<ResolversTypes['DeleteReviewResult'], ParentType, ContextType, RequireFields<MutationDeleteReviewArgs, 'deleteOptions' | 'reviewId'>>;
   loginWithGoogle?: Resolver<Maybe<ResolversTypes['AuthPayload']>, ParentType, ContextType, RequireFields<MutationLoginWithGoogleArgs, 'code'>>;
   logout?: Resolver<Maybe<ResolversTypes['LogoutResponse']>, ParentType, ContextType>;
+  publishPlaceSuggestion?: Resolver<ResolversTypes['PlaceSuggestionOutcome'], ParentType, ContextType, RequireFields<MutationPublishPlaceSuggestionArgs, 'id' | 'input' | 'token'>>;
   refreshToken?: Resolver<ResolversTypes['RefreshTokenResponse'], ParentType, ContextType>;
   registerUser?: Resolver<ResolversTypes['SuccessResponse'], ParentType, ContextType, RequireFields<MutationRegisterUserArgs, 'displayName' | 'email' | 'password'>>;
+  rejectPlaceSuggestion?: Resolver<ResolversTypes['PlaceSuggestionOutcome'], ParentType, ContextType, RequireFields<MutationRejectPlaceSuggestionArgs, 'id' | 'token'>>;
   reportInaccuracy?: Resolver<ResolversTypes['ReportInaccuracyResponse'], ParentType, ContextType, RequireFields<MutationReportInaccuracyArgs, 'message' | 'placeId' | 'placeName'>>;
   requestPasswordReset?: Resolver<ResolversTypes['SuccessResponse'], ParentType, ContextType, RequireFields<MutationRequestPasswordResetArgs, 'email'>>;
   resendConfirmationEmail?: Resolver<ResolversTypes['SuccessResponse'], ParentType, ContextType, RequireFields<MutationResendConfirmationEmailArgs, 'email'>>;
@@ -949,6 +1017,12 @@ export type PlaceSuggestionForReviewResolvers<ContextType = Context, ParentType 
   similarPending?: Resolver<Array<ResolversTypes['SimilarPlaceSuggestion']>, ParentType, ContextType>;
   status?: Resolver<ResolversTypes['PlaceSuggestionStatus'], ParentType, ContextType>;
   suggestedBy?: Resolver<ResolversTypes['PlaceSuggester'], ParentType, ContextType>;
+  __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
+};
+
+export type PlaceSuggestionOutcomeResolvers<ContextType = Context, ParentType extends ResolversParentTypes['PlaceSuggestionOutcome'] = ResolversParentTypes['PlaceSuggestionOutcome']> = {
+  publishedPlaceId?: Resolver<Maybe<ResolversTypes['ID']>, ParentType, ContextType>;
+  status?: Resolver<ResolversTypes['PlaceSuggestionStatus'], ParentType, ContextType>;
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 };
 
@@ -1078,6 +1152,7 @@ export type Resolvers<ContextType = Context> = {
   PlaceProperties?: PlacePropertiesResolvers<ContextType>;
   PlaceReviews?: PlaceReviewsResolvers<ContextType>;
   PlaceSuggestionForReview?: PlaceSuggestionForReviewResolvers<ContextType>;
+  PlaceSuggestionOutcome?: PlaceSuggestionOutcomeResolvers<ContextType>;
   PlacesResponse?: PlacesResponseResolvers<ContextType>;
   Query?: QueryResolvers<ContextType>;
   RefreshTokenResponse?: RefreshTokenResponseResolvers<ContextType>;

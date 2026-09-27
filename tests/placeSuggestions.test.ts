@@ -19,12 +19,20 @@ const { MailerSend } = await import("mailersend");
 const { default: PlaceSuggestion } = await import(
   "../src/models/PlaceSuggestion.js"
 );
+const { default: Place } = await import("../src/models/Place.js");
+const { default: User } = await import("../src/models/User.js");
 const { createGuestIdentity } = await import("../src/utils/guestAuth.js");
 const { submitPlaceSuggestionResolver } = await import(
   "../src/graphql/resolvers/placeSuggestionResolver/submitPlaceSuggestionResolver.js"
 );
 const { placeSuggestionForReviewResolver } = await import(
   "../src/graphql/resolvers/placeSuggestionResolver/placeSuggestionForReviewResolver.js"
+);
+const { publishPlaceSuggestionResolver } = await import(
+  "../src/graphql/resolvers/placeSuggestionResolver/publishPlaceSuggestionResolver.js"
+);
+const { rejectPlaceSuggestionResolver } = await import(
+  "../src/graphql/resolvers/placeSuggestionResolver/rejectPlaceSuggestionResolver.js"
 );
 const { ADMIN_EMAIL, FROM_EMAIL } = await import(
   "../src/graphql/resolvers/contactFormResolver/constants/index.js"
@@ -74,6 +82,8 @@ beforeEach(async () => {
   sent.length = 0;
   sendFails = false;
   await PlaceSuggestion.deleteMany({});
+  await Place.deleteMany({});
+  await User.deleteMany({});
 });
 
 // --- helpers ---------------------------------------------------------------
@@ -126,6 +136,25 @@ const submit = (
 
 const review = (id: string, token: string) =>
   placeSuggestionForReviewResolver(undefined as never, { id, token });
+
+/** Coordinates and Neighborhood are inside Berlin and one of the twelve by default. */
+const publishInput = (over: Record<string, unknown> = {}) => ({
+  name: "Bonanza Coffee",
+  address: "Oderberger Str. 35, 10435 Berlin",
+  coordinates: { lat: 52.55, lng: 13.4 },
+  neighborhood: "Mitte",
+  ...over,
+});
+
+const publish = (
+  id: string,
+  token: string,
+  input: ReturnType<typeof publishInput>,
+) =>
+  publishPlaceSuggestionResolver(undefined as never, { id, token, input });
+
+const reject = (id: string, token: string) =>
+  rejectPlaceSuggestionResolver(undefined as never, { id, token });
 
 const codeOf = async (p: Promise<unknown>) => {
   try {
@@ -489,4 +518,219 @@ test("a decided suggestion still opens and shows its outcome", async () => {
   const opened = await review(link.id, link.token);
   assert.equal(opened.status, "published");
   assert.equal(opened.publishedPlaceId, placeId.toString());
+});
+
+// --- publish / reject --------------------------------------------------
+
+test("publishing requires name, address, coordinates inside Berlin and a known Neighborhood", async () => {
+  const id = await submit({ input: input() }, { user: aUser() });
+  const { token } = reviewLinkOf(sent[0]);
+
+  const bad = [
+    publishInput({ name: "" }),
+    publishInput({ name: "   " }),
+    publishInput({ address: "" }),
+    publishInput({ coordinates: { lat: 53, lng: 13.4 } }), // north of Berlin
+    publishInput({ coordinates: { lat: 52.5, lng: 14.5 } }), // east of Berlin
+    publishInput({ neighborhood: "Nowhereville" }),
+    publishInput({ neighborhood: "" }),
+  ];
+  for (const one of bad) {
+    assert.equal(
+      await codeOf(publish(id, token, one)),
+      "BAD_USER_INPUT",
+      JSON.stringify(one),
+    );
+  }
+
+  assert.equal((await PlaceSuggestion.findById(id))?.status, "pending");
+  assert.equal(await Place.countDocuments(), 0);
+});
+
+test("a duplicate Google Place ID fails with the existing Place's id", async () => {
+  const existing = await Place.create({
+    geometry: { coordinates: [13.4, 52.5] },
+    properties: {
+      name: "Already Here",
+      address: "Somewhere 1, Berlin",
+      googleId: "ChIJ-duplicate",
+    },
+  });
+
+  const id = await submit({ input: input() }, { user: aUser() });
+  const { token } = reviewLinkOf(sent[0]);
+
+  try {
+    await publish(id, token, publishInput({ googlePlaceId: "ChIJ-duplicate" }));
+    assert.fail("expected Publish to be rejected");
+  } catch (error) {
+    assert.ok(error instanceof GraphQLError);
+    assert.equal(error.extensions.code, "DUPLICATE_GOOGLE_PLACE_ID");
+    assert.ok(error.message.includes(existing._id.toString()));
+  }
+
+  assert.equal((await PlaceSuggestion.findById(id))?.status, "pending");
+});
+
+test("Publish creates a visible Place with the given fields and [lng, lat] coordinates; the suggestion is published with its id", async () => {
+  const id = await submit({ input: input() }, { user: aUser() });
+  const { token } = reviewLinkOf(sent[0]);
+
+  const outcome = await publish(
+    id,
+    token,
+    publishInput({
+      description: "Great flat white",
+      instagram: "@bonanza",
+      website: "https://bonanza.example",
+      phone: "+49 30 1234567",
+      googlePlaceId: "ChIJ-bonanza",
+    }),
+  );
+
+  assert.equal(outcome.status, "published");
+  assert.ok(outcome.publishedPlaceId);
+
+  const place = await Place.findById(outcome.publishedPlaceId).lean();
+  assert.ok(place);
+  assert.deepEqual(place.geometry.coordinates, [13.4, 52.55]);
+  assert.equal(place.properties.name, "Bonanza Coffee");
+  assert.equal(place.properties.address, "Oderberger Str. 35, 10435 Berlin");
+  assert.equal(place.properties.neighborhood, "Mitte");
+  assert.equal(place.properties.description, "Great flat white");
+  assert.equal(place.properties.instagram, "@bonanza");
+  assert.equal(place.properties.website, "https://bonanza.example");
+  assert.equal(place.properties.phone, "+49 30 1234567");
+  assert.equal(place.properties.googleId, "ChIJ-bonanza");
+  assert.equal(place.properties.businessStatus, "OPERATIONAL");
+  // Empty Amenities and opening hours: Mongoose's minimize strips the empty
+  // object/array before saving, so a lean read comes back without them.
+  assert.deepEqual(place.properties.additionalInfo ?? {}, {});
+  assert.deepEqual(place.properties.openingHours ?? [], []);
+
+  const doc = await PlaceSuggestion.findById(id).lean();
+  assert.equal(doc?.status, "published");
+  assert.equal(String(doc?.publishedPlaceId), outcome.publishedPlaceId);
+  assert.ok(doc?.decidedAt);
+});
+
+test("the outcome email goes to the User's account email", async () => {
+  const user = await User.create({
+    email: "owner@example.com",
+    displayName: "Owner",
+    password: "hashed",
+    isEmailConfirmed: true,
+  });
+
+  const id = await submit(
+    { input: input() },
+    { user: { id: user.id } as IUser },
+  );
+  const { token } = reviewLinkOf(sent[0]);
+  sent.length = 0; // only the outcome email matters from here
+
+  const outcome = await publish(id, token, publishInput());
+
+  assert.equal(sent.length, 1);
+  assert.deepEqual(sent[0].to, ["owner@example.com"]);
+  assert.ok(sent[0].text.includes(`/place/${outcome.publishedPlaceId}`));
+});
+
+test("the outcome email goes to the Guest's email, then it is erased", async () => {
+  const guest = await aGuest();
+  const id = await submit(
+    { input: input({ email: "guest@example.com" }) },
+    guest.context,
+  );
+  const { token } = reviewLinkOf(sent[0]);
+  sent.length = 0;
+
+  await publish(id, token, publishInput());
+
+  assert.equal(sent.length, 1);
+  assert.deepEqual(sent[0].to, ["guest@example.com"]);
+
+  const doc = await PlaceSuggestion.findById(id).lean();
+  assert.ok(!("guestEmail" in (doc ?? {})));
+});
+
+test("no outcome email is sent when a Guest gave none", async () => {
+  const guest = await aGuest();
+  const id = await submit({ input: input() }, guest.context);
+  const { token } = reviewLinkOf(sent[0]);
+  sent.length = 0;
+
+  await publish(id, token, publishInput());
+
+  assert.equal(sent.length, 0);
+});
+
+test("Reject marks the suggestion rejected, erases the email and sends nothing", async () => {
+  const guest = await aGuest();
+  const id = await submit(
+    { input: input({ email: "guest@example.com" }) },
+    guest.context,
+  );
+  const { token } = reviewLinkOf(sent[0]);
+  sent.length = 0;
+
+  const outcome = await reject(id, token);
+  assert.equal(outcome.status, "rejected");
+  assert.equal(outcome.publishedPlaceId, null);
+  assert.equal(sent.length, 0);
+
+  const doc = await PlaceSuggestion.findById(id).lean();
+  assert.equal(doc?.status, "rejected");
+  assert.ok(!("guestEmail" in (doc ?? {})));
+  assert.ok(doc?.decidedAt);
+});
+
+test("a second Publish or Reject, in either order, changes nothing and returns the first outcome", async () => {
+  // Publish, then Publish again with different input, then Reject.
+  const publishedId = await submit({ input: input() }, { user: aUser() });
+  const publishedLink = reviewLinkOf(sent[sent.length - 1]);
+  const firstOutcome = await publish(publishedId, publishedLink.token, publishInput());
+  const placeCount = await Place.countDocuments();
+
+  const secondPublish = await publish(
+    publishedId,
+    publishedLink.token,
+    publishInput({ name: "A Different Name" }),
+  );
+  assert.deepEqual(secondPublish, firstOutcome);
+  assert.equal(await Place.countDocuments(), placeCount);
+
+  const rejectAfterPublish = await reject(publishedId, publishedLink.token);
+  assert.deepEqual(rejectAfterPublish, firstOutcome);
+
+  // Reject, then Reject again, then Publish.
+  const rejectedId = await submit(
+    { input: input({ name: "Other Place" }) },
+    { user: aUser() },
+  );
+  const rejectedLink = reviewLinkOf(sent[sent.length - 1]);
+  const rejectOutcome = await reject(rejectedId, rejectedLink.token);
+  const secondReject = await reject(rejectedId, rejectedLink.token);
+  assert.deepEqual(secondReject, rejectOutcome);
+
+  const publishAfterReject = await publish(
+    rejectedId,
+    rejectedLink.token,
+    publishInput(),
+  );
+  assert.deepEqual(publishAfterReject, rejectOutcome);
+  assert.equal(await Place.countDocuments(), placeCount);
+});
+
+test("a bad token fails Publish and Reject the same way as every other admin operation", async () => {
+  const id = await submit({ input: input() }, { user: aUser() });
+
+  assert.equal(
+    await codeOf(publish(id, "0".repeat(64), publishInput())),
+    "INVALID_REVIEW_LINK",
+  );
+  assert.equal(
+    await codeOf(reject(id, "0".repeat(64))),
+    "INVALID_REVIEW_LINK",
+  );
 });
