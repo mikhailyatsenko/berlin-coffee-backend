@@ -36,6 +36,8 @@ import { claimGuestReviewsResolver } from "./guestIdentityResolver/claimGuestRev
 import { uploadReviewImageResolver } from "./uploadReviewImageResolver/uploadReviewImageResolver.js";
 import { submitPlaceSuggestionResolver } from "./placeSuggestionResolver/submitPlaceSuggestionResolver.js";
 import { placeSuggestionForReviewResolver } from "./placeSuggestionResolver/placeSuggestionForReviewResolver.js";
+import { publishPlaceSuggestionResolver } from "./placeSuggestionResolver/publishPlaceSuggestionResolver.js";
+import { rejectPlaceSuggestionResolver } from "./placeSuggestionResolver/rejectPlaceSuggestionResolver.js";
 
 export const resolvers = {
   JSON: GraphQLJSON,
@@ -81,6 +83,8 @@ export const resolvers = {
     toggleCharacteristic: toggleCharacteristicResolver,
     uploadReviewImage: uploadReviewImageResolver,
     submitPlaceSuggestion: submitPlaceSuggestionResolver,
+    publishPlaceSuggestion: publishPlaceSuggestionResolver,
+    rejectPlaceSuggestion: rejectPlaceSuggestionResolver,
 
     contactForm: contactFormResolver,
     reportInaccuracy: reportInaccuracyResolver,

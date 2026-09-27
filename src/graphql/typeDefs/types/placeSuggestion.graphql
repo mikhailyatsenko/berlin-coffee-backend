@@ -52,3 +52,41 @@ type SimilarPlaceSuggestion {
   name: String!
   address: String!
 }
+
+input CoordinatesInput {
+  lat: Float!
+  lng: Float!
+}
+
+"""
+What Publish needs to complete the Place. Text is trimmed; a blank optional
+field counts as missing.
+"""
+input PublishPlaceSuggestionInput {
+  "Required."
+  name: String!
+  "Required."
+  address: String!
+  "Required, inside Berlin's bounding box (lat 52.33–52.68, lng 13.08–13.77)."
+  coordinates: CoordinatesInput!
+  "Required, one of the twelve Berlin Neighborhoods, in the spelling Places use."
+  neighborhood: String!
+  description: String
+  instagram: String
+  website: String
+  phone: String
+  """
+  Fails Publish with DUPLICATE_GOOGLE_PLACE_ID if it already belongs to a
+  Place; the existing Place's id is the last word of the error message.
+  """
+  googlePlaceId: String
+  """Paths of the suggestion's photos to keep, in upload order. Ignored for now."""
+  photoPaths: [String!]
+}
+
+"""What Publish or Reject return: the outcome just decided, or, on a repeat call, the one already decided."""
+type PlaceSuggestionOutcome {
+  status: PlaceSuggestionStatus!
+  """Set once the suggestion is published."""
+  publishedPlaceId: ID
+}
