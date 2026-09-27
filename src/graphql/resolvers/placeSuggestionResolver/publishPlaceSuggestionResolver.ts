@@ -44,7 +44,11 @@ const trimmed = (value: string | null | undefined): string | undefined => {
   return text || undefined;
 };
 
-function requiredText(value: string | null | undefined, field: string): string {
+// Not named requiredText: the sibling submitPlaceSuggestionResolver.ts has a
+// requiredText(value, field, maxLength) that also enforces a length cap. This
+// input has no length caps of its own (the ticket doesn't ask for any), so
+// it gets its own name rather than a same-named helper with a thinner contract.
+function requiredField(value: string | null | undefined, field: string): string {
   const text = trimmed(value);
   if (!text) throw badInput(`${field} is required`);
   return text;
@@ -61,8 +65,8 @@ export async function publishPlaceSuggestionResolver(
     return suggestionOutcome(suggestion);
   }
 
-  const name = requiredText(input.name, "name");
-  const address = requiredText(input.address, "address");
+  const name = requiredField(input.name, "name");
+  const address = requiredField(input.address, "address");
 
   const lat = input.coordinates?.lat;
   const lng = input.coordinates?.lng;
