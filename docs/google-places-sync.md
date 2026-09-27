@@ -16,6 +16,20 @@
 
 Места без `properties.googleId` пропускаются.
 
+## Find on Google: поиск Place ID для заявки на добавление места
+
+`findGoogleIdsForSuggestion(id, token)` (GraphQL-резолвер, review-страница
+админа) ищет до трёх Google Place ID по имени и адресу заявки — Text Search
+(New) с `X-Goog-FieldMask: places.id`. Это SKU **Text Search Essentials IDs
+Only**, он бесплатен без ограничения по количеству запросов, в отличие от
+Place Details выше — запрашивать любое другое поле здесь нельзя, это увело бы
+вызов на платный SKU. Использует тот же `GOOGLE_PLACES_API_KEY`.
+
+Как только админ выбирает один из кандидатов и публикует заявку с этим Place
+ID, следующий месячный прогон `syncGooglePlaces` подтянет для нового места
+часы, телефон и сайт по этому ID — отдельного платного вызова при публикации
+нет.
+
 ## Как запускать
 
 Нужен `.env` с `MONGO_URI` и `GOOGLE_PLACES_API_KEY` (плюс остальные переменные,

@@ -39,6 +39,7 @@ import { placeSuggestionForReviewResolver } from "./placeSuggestionResolver/plac
 import { publishPlaceSuggestionResolver } from "./placeSuggestionResolver/publishPlaceSuggestionResolver.js";
 import { rejectPlaceSuggestionResolver } from "./placeSuggestionResolver/rejectPlaceSuggestionResolver.js";
 import { uploadPlaceSuggestionPhotoResolver } from "./placeSuggestionResolver/uploadPlaceSuggestionPhotoResolver.js";
+import { findGoogleIdsForSuggestionResolver } from "./placeSuggestionResolver/findGoogleIdsForSuggestionResolver.js";
 
 export const resolvers = {
   JSON: GraphQLJSON,
@@ -54,6 +55,7 @@ export const resolvers = {
     availableAdditionalInfoTags: availableAdditionalInfoTagsResolver,
     availableNeighborhoods: availableNeighborhoodsResolver,
     placeSuggestionForReview: placeSuggestionForReviewResolver,
+    findGoogleIdsForSuggestion: findGoogleIdsForSuggestionResolver,
   },
 
   Mutation: {

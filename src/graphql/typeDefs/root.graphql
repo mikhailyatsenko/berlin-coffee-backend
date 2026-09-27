@@ -14,6 +14,11 @@ type Query {
   authorization; a wrong token and an unknown id fail the same way.
   """
   placeSuggestionForReview(id: ID!, token: String!): PlaceSuggestionForReview!
+  """
+  Up to three Google Place ID candidates for a suggestion, free ("IDs Only"
+  Text Search). A bad token fails like every other admin operation.
+  """
+  findGoogleIdsForSuggestion(id: ID!, token: String!): [GoogleIdCandidate!]!
 }
 
 type AdditionalInfoTagsResponse {

@@ -4,7 +4,7 @@
  *
  * Run: npm test
  */
-import { beforeEach, test } from "node:test";
+import { after, beforeEach, test } from "node:test";
 import assert from "node:assert/strict";
 import mongoose from "mongoose";
 import { GraphQLError } from "graphql";
@@ -33,6 +33,9 @@ const { publishPlaceSuggestionResolver } = await import(
 );
 const { rejectPlaceSuggestionResolver } = await import(
   "../src/graphql/resolvers/placeSuggestionResolver/rejectPlaceSuggestionResolver.js"
+);
+const { findGoogleIdsForSuggestionResolver } = await import(
+  "../src/graphql/resolvers/placeSuggestionResolver/findGoogleIdsForSuggestionResolver.js"
 );
 const { ADMIN_EMAIL, FROM_EMAIL } = await import(
   "../src/graphql/resolvers/contactFormResolver/constants/index.js"
@@ -74,6 +77,44 @@ const emailModule = new MailerSend({ apiKey: "test" }).email;
   return {};
 };
 
+// --- fake Google Text Search -----------------------------------------------
+
+interface FetchCall {
+  url: string;
+  headers: Record<string, string>;
+  body: unknown;
+}
+
+const fetchCalls: FetchCall[] = [];
+/** What the next (and every following) Google request gets back, until reset. */
+let googleResponse: { status: number; body: unknown } = {
+  status: 200,
+  body: { places: [] },
+};
+const setGoogleResponse = (status: number, body: unknown) => {
+  googleResponse = { status, body };
+};
+
+const originalFetch = globalThis.fetch;
+globalThis.fetch = (async (url: string, init?: RequestInit) => {
+  fetchCalls.push({
+    url,
+    headers: (init?.headers ?? {}) as Record<string, string>,
+    body: typeof init?.body === "string" ? JSON.parse(init.body) : init?.body,
+  });
+  const { status, body } = googleResponse;
+  return {
+    ok: status >= 200 && status < 300,
+    status,
+    json: async () => body,
+    text: async () => JSON.stringify(body),
+  } as Response;
+}) as typeof fetch;
+
+after(() => {
+  globalThis.fetch = originalFetch;
+});
+
 // --- mongod ----------------------------------------------------------------
 
 useThrowawayMongod();
@@ -81,6 +122,8 @@ useThrowawayMongod();
 beforeEach(async () => {
   sent.length = 0;
   sendFails = false;
+  fetchCalls.length = 0;
+  setGoogleResponse(200, { places: [] });
   await PlaceSuggestion.deleteMany({});
   await Place.deleteMany({});
   await User.deleteMany({});
@@ -155,6 +198,9 @@ const publish = (
 
 const reject = (id: string, token: string) =>
   rejectPlaceSuggestionResolver(undefined as never, { id, token });
+
+const findGoogleIds = (id: string, token: string) =>
+  findGoogleIdsForSuggestionResolver(undefined as never, { id, token });
 
 const codeOf = async (p: Promise<unknown>) => {
   try {
@@ -733,4 +779,84 @@ test("a bad token fails Publish and Reject the same way as every other admin ope
     await codeOf(reject(id, "0".repeat(64))),
     "INVALID_REVIEW_LINK",
   );
+});
+
+// --- findGoogleIdsForSuggestion --------------------------------------------
+
+test("the Google request sends only the places.id field mask and asks for at most 3 results", async () => {
+  const id = await submit(
+    {
+      input: input({
+        name: "Bonanza Coffee",
+        address: "Oderberger Str. 35, 10435 Berlin",
+      }),
+    },
+    { user: aUser() },
+  );
+  const { token } = reviewLinkOf(sent[0]);
+
+  await findGoogleIds(id, token);
+
+  assert.equal(fetchCalls.length, 1);
+  const [call] = fetchCalls;
+  assert.equal(call.url, "https://places.googleapis.com/v1/places:searchText");
+  assert.equal(call.headers["X-Goog-FieldMask"], "places.id");
+  assert.ok(call.headers["X-Goog-Api-Key"], "the API key header is sent");
+  assert.deepEqual(call.body, {
+    textQuery: "Bonanza Coffee, Oderberger Str. 35, 10435 Berlin",
+    pageSize: 3,
+  });
+});
+
+test("IDs already on a Place come back flagged with that Place's id", async () => {
+  const existing = await Place.create({
+    geometry: { coordinates: [13.4, 52.5] },
+    properties: {
+      name: "Already Here",
+      address: "Somewhere 1, Berlin",
+      googleId: "ChIJ-existing",
+    },
+  });
+
+  const id = await submit({ input: input() }, { user: aUser() });
+  const { token } = reviewLinkOf(sent[0]);
+  setGoogleResponse(200, {
+    places: [{ id: "ChIJ-existing" }, { id: "ChIJ-new" }],
+  });
+
+  const candidates = await findGoogleIds(id, token);
+
+  assert.deepEqual(candidates, [
+    { googleId: "ChIJ-existing", existingPlaceId: existing._id.toString() },
+    { googleId: "ChIJ-new", existingPlaceId: null },
+  ]);
+});
+
+test("no Google results returns an empty list", async () => {
+  const id = await submit({ input: input() }, { user: aUser() });
+  const { token } = reviewLinkOf(sent[0]);
+  setGoogleResponse(200, {}); // no `places` key at all, as Google sends when nothing matches
+
+  assert.deepEqual(await findGoogleIds(id, token), []);
+});
+
+test("a failed Google response is a clear error", async () => {
+  const id = await submit({ input: input() }, { user: aUser() });
+  const { token } = reviewLinkOf(sent[0]);
+  setGoogleResponse(500, "boom");
+
+  assert.equal(
+    await codeOf(findGoogleIds(id, token)),
+    "GOOGLE_LOOKUP_FAILED",
+  );
+});
+
+test("a bad token is rejected before any Google request", async () => {
+  const id = await submit({ input: input() }, { user: aUser() });
+
+  assert.equal(
+    await codeOf(findGoogleIds(id, "0".repeat(64))),
+    "INVALID_REVIEW_LINK",
+  );
+  assert.equal(fetchCalls.length, 0, "no request was made");
 });
