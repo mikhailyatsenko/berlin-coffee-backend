@@ -8,10 +8,10 @@ import { clientIp, consumeRateLimit } from "../../../utils/rateLimit.js";
 import { GuestContext } from "../../../utils/guestAuth.js";
 import { GuestArgs, resolveReviewActor } from "../../../utils/reviewActor.js";
 
-/** Matches the frontend's picker cap. */
-const MAX_PHOTOS_PER_SUGGESTION = 10;
-/** Client already downscales before sending; this is a sanity bound. */
-const MAX_DECODED_BYTES = 3 * 1024 * 1024;
+/** Matches the frontend's picker cap. Shared with uploadPlaceSuggestionPhotoAsAdminResolver: the same cap, on the same `photos` array. */
+export const MAX_PHOTOS_PER_SUGGESTION = 10;
+/** Client already downscales before sending; this is a sanity bound. Shared with uploadPlaceSuggestionPhotoAsAdminResolver. */
+export const MAX_DECODED_BYTES = 3 * 1024 * 1024;
 
 interface UploadPlaceSuggestionPhotoArgs extends GuestArgs {
   suggestionId: string;

@@ -38,6 +38,12 @@ const { placeSuggestionForReviewResolver } = await import(
 const { uploadPlaceSuggestionPhotoResolver } = await import(
   "../src/graphql/resolvers/placeSuggestionResolver/uploadPlaceSuggestionPhotoResolver.js"
 );
+const { uploadPlaceSuggestionPhotoAsAdminResolver } = await import(
+  "../src/graphql/resolvers/placeSuggestionResolver/uploadPlaceSuggestionPhotoAsAdminResolver.js"
+);
+const { deletePlaceSuggestionPhotoResolver } = await import(
+  "../src/graphql/resolvers/placeSuggestionResolver/deletePlaceSuggestionPhotoResolver.js"
+);
 const { publishPlaceSuggestionResolver } = await import(
   "../src/graphql/resolvers/placeSuggestionResolver/publishPlaceSuggestionResolver.js"
 );
@@ -114,6 +120,30 @@ type RenameOpts = { filePath: string; newFileName: string };
   }
 };
 
+// listFiles/deleteFile: the fake bucket's keys already are the file paths, so
+// fileId is just the filePath itself.
+type ListFilesOpts = { path: string };
+(
+  ImageKit.prototype as unknown as {
+    listFiles: (
+      o: ListFilesOpts,
+    ) => Promise<{ type: "file"; filePath: string; fileId: string }[]>;
+  }
+).listFiles = async ({ path }) => {
+  const prefix = path.startsWith("/") ? path : `/${path}`;
+  return [...bucket.keys()]
+    .filter((key) => key.startsWith(`${prefix}/`))
+    .map((key) => ({ type: "file" as const, filePath: key, fileId: key }));
+};
+
+(
+  ImageKit.prototype as unknown as {
+    deleteFile: (fileId: string) => Promise<void>;
+  }
+).deleteFile = async (fileId) => {
+  bucket.delete(fileId);
+};
+
 // --- mongod ------------------------------------------------------------
 
 useThrowawayMongod();
@@ -186,6 +216,16 @@ const uploadPhoto = (
 
 const review = (id: string, token: string) =>
   placeSuggestionForReviewResolver(undefined as never, { id, token });
+
+const uploadPhotoAsAdmin = (id: string, token: string) =>
+  uploadPlaceSuggestionPhotoAsAdminResolver(undefined as never, {
+    id,
+    token,
+    fileBuffer: png,
+  });
+
+const deletePhoto = (id: string, token: string, path: string) =>
+  deletePlaceSuggestionPhotoResolver(undefined as never, { id, token, path });
 
 const publishInput = (over: Record<string, unknown> = {}) => ({
   name: "Bonanza Coffee",
@@ -284,6 +324,145 @@ test("a Guest upload counts towards the existing Guest photo limit", async () =>
     req: { ip } as Request,
   });
   assert.equal(result.photoCount, 1);
+});
+
+// --- tests: admin upload / delete ------------------------------------------
+
+test("an admin upload is stored, returns its path, and shows up in placeSuggestionForReview", async () => {
+  const owner = aUser();
+  const { id, token } = await aSuggestion({ user: owner });
+
+  const path = await uploadPhotoAsAdmin(id, token);
+  assert.equal(typeof path, "string");
+
+  const opened = await review(id, token);
+  assert.deepEqual(opened.photos, [path]);
+});
+
+test("the shared 10-photo cap refuses an 11th photo, from the suggester or the admin", async () => {
+  const owner = aUser();
+  const { id, token } = await aSuggestion({ user: owner });
+
+  for (let i = 0; i < 5; i++) await uploadPhoto(id, { user: owner });
+  for (let i = 0; i < 5; i++) await uploadPhotoAsAdmin(id, token);
+
+  assert.equal(
+    await codeOf(uploadPhoto(id, { user: owner })),
+    "IMAGE_LIMIT_REACHED",
+  );
+  assert.equal(
+    await codeOf(uploadPhotoAsAdmin(id, token)),
+    "IMAGE_LIMIT_REACHED",
+  );
+
+  const doc = await PlaceSuggestion.findById(id).lean();
+  assert.equal(doc?.photos.length, 10);
+});
+
+test("delete removes the path and the file, and frees a slot for a new upload", async () => {
+  const owner = aUser();
+  const { id, token } = await aSuggestion({ user: owner });
+  for (let i = 0; i < 10; i++) await uploadPhotoAsAdmin(id, token);
+  const opened = await review(id, token);
+  const [toDelete] = opened.photos;
+
+  const result = await deletePhoto(id, token, toDelete);
+  assert.equal(result, true);
+  assert.ok(!bucket.has(toDelete));
+
+  const afterDelete = await review(id, token);
+  assert.equal(afterDelete.photos.length, 9);
+  assert.ok(!afterDelete.photos.includes(toDelete));
+
+  const newPath = await uploadPhotoAsAdmin(id, token);
+  assert.equal((await review(id, token)).photos.length, 10);
+  assert.notEqual(newPath, toDelete);
+});
+
+test("deleting a path that is already gone still succeeds", async () => {
+  const owner = aUser();
+  const { id, token } = await aSuggestion({ user: owner });
+  const path = await uploadPhotoAsAdmin(id, token);
+
+  assert.equal(await deletePhoto(id, token, path), true);
+  assert.equal(await deletePhoto(id, token, path), true);
+  assert.equal((await review(id, token)).photos.length, 0);
+});
+
+test("delete refuses a path from another suggestion", async () => {
+  const owner = aUser();
+  const { id, token } = await aSuggestion({ user: owner });
+  const other = await aSuggestion({ user: aUser() });
+  const otherPath = await uploadPhotoAsAdmin(other.id, other.token);
+
+  assert.equal(
+    await codeOf(deletePhoto(id, token, otherPath)),
+    "BAD_USER_INPUT",
+  );
+  assert.ok(bucket.has(otherPath), "the other suggestion's photo is untouched");
+});
+
+test("a bad token and a decided suggestion are refused by both admin photo operations", async () => {
+  const owner = aUser();
+  const { id, token } = await aSuggestion({ user: owner });
+  const path = await uploadPhotoAsAdmin(id, token);
+
+  const badToken = "0".repeat(64);
+  assert.equal(
+    await codeOf(uploadPhotoAsAdmin(id, badToken)),
+    "INVALID_REVIEW_LINK",
+  );
+  assert.equal(
+    await codeOf(deletePhoto(id, badToken, path)),
+    "INVALID_REVIEW_LINK",
+  );
+
+  await reject(id, token);
+  assert.equal(
+    await codeOf(uploadPhotoAsAdmin(id, token)),
+    "SUGGESTION_NOT_PENDING",
+  );
+  assert.equal(
+    await codeOf(deletePhoto(id, token, path)),
+    "SUGGESTION_NOT_PENDING",
+  );
+});
+
+test("admin uploads don't consume the guestPhoto rate limit", async () => {
+  const guest = await aGuest();
+  const { id, token } = await aSuggestion(guest.context);
+  const ip = "10.8.8.8";
+
+  for (let i = 0; i < 20; i++) countRateLimit("guestPhoto", ip);
+
+  // The admin path takes no `req`/guest context at all, so it cannot touch
+  // the exhausted bucket above.
+  const path = await uploadPhotoAsAdmin(id, token);
+  assert.equal(typeof path, "string");
+});
+
+test("Publish with a list that includes admin photos makes them Place photos, the first one the card image", async () => {
+  const owner = aUser();
+  const { id, token } = await aSuggestion({ user: owner });
+  await uploadPhoto(id, { user: owner });
+  const adminPath = await uploadPhotoAsAdmin(id, token);
+
+  const opened = await review(id, token);
+  assert.deepEqual(opened.photos.length, 2);
+
+  const outcome = await publish(
+    id,
+    token,
+    publishInput({ photoPaths: [adminPath, opened.photos[0]] }),
+  );
+  const placeId = outcome.publishedPlaceId!;
+
+  const place = await Place.findById(placeId).lean();
+  assert.equal(
+    place?.properties.image,
+    `/places-main-img/${placeId}/main.jpg`,
+  );
+  assert.ok(bucket.has(`places-main-img/${placeId}/main.jpg`));
 });
 
 // --- tests: publish / reject ----------------------------------------------
