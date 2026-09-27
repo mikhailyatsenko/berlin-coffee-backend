@@ -28,12 +28,22 @@
 
 Use the fake ImageKit bucket, as in `tests/placeSuggestionPhotos.test.ts`.
 
-- [ ] An admin upload is stored, returns its path, and shows up in `placeSuggestionForReview`
-- [ ] The shared cap: an 11th photo is refused, whether the suggester or the admin uploads it
-- [ ] Delete removes the path and the file and frees a slot for a new upload
-- [ ] Deleting a path that is already gone succeeds
-- [ ] Delete refuses a path from another suggestion
-- [ ] A bad token and a decided suggestion are refused by both operations
-- [ ] Admin uploads don't consume the `guestPhoto` limit
-- [ ] Publish with a list that includes admin photos makes them Place photos, the first one the card image
-- [ ] `npm test`, `tsc` and `npm run generate` pass
+- [x] An admin upload is stored, returns its path, and shows up in `placeSuggestionForReview`
+- [x] The shared cap: an 11th photo is refused, whether the suggester or the admin uploads it
+- [x] Delete removes the path and the file and frees a slot for a new upload
+- [x] Deleting a path that is already gone succeeds
+- [x] Delete refuses a path from another suggestion
+- [x] A bad token and a decided suggestion are refused by both operations
+- [x] Admin uploads don't consume the `guestPhoto` limit
+- [x] Publish with a list that includes admin photos makes them Place photos, the first one the card image
+- [x] `npm test`, `tsc` and `npm run generate` pass
+
+## Comments
+
+Implemented on `feat/admin-suggestion-photos`:
+
+- `uploadPlaceSuggestionPhotoAsAdmin(id, token, fileBuffer): String!` — mirrors `uploadPlaceSuggestionPhotoResolver`'s storage and shared 10-photo cap, authorized by `requireSuggestionForReview` (token) instead of ownership, no rate limit, returns the new photo's path.
+- `deletePlaceSuggestionPhoto(id, token, path): Boolean!` — validates the path structurally against this suggestion's own ImageKit folder (not against the current `photos` array), so a retried delete of an already-removed path still succeeds; deletes the ImageKit file first, then `$pull`s `photos` (guarded on the path still being present, not on `status`, so the array never points at a file that no longer exists).
+- Added `deleteImageKitFile` to `src/utils/imagekit.ts` for single-file-by-path deletion.
+- 8 new tests in `tests/placeSuggestionPhotos.test.ts`; full suite 94/94, `tsc` and `npm run generate` pass.
+- Frontend ticket `../berlincoffeemap/.scratch/review-page-photos/issues/01-admin-photos-on-review-page.md` is now unblocked.

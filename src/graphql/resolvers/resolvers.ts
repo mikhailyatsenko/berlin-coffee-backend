@@ -39,6 +39,8 @@ import { placeSuggestionForReviewResolver } from "./placeSuggestionResolver/plac
 import { publishPlaceSuggestionResolver } from "./placeSuggestionResolver/publishPlaceSuggestionResolver.js";
 import { rejectPlaceSuggestionResolver } from "./placeSuggestionResolver/rejectPlaceSuggestionResolver.js";
 import { uploadPlaceSuggestionPhotoResolver } from "./placeSuggestionResolver/uploadPlaceSuggestionPhotoResolver.js";
+import { uploadPlaceSuggestionPhotoAsAdminResolver } from "./placeSuggestionResolver/uploadPlaceSuggestionPhotoAsAdminResolver.js";
+import { deletePlaceSuggestionPhotoResolver } from "./placeSuggestionResolver/deletePlaceSuggestionPhotoResolver.js";
 import { findGoogleIdsForSuggestionResolver } from "./placeSuggestionResolver/findGoogleIdsForSuggestionResolver.js";
 
 export const resolvers = {
@@ -87,6 +89,8 @@ export const resolvers = {
     uploadReviewImage: uploadReviewImageResolver,
     submitPlaceSuggestion: submitPlaceSuggestionResolver,
     uploadPlaceSuggestionPhoto: uploadPlaceSuggestionPhotoResolver,
+    uploadPlaceSuggestionPhotoAsAdmin: uploadPlaceSuggestionPhotoAsAdminResolver,
+    deletePlaceSuggestionPhoto: deletePlaceSuggestionPhotoResolver,
     publishPlaceSuggestion: publishPlaceSuggestionResolver,
     rejectPlaceSuggestion: rejectPlaceSuggestionResolver,
 

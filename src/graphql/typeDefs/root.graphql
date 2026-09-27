@@ -135,6 +135,24 @@ type Mutation {
     guestSecret: String
   ): UploadPlaceSuggestionPhotoResponse!
   """
+  Attaches one photo to a Place suggestion as the admin, authorized only by
+  the review link's token (ADR 0002 in the frontend repo) rather than
+  ownership. Same rules as uploadPlaceSuggestionPhoto (pending only, the same
+  shared 10-photo cap) but no rate limit. Returns the new photo's own path.
+  """
+  uploadPlaceSuggestionPhotoAsAdmin(
+    id: ID!
+    token: String!
+    fileBuffer: String!
+  ): String!
+  """
+  Deletes one photo of a Place suggestion, the suggester's or the admin's,
+  authorized only by the review link's token. The path must sit in this
+  suggestion's own ImageKit folder; a path already gone still succeeds, so a
+  retried delete is safe.
+  """
+  deletePlaceSuggestionPhoto(id: ID!, token: String!, path: String!): Boolean!
+  """
   Publishes a Place suggestion as a new Place and emails the suggester. A
   repeat call changes nothing and returns the outcome already decided; a bad
   token fails like every admin operation (ADR 0002 in the frontend repo).

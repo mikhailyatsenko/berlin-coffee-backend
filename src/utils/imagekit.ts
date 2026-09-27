@@ -327,6 +327,25 @@ export async function deleteAvatar(filePath: string): Promise<boolean> {
   }
 }
 
+/**
+ * Deletes one file from ImageKit by its path. A path already gone is not an
+ * error: the goal state -- the file absent -- already holds, which is what
+ * lets a retried Place suggestion photo delete stay safe.
+ */
+export async function deleteImageKitFile(filePath: string): Promise<void> {
+  await awaitRateLimit();
+  const files = await imagekit.listFiles({
+    path: filePath.slice(0, filePath.lastIndexOf("/")),
+  });
+  const file = files.find(
+    (item): item is FileObject => isFile(item) && item.filePath === filePath,
+  );
+  if (!file) return;
+
+  await awaitRateLimit();
+  await imagekit.deleteFile(file.fileId);
+}
+
 /** Deletes an ImageKit folder and everything in it. Used for both Review Photo folders and Place suggestion photo folders. */
 export async function deleteImageKitFolder(
   folderPath: string,

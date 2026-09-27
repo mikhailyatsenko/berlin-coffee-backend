@@ -183,6 +183,13 @@ export type Mutation = {
   createGuestIdentity: GuestIdentityPayload;
   deleteAccount: SuccessResponse;
   deleteAvatar: SuccessResponse;
+  /**
+   * Deletes one photo of a Place suggestion, the suggester's or the admin's,
+   * authorized only by the review link's token. The path must sit in this
+   * suggestion's own ImageKit folder; a path already gone still succeeds, so a
+   * retried delete is safe.
+   */
+  deletePlaceSuggestionPhoto: Scalars['Boolean']['output'];
   deleteReview: DeleteReviewResult;
   loginWithGoogle?: Maybe<AuthPayload>;
   logout?: Maybe<LogoutResponse>;
@@ -214,6 +221,13 @@ export type Mutation = {
    * Returns the new photo count.
    */
   uploadPlaceSuggestionPhoto: UploadPlaceSuggestionPhotoResponse;
+  /**
+   * Attaches one photo to a Place suggestion as the admin, authorized only by
+   * the review link's token (ADR 0002 in the frontend repo) rather than
+   * ownership. Same rules as uploadPlaceSuggestionPhoto (pending only, the same
+   * shared 10-photo cap) but no rate limit. Returns the new photo's own path.
+   */
+  uploadPlaceSuggestionPhotoAsAdmin: Scalars['String']['output'];
   uploadReviewImage: UploadReviewImageResponse;
   validatePasswordResetToken: SuccessResponse;
 };
@@ -257,6 +271,13 @@ export type MutationContactFormArgs = {
 
 export type MutationCreateGuestIdentityArgs = {
   captchaToken?: InputMaybe<Scalars['String']['input']>;
+};
+
+
+export type MutationDeletePlaceSuggestionPhotoArgs = {
+  id: Scalars['ID']['input'];
+  path: Scalars['String']['input'];
+  token: Scalars['String']['input'];
 };
 
 
@@ -369,6 +390,13 @@ export type MutationUploadPlaceSuggestionPhotoArgs = {
   guestId?: InputMaybe<Scalars['String']['input']>;
   guestSecret?: InputMaybe<Scalars['String']['input']>;
   suggestionId: Scalars['ID']['input'];
+};
+
+
+export type MutationUploadPlaceSuggestionPhotoAsAdminArgs = {
+  fileBuffer: Scalars['String']['input'];
+  id: Scalars['ID']['input'];
+  token: Scalars['String']['input'];
 };
 
 
@@ -994,6 +1022,7 @@ export type MutationResolvers<ContextType = Context, ParentType extends Resolver
   createGuestIdentity?: Resolver<ResolversTypes['GuestIdentityPayload'], ParentType, ContextType, Partial<MutationCreateGuestIdentityArgs>>;
   deleteAccount?: Resolver<ResolversTypes['SuccessResponse'], ParentType, ContextType>;
   deleteAvatar?: Resolver<ResolversTypes['SuccessResponse'], ParentType, ContextType>;
+  deletePlaceSuggestionPhoto?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationDeletePlaceSuggestionPhotoArgs, 'id' | 'path' | 'token'>>;
   deleteReview?: Resolver<ResolversTypes['DeleteReviewResult'], ParentType, ContextType, RequireFields<MutationDeleteReviewArgs, 'deleteOptions' | 'reviewId'>>;
   loginWithGoogle?: Resolver<Maybe<ResolversTypes['AuthPayload']>, ParentType, ContextType, RequireFields<MutationLoginWithGoogleArgs, 'code'>>;
   logout?: Resolver<Maybe<ResolversTypes['LogoutResponse']>, ParentType, ContextType>;
@@ -1013,6 +1042,7 @@ export type MutationResolvers<ContextType = Context, ParentType extends Resolver
   updatePersonalData?: Resolver<ResolversTypes['SuccessResponse'], ParentType, ContextType, RequireFields<MutationUpdatePersonalDataArgs, 'userId'>>;
   uploadAvatar?: Resolver<ResolversTypes['UploadAvatarResponse'], ParentType, ContextType, RequireFields<MutationUploadAvatarArgs, 'fileBuffer' | 'fileName' | 'userId'>>;
   uploadPlaceSuggestionPhoto?: Resolver<ResolversTypes['UploadPlaceSuggestionPhotoResponse'], ParentType, ContextType, RequireFields<MutationUploadPlaceSuggestionPhotoArgs, 'fileBuffer' | 'suggestionId'>>;
+  uploadPlaceSuggestionPhotoAsAdmin?: Resolver<ResolversTypes['String'], ParentType, ContextType, RequireFields<MutationUploadPlaceSuggestionPhotoAsAdminArgs, 'fileBuffer' | 'id' | 'token'>>;
   uploadReviewImage?: Resolver<ResolversTypes['UploadReviewImageResponse'], ParentType, ContextType, RequireFields<MutationUploadReviewImageArgs, 'fileBuffer' | 'reviewId'>>;
   validatePasswordResetToken?: Resolver<ResolversTypes['SuccessResponse'], ParentType, ContextType, RequireFields<MutationValidatePasswordResetTokenArgs, 'email' | 'token'>>;
 };
