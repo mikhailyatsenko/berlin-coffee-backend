@@ -198,6 +198,12 @@ export type Mutation = {
   toggleFavorite: Scalars['Boolean']['output'];
   updatePersonalData: SuccessResponse;
   uploadAvatar: UploadAvatarResponse;
+  /**
+   * Attaches one photo to a Place suggestion. Only the suggester, only while
+   * `pending`, at most 10; Guests count towards the existing Guest photo limit.
+   * Returns the new photo count.
+   */
+  uploadPlaceSuggestionPhoto: UploadPlaceSuggestionPhotoResponse;
   uploadReviewImage: UploadReviewImageResponse;
   validatePasswordResetToken: SuccessResponse;
 };
@@ -348,6 +354,14 @@ export type MutationUploadAvatarArgs = {
 };
 
 
+export type MutationUploadPlaceSuggestionPhotoArgs = {
+  fileBuffer: Scalars['String']['input'];
+  guestId?: InputMaybe<Scalars['String']['input']>;
+  guestSecret?: InputMaybe<Scalars['String']['input']>;
+  suggestionId: Scalars['ID']['input'];
+};
+
+
 export type MutationUploadReviewImageArgs = {
   fileBuffer: Scalars['String']['input'];
   guestId?: InputMaybe<Scalars['String']['input']>;
@@ -493,7 +507,11 @@ export type PublishPlaceSuggestionInput = {
   /** Required, one of the twelve Berlin Neighborhoods, in the spelling Places use. */
   neighborhood: Scalars['String']['input'];
   phone?: InputMaybe<Scalars['String']['input']>;
-  /** Paths of the suggestion's photos to keep, in upload order. Ignored for now. */
+  /**
+   * Paths of the suggestion's photos to keep, in upload order; must belong to
+   * this suggestion. The first becomes the Place's card image; the rest are
+   * deleted.
+   */
   photoPaths?: InputMaybe<Array<Scalars['String']['input']>>;
   website?: InputMaybe<Scalars['String']['input']>;
 };
@@ -616,6 +634,12 @@ export type UploadAvatarResponse = {
   avatarUrl?: Maybe<Scalars['String']['output']>;
   fileId?: Maybe<Scalars['String']['output']>;
   success: Scalars['Boolean']['output'];
+};
+
+export type UploadPlaceSuggestionPhotoResponse = {
+  __typename?: 'UploadPlaceSuggestionPhotoResponse';
+  /** Number of photos stored for the suggestion after this upload. */
+  photoCount: Scalars['Int']['output'];
 };
 
 export type UploadReviewImageResponse = {
@@ -761,6 +785,7 @@ export type ResolversTypes = {
   String: ResolverTypeWrapper<Scalars['String']['output']>;
   SuccessResponse: ResolverTypeWrapper<SuccessResponse>;
   UploadAvatarResponse: ResolverTypeWrapper<UploadAvatarResponse>;
+  UploadPlaceSuggestionPhotoResponse: ResolverTypeWrapper<UploadPlaceSuggestionPhotoResponse>;
   UploadReviewImageResponse: ResolverTypeWrapper<UploadReviewImageResponse>;
   User: ResolverTypeWrapper<IUser>;
   UserReviewActivity: ResolverTypeWrapper<UserReviewActivity>;
@@ -809,6 +834,7 @@ export type ResolversParentTypes = {
   String: Scalars['String']['output'];
   SuccessResponse: SuccessResponse;
   UploadAvatarResponse: UploadAvatarResponse;
+  UploadPlaceSuggestionPhotoResponse: UploadPlaceSuggestionPhotoResponse;
   UploadReviewImageResponse: UploadReviewImageResponse;
   User: IUser;
   UserReviewActivity: UserReviewActivity;
@@ -957,6 +983,7 @@ export type MutationResolvers<ContextType = Context, ParentType extends Resolver
   toggleFavorite?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationToggleFavoriteArgs, 'placeId'>>;
   updatePersonalData?: Resolver<ResolversTypes['SuccessResponse'], ParentType, ContextType, RequireFields<MutationUpdatePersonalDataArgs, 'userId'>>;
   uploadAvatar?: Resolver<ResolversTypes['UploadAvatarResponse'], ParentType, ContextType, RequireFields<MutationUploadAvatarArgs, 'fileBuffer' | 'fileName' | 'userId'>>;
+  uploadPlaceSuggestionPhoto?: Resolver<ResolversTypes['UploadPlaceSuggestionPhotoResponse'], ParentType, ContextType, RequireFields<MutationUploadPlaceSuggestionPhotoArgs, 'fileBuffer' | 'suggestionId'>>;
   uploadReviewImage?: Resolver<ResolversTypes['UploadReviewImageResponse'], ParentType, ContextType, RequireFields<MutationUploadReviewImageArgs, 'fileBuffer' | 'reviewId'>>;
   validatePasswordResetToken?: Resolver<ResolversTypes['SuccessResponse'], ParentType, ContextType, RequireFields<MutationValidatePasswordResetTokenArgs, 'email' | 'token'>>;
 };
@@ -1102,6 +1129,11 @@ export type UploadAvatarResponseResolvers<ContextType = Context, ParentType exte
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 };
 
+export type UploadPlaceSuggestionPhotoResponseResolvers<ContextType = Context, ParentType extends ResolversParentTypes['UploadPlaceSuggestionPhotoResponse'] = ResolversParentTypes['UploadPlaceSuggestionPhotoResponse']> = {
+  photoCount?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
+};
+
 export type UploadReviewImageResponseResolvers<ContextType = Context, ParentType extends ResolversParentTypes['UploadReviewImageResponse'] = ResolversParentTypes['UploadReviewImageResponse']> = {
   reviewImages?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
@@ -1162,6 +1194,7 @@ export type Resolvers<ContextType = Context> = {
   SimilarPlaceSuggestion?: SimilarPlaceSuggestionResolvers<ContextType>;
   SuccessResponse?: SuccessResponseResolvers<ContextType>;
   UploadAvatarResponse?: UploadAvatarResponseResolvers<ContextType>;
+  UploadPlaceSuggestionPhotoResponse?: UploadPlaceSuggestionPhotoResponseResolvers<ContextType>;
   UploadReviewImageResponse?: UploadReviewImageResponseResolvers<ContextType>;
   User?: UserResolvers<ContextType>;
   UserReviewActivity?: UserReviewActivityResolvers<ContextType>;

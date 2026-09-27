@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import mongoose from "mongoose";
 import Interaction from "../../../models/Interaction.js";
 import { GraphQLError } from "graphql";
-import { deleteAllReviewImages } from "../../../utils/imagekit.js";
+import { deleteImageKitFolder } from "../../../utils/imagekit.js";
 import { uploadLeaseUntil } from "../uploadReviewImageResolver/uploadReviewImageResolver.js";
 
 /**
@@ -114,7 +114,7 @@ export async function deleteReviewResolver(
       await Interaction.updateOne({ _id: reviewId }, { $unset: unset });
     } else {
       await clearPhotosBehindFence(reviewId, unset, () =>
-        deleteAllReviewImages(
+        deleteImageKitFolder(
           `3welle/review-images/${interaction.placeId}/${reviewId}`,
         ),
       );

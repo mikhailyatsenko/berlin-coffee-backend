@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import ImageKit from "imagekit";
 import type { FileObject, FolderObject } from "imagekit/dist/libs/interfaces";
 import sharp from "sharp";
@@ -72,6 +73,36 @@ function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+/** Waits out the rate-limit window, if one is still running. */
+async function awaitRateLimit(): Promise<void> {
+  const now = Date.now();
+  const timeSinceLastRequest = now - lastRequestTime;
+  if (timeSinceLastRequest < MIN_REQUEST_INTERVAL) {
+    await delay(MIN_REQUEST_INTERVAL - timeSinceLastRequest);
+  }
+  lastRequestTime = Date.now();
+}
+
+/** withTimeout, but the bound is a shared deadline rather than a fixed duration. */
+function withDeadline<T>(
+  promise: Promise<T>,
+  deadline: Date,
+  what: string,
+): Promise<T> {
+  const remainingMs = deadline.getTime() - Date.now();
+  if (remainingMs <= 0) {
+    return Promise.reject(
+      new Error(`${what}: the timeout ran out before ImageKit was called`),
+    );
+  }
+  return withTimeout(promise, remainingMs, what);
+}
+
+/** A Place's own photo folder: the gallery Place pages list, and where the card image (main.jpg) lives. */
+export function placePhotoFolder(placeId: string): string {
+  return `places-main-img/${placeId}`;
+}
+
 /**
  * Gets list of files from places-main-img/[placeId] folder
  * @param placeId - Place ID
@@ -87,7 +118,7 @@ export async function getPlaceImages(placeId: string): Promise<string[]> {
     }
     lastRequestTime = Date.now();
 
-    const folderPath = `places-main-img/${placeId}`;
+    const folderPath = placePhotoFolder(placeId);
 
     const result = await imagekit.listFiles({
       path: folderPath,
@@ -296,18 +327,12 @@ export async function deleteAvatar(filePath: string): Promise<boolean> {
   }
 }
 
-export async function deleteAllReviewImages(
+/** Deletes an ImageKit folder and everything in it. Used for both Review Photo folders and Place suggestion photo folders. */
+export async function deleteImageKitFolder(
   folderPath: string,
 ): Promise<boolean> {
   try {
-    // Rate limiting
-    const now = Date.now();
-    const timeSinceLastRequest = now - lastRequestTime;
-    if (timeSinceLastRequest < MIN_REQUEST_INTERVAL) {
-      await delay(MIN_REQUEST_INTERVAL - timeSinceLastRequest);
-    }
-    lastRequestTime = Date.now();
-
+    await awaitRateLimit();
     await imagekit.deleteFolder(folderPath);
     return true;
   } catch (error) {
@@ -317,5 +342,108 @@ export async function deleteAllReviewImages(
       stack: error instanceof Error ? error.stack : undefined,
     });
     return false;
+  }
+}
+
+/** A Place suggestion's own ImageKit folder, holding its photos until Publish or Reject decides them. */
+export function placeSuggestionPhotoFolder(suggestionId: string): string {
+  return `3welle/place-suggestions/${suggestionId}`;
+}
+
+/**
+ * Uploads one Photo of a Place suggestion to ImageKit, compressed the same way
+ * as Review Photos.
+ *
+ * Unlike Review Photos, the file name carries no meaning: the suggestion's
+ * photo order lives in the `photos` array on the document (appended to only
+ * after the file is confirmed stored), not in a positional file name. Two
+ * uploads can therefore never collide over the same name, which is what lets
+ * this skip the lease Review Photos need to keep `image_N.jpg` contiguous.
+ *
+ * @param fileBuffer - Decoded file buffer
+ * @param suggestionId - The suggestion this photo is attached to
+ * @param deadline - When the ImageKit call is abandoned
+ * @returns Promise<string> - ImageKit file path
+ */
+export async function uploadPlaceSuggestionPhoto(
+  fileBuffer: Buffer,
+  suggestionId: string,
+  deadline: Date,
+): Promise<string> {
+  try {
+    await awaitRateLimit();
+
+    const processedBuffer = await sharp(fileBuffer)
+      .resize(1440, 1440, {
+        fit: "inside",
+        withoutEnlargement: true,
+      })
+      .jpeg({
+        quality: 82,
+        progressive: true,
+        mozjpeg: true,
+      })
+      .toBuffer();
+
+    const result = await withDeadline(
+      imagekit.upload({
+        file: processedBuffer,
+        fileName: `${randomUUID()}.jpg`,
+        folder: placeSuggestionPhotoFolder(suggestionId),
+        useUniqueFileName: false,
+      }),
+      deadline,
+      "ImageKit upload of a suggestion photo",
+    );
+
+    return result.filePath;
+  } catch (error) {
+    console.error("Error uploading suggestion photo to ImageKit:", error);
+    if (error instanceof UploadTimeoutError) throw error;
+    throw new Error("Failed to upload suggestion photo to ImageKit");
+  }
+}
+
+/**
+ * Copies one Place suggestion photo, kept at Publish, into the Place's own
+ * photo folder. The card image is additionally renamed to main.jpg there, the
+ * name every Place page requests regardless of what `properties.image` holds.
+ *
+ * Copies rather than moves: the suggestion's own copy is left in place, so a
+ * later photo's failure in the same Publish call never leaves this one
+ * stranded with no original to retry from. The originals (kept and dropped
+ * alike) are cleared together once, by deleting the whole suggestion folder
+ * after every kept photo has landed.
+ */
+export async function copyPlaceSuggestionPhotoToPlace(
+  photoPath: string,
+  placeId: string,
+  asCardImage: boolean,
+  deadline: Date,
+): Promise<void> {
+  const destinationFolder = placePhotoFolder(placeId);
+
+  await awaitRateLimit();
+  await withDeadline(
+    imagekit.copyFile({
+      sourceFilePath: photoPath,
+      destinationPath: destinationFolder,
+    }),
+    deadline,
+    `ImageKit copy of ${photoPath}`,
+  );
+
+  if (asCardImage) {
+    const fileName = photoPath.slice(photoPath.lastIndexOf("/") + 1);
+    await awaitRateLimit();
+    await withDeadline(
+      imagekit.renameFile({
+        filePath: `${destinationFolder}/${fileName}`,
+        newFileName: "main.jpg",
+        purgeCache: false,
+      }),
+      deadline,
+      "ImageKit rename of the card image",
+    );
   }
 }

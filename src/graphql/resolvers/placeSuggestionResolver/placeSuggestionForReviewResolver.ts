@@ -48,8 +48,7 @@ export async function placeSuggestionForReviewResolver(
     suggestedBy: suggestion.userId ? ("user" as const) : ("guest" as const),
     status: suggestion.status,
     publishedPlaceId: suggestion.publishedPlaceId?.toString() ?? null,
-    // Photos arrive with ticket 03.
-    photos: [] as string[],
+    photos: suggestion.photos,
     similarPending: await similarPending(suggestion),
   };
 }

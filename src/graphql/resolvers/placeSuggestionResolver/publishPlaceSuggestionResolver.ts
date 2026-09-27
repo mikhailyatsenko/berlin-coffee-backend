@@ -1,4 +1,5 @@
 import { GraphQLError } from "graphql";
+import mongoose from "mongoose";
 import Place from "../../../models/Place.js";
 import User from "../../../models/User.js";
 import { requireSuggestionForReview } from "../../../utils/placeSuggestionToken.js";
@@ -10,6 +11,13 @@ import { invalidateNeighborhoodsCache } from "../availableNeighborhoodsResolver/
 import { sendSuggestionPublishedEmail } from "./sendSuggestionPublishedEmail.js";
 import { suggestionOutcome } from "./placeSuggestionOutcome.js";
 import PlaceSuggestion from "../../../models/PlaceSuggestion.js";
+import {
+  copyPlaceSuggestionPhotoToPlace,
+  deleteImageKitFolder,
+  placePhotoFolder,
+  placeSuggestionPhotoFolder,
+} from "../../../utils/imagekit.js";
+import { REVIEW_IMAGE_UPLOAD_TIMEOUT_MS } from "../../../config/env.js";
 
 interface PublishPlaceSuggestionInput {
   name: string;
@@ -21,7 +29,7 @@ interface PublishPlaceSuggestionInput {
   website?: string | null;
   phone?: string | null;
   googlePlaceId?: string | null;
-  // Ignored until Place photos ship (backend ticket 03).
+  /** The suggestion's own photo paths to keep, in upload order. Must belong to this suggestion. */
   photoPaths?: string[] | null;
 }
 
@@ -79,6 +87,15 @@ export async function publishPlaceSuggestionResolver(
     throw badInput("neighborhood must be one of the twelve");
   }
 
+  // Order is what the frontend preserved after removing dropped photos: the
+  // first survivor becomes the card image.
+  const keptPhotoPaths = [
+    ...new Set((input.photoPaths ?? []).filter((p): p is string => !!p)),
+  ];
+  if (keptPhotoPaths.some((path) => !suggestion.photos.includes(path))) {
+    throw badInput("photoPaths must belong to this suggestion");
+  }
+
   const description = trimmed(input.description);
   const instagram = trimmed(input.instagram);
   const website = trimmed(input.website);
@@ -94,7 +111,44 @@ export async function publishPlaceSuggestionResolver(
     }
   }
 
+  // The Place's id is generated up front so the photos can be copied into its
+  // folder before the Place document itself exists. If ImageKit fails here,
+  // nothing has been created yet: the suggestion is untouched, and the admin's
+  // retry starts clean rather than risking a second Place from a second
+  // Place.create() after a partial success. Photos are copied, not moved, so a
+  // failure partway through this Place's photos never strands an
+  // already-relocated one with no original left to retry from; the originals
+  // are all cleared together below, once every kept photo's copy has landed.
+  const placeId = new mongoose.Types.ObjectId();
+  let cardImage: string | undefined;
+
+  if (keptPhotoPaths.length > 0) {
+    const deadline = new Date(Date.now() + REVIEW_IMAGE_UPLOAD_TIMEOUT_MS);
+    try {
+      await Promise.all(
+        keptPhotoPaths.map((path, index) =>
+          copyPlaceSuggestionPhotoToPlace(
+            path,
+            placeId.toString(),
+            index === 0,
+            deadline,
+          ),
+        ),
+      );
+    } catch (error) {
+      console.error("Error copying suggestion photos to the new Place:", error);
+      throw new GraphQLError(
+        "Failed to copy the suggestion's photos to the new Place; try Publish again",
+        { extensions: { code: "INTERNAL_SERVER_ERROR" } },
+      );
+    }
+    // Real ImageKit paths always carry a leading slash (as `photos` entries and
+    // getPlaceImages() results already do); match that here too.
+    cardImage = `/${placePhotoFolder(placeId.toString())}/main.jpg`;
+  }
+
   const place = await Place.create({
+    _id: placeId,
     geometry: { type: "Point", coordinates: [lng, lat] },
     properties: {
       name,
@@ -106,22 +160,18 @@ export async function publishPlaceSuggestionResolver(
       googleId: googlePlaceId ?? null,
       neighborhood,
       // additionalInfo (Amenities) and openingHours stay at their schema
-      // defaults — empty — and image at "", which the frontend already
-      // renders as a placeholder.
+      // defaults — empty. image stays "" (the frontend's placeholder) with no
+      // kept photos, or the copied card image's path above.
+      ...(cardImage && { image: cardImage }),
       businessStatus: "OPERATIONAL",
     },
   });
 
-  invalidateNeighborhoodsCache();
-
-  const recipientEmail = suggestion.userId
-    ? (await User.findById(suggestion.userId).select("email").lean())?.email
-    : suggestion.guestEmail;
-
-  if (recipientEmail) {
-    await sendSuggestionPublishedEmail(recipientEmail, place._id.toString());
-  }
-
+  // Marked published right away, before the folder cleanup below: a photo
+  // upload still in flight for this suggestion checks status === "pending" in
+  // its own atomic commit, so once this write lands, that commit simply
+  // no-ops instead of racing the delete that follows — the file is left an
+  // orphan for the cleanup to catch, the same way a failed upload always is.
   await PlaceSuggestion.updateOne(
     { _id: suggestion._id },
     {
@@ -133,6 +183,27 @@ export async function publishPlaceSuggestionResolver(
       $unset: { guestEmail: "" },
     },
   );
+
+  invalidateNeighborhoodsCache();
+
+  // Whatever's left in the suggestion's folder is the dropped photos' and the
+  // kept ones' originals (the kept ones were only copied above), plus any
+  // upload that never made it into `photos`. Best-effort: deleteImageKitFolder
+  // logs and swallows its own failures, so a leftover ImageKit folder never
+  // blocks Publish once the Place itself is safely created.
+  if (suggestion.photos.length > 0) {
+    await deleteImageKitFolder(
+      placeSuggestionPhotoFolder(suggestion._id.toString()),
+    );
+  }
+
+  const recipientEmail = suggestion.userId
+    ? (await User.findById(suggestion.userId).select("email").lean())?.email
+    : suggestion.guestEmail;
+
+  if (recipientEmail) {
+    await sendSuggestionPublishedEmail(recipientEmail, place._id.toString());
+  }
 
   return suggestionOutcome({ status: "published", publishedPlaceId: place._id });
 }
