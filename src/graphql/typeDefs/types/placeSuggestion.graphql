@@ -80,7 +80,11 @@ input PublishPlaceSuggestionInput {
   Place; the existing Place's id is the last word of the error message.
   """
   googlePlaceId: String
-  """Paths of the suggestion's photos to keep, in upload order. Ignored for now."""
+  """
+  Paths of the suggestion's photos to keep, in upload order; must belong to
+  this suggestion. The first becomes the Place's card image; the rest are
+  deleted.
+  """
   photoPaths: [String!]
 }
 
@@ -89,4 +93,9 @@ type PlaceSuggestionOutcome {
   status: PlaceSuggestionStatus!
   """Set once the suggestion is published."""
   publishedPlaceId: ID
+}
+
+type UploadPlaceSuggestionPhotoResponse {
+  """Number of photos stored for the suggestion after this upload."""
+  photoCount: Int!
 }

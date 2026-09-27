@@ -38,6 +38,7 @@ import { submitPlaceSuggestionResolver } from "./placeSuggestionResolver/submitP
 import { placeSuggestionForReviewResolver } from "./placeSuggestionResolver/placeSuggestionForReviewResolver.js";
 import { publishPlaceSuggestionResolver } from "./placeSuggestionResolver/publishPlaceSuggestionResolver.js";
 import { rejectPlaceSuggestionResolver } from "./placeSuggestionResolver/rejectPlaceSuggestionResolver.js";
+import { uploadPlaceSuggestionPhotoResolver } from "./placeSuggestionResolver/uploadPlaceSuggestionPhotoResolver.js";
 
 export const resolvers = {
   JSON: GraphQLJSON,
@@ -83,6 +84,7 @@ export const resolvers = {
     toggleCharacteristic: toggleCharacteristicResolver,
     uploadReviewImage: uploadReviewImageResolver,
     submitPlaceSuggestion: submitPlaceSuggestionResolver,
+    uploadPlaceSuggestionPhoto: uploadPlaceSuggestionPhotoResolver,
     publishPlaceSuggestion: publishPlaceSuggestionResolver,
     rejectPlaceSuggestion: rejectPlaceSuggestionResolver,
 

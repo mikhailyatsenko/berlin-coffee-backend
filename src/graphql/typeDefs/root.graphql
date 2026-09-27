@@ -119,6 +119,17 @@ type Mutation {
     guestSecret: String
   ): ID!
   """
+  Attaches one photo to a Place suggestion. Only the suggester, only while
+  `pending`, at most 10; Guests count towards the existing Guest photo limit.
+  Returns the new photo count.
+  """
+  uploadPlaceSuggestionPhoto(
+    suggestionId: ID!
+    fileBuffer: String!
+    guestId: String
+    guestSecret: String
+  ): UploadPlaceSuggestionPhotoResponse!
+  """
   Publishes a Place suggestion as a new Place and emails the suggester. A
   repeat call changes nothing and returns the outcome already decided; a bad
   token fails like every admin operation (ADR 0002 in the frontend repo).

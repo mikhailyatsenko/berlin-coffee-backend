@@ -15,6 +15,14 @@ export interface IPlaceSuggestion extends Document {
   /** Guests only, to tell them when the Place is added. Erased once decided. */
   guestEmail?: string;
   status: PlaceSuggestionStatus;
+  /** ImageKit paths, in upload order: the source of truth for the suggestion's photos. */
+  photos: string[];
+  /**
+   * Redundant with photos.length, kept only because it predates `photos` and
+   * ticket 02's tests already read it. The one place that writes to `photos`
+   * ($push) always updates this alongside it ($inc); nothing else should
+   * write either field without doing the same.
+   */
   photoCount: number;
   publishedPlaceId?: mongoose.Types.ObjectId;
   createdAt: Date;
@@ -35,6 +43,7 @@ const PlaceSuggestionSchema = new mongoose.Schema({
     default: "pending",
     required: true,
   },
+  photos: { type: [String], default: [] },
   photoCount: { type: Number, default: 0 },
   publishedPlaceId: { type: mongoose.Schema.Types.ObjectId, ref: "NewPlace" },
   createdAt: { type: Date, default: Date.now },
