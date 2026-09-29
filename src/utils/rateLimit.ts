@@ -100,6 +100,18 @@ export function consumeRateLimit(bucket: RateLimitBucket, ip: string): void {
   countRateLimit(bucket, ip);
 }
 
+/**
+ * Gives back one request counted by consumeRateLimit, for a request that
+ * turned out not to deserve counting after it was counted.
+ */
+export function refundRateLimit(bucket: RateLimitBucket, ip: string): void {
+  const rules = RATE_LIMITS[bucket] as readonly LimitRule[];
+  for (const rule of rules) {
+    const window = windows.get(`${bucket}:${rule.windowMs}:${ip}`);
+    if (window && window.count > 0) window.count -= 1;
+  }
+}
+
 /** Express gives us the real client address because trust proxy is set. */
 export function clientIp(req?: { ip?: string }): string {
   return req?.ip || "unknown";

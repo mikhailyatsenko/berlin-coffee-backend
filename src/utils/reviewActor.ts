@@ -27,13 +27,19 @@ export interface ReviewActor {
   owner: { userId: string } | { guestId: string };
 }
 
+/** A signed-in User as the actor, for mutations only a User may call. */
+export const userActor = (user: IUser): ReviewActor => ({
+  isGuest: false,
+  owner: { userId: user.id },
+});
+
 export async function resolveReviewActor(
   user: IUser | null | undefined,
   guest: GuestContext | undefined,
   { guestId, guestSecret }: GuestArgs,
 ): Promise<ReviewActor> {
   if (user) {
-    return { isGuest: false, owner: { userId: user.id } };
+    return userActor(user);
   }
 
   if (guest?.status === "valid") {

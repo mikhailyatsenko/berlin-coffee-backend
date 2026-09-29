@@ -1,5 +1,6 @@
-import Interaction from "../../../models/Interaction.js";
 import Place from "../../../models/Place.js";
+import { userActor } from "../../../utils/reviewActor.js";
+import { toggleInteractionField } from "../../../utils/upsertInteraction.js";
 import { requireUser } from "../../context.js";
 import { notFound } from "../../errors.js";
 import type { MutationResolvers } from "../../generated/types.js";
@@ -13,21 +14,12 @@ export const toggleFavoriteResolver: MutationResolvers["toggleFavorite"] =
       throw notFound("Place not found");
     }
 
-    const existingInteraction = await Interaction.findOne({
-      userId: user.id,
+    await toggleInteractionField(
+      userActor(user),
       placeId,
-    });
-
-    if (existingInteraction) {
-      existingInteraction.isFavorite = !existingInteraction.isFavorite;
-      await existingInteraction.save();
-    } else {
-      await Interaction.create({
-        userId: user.id,
-        placeId,
-        isFavorite: true,
-      });
-    }
+      "isFavorite",
+      context.req,
+    );
 
     return true;
   };
