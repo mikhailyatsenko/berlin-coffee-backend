@@ -1,6 +1,10 @@
 import Interaction from "../../../models/Interaction.js";
 import { clientIp, consumeRateLimit } from "../../../utils/rateLimit.js";
 import { resolveReviewActor } from "../../../utils/reviewActor.js";
+import {
+  assertPlaceExists,
+  assertReviewText,
+} from "../../../utils/validateInput.js";
 import type { MutationResolvers } from "../../generated/types.js";
 
 export const addTextReviewResolver: MutationResolvers["addTextReview"] = async (
@@ -8,7 +12,9 @@ export const addTextReviewResolver: MutationResolvers["addTextReview"] = async (
   { text, placeId, guestId, guestSecret },
   { user, guest, req },
 ) => {
+  assertReviewText(text);
   const actor = await resolveReviewActor(user, guest, { guestId, guestSecret });
+  await assertPlaceExists(placeId);
 
   const interaction = await Interaction.findOne({
     ...actor.owner,

@@ -12,6 +12,7 @@ import { requireUser } from "../../context.js";
 import { badInput, forbidden } from "../../errors.js";
 import type { MutationResolvers } from "../../generated/types.js";
 import { normalizeEmail } from "../../../utils/normalizeEmail.js";
+import { parseDisplayName } from "../../../utils/validateInput.js";
 
 export const updatePersonalDataResolver: MutationResolvers["updatePersonalData"] =
   async (_parent, { userId, displayName, email: rawEmail }, context) => {
@@ -20,8 +21,10 @@ export const updatePersonalDataResolver: MutationResolvers["updatePersonalData"]
       throw forbidden("You can only change your own profile");
     }
 
-    if (displayName) {
-      user.displayName = displayName;
+    // Absent or the current name means "no change", so a name from before the
+    // length limit doesn't block an email change; an empty name is refused.
+    if (displayName != null && displayName.trim() !== user.displayName) {
+      user.displayName = parseDisplayName(displayName);
     }
     // A blank address still reaches isEmail and is rejected there.
     const email = rawEmail ? normalizeEmail(rawEmail) : null;

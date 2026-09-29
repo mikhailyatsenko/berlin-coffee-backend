@@ -2,6 +2,10 @@ import Interaction from "../../../models/Interaction.js";
 import mongoose from "mongoose";
 import { clientIp, consumeRateLimit } from "../../../utils/rateLimit.js";
 import { resolveReviewActor } from "../../../utils/reviewActor.js";
+import {
+  assertPlaceExists,
+  assertRating,
+} from "../../../utils/validateInput.js";
 import type { MutationResolvers } from "../../generated/types.js";
 
 export const addRatingResolver: MutationResolvers["addRating"] = async (
@@ -9,7 +13,9 @@ export const addRatingResolver: MutationResolvers["addRating"] = async (
   { placeId, rating, guestId, guestSecret },
   { user, guest, req },
 ) => {
+  assertRating(rating);
   const actor = await resolveReviewActor(user, guest, { guestId, guestSecret });
+  await assertPlaceExists(placeId);
 
   const interaction = await Interaction.findOne({
     ...actor.owner,
