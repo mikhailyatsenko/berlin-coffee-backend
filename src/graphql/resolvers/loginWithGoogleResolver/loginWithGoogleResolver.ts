@@ -37,18 +37,46 @@ export const loginWithGoogleResolver: MutationResolvers["loginWithGoogle"] = asy
     throw badInput("Invalid Google token");
   }
 
-  let user = await User.findOne({ googleId: payload.sub });
+  if (payload.email_verified !== true || !payload.email) {
+    throw badInput("Please verify your email in your Google account first.");
+  }
+  const email = normalizeEmail(payload.email);
 
-  const isFirstLogin = !user;
+  // What Google tells about the person, for a User it creates or takes over.
+  const fromGoogle = {
+    googleId: payload.sub,
+    isEmailConfirmed: true,
+    displayName: payload.name,
+    avatar: payload.picture,
+  };
+
+  let user = await User.findOne({ googleId: payload.sub });
+  let isFirstLogin = false;
 
   if (!user) {
-    user = new User({
-      googleId: payload.sub,
-      email: payload.email && normalizeEmail(payload.email),
-      isEmailConfirmed: true,
-      displayName: payload.name,
-      avatar: payload.picture,
-    });
+    user = await User.findOne({ email });
+    isFirstLogin = !user?.isEmailConfirmed;
+
+    if (!user) {
+      user = new User({ ...fromGoogle, email });
+    } else if (user.googleId) {
+      throw badInput("This email is linked to another Google account.");
+    } else if (user.isEmailConfirmed) {
+      // The User proved the mailbox before: Google becomes a second way in.
+      user.googleId = payload.sub;
+      user.avatar ||= payload.picture;
+    } else {
+      // An unconfirmed email does not hold the address: Google proved the
+      // mailbox, so the password and pending tokens of the User are dropped.
+      user.set({
+        ...fromGoogle,
+        password: null,
+        emailConfirmationToken: null,
+        emailConfirmationTokenExpires: null,
+        passwordResetToken: null,
+        passwordResetTokenExpires: null,
+      });
+    }
   }
   // A full save, not updateLastActive: a first sign-in creates the User here.
   user.lastActive = new Date();

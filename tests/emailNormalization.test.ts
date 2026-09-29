@@ -78,7 +78,7 @@ after(() => {
 
 // --- fake Google: the next sign-in is this Google account --------------------
 
-let googlePayload = { sub: "google-1", email: "", name: "Anna" };
+let googlePayload = { sub: "google-1", email: "", email_verified: true, name: "Anna" };
 OAuth2Client.prototype.getToken = (async () => ({
   tokens: { id_token: "id-token" },
 })) as unknown as typeof OAuth2Client.prototype.getToken;
@@ -257,7 +257,12 @@ test("password reset request finds the User regardless of case", async () => {
 });
 
 test("Google sign-in stores the email in canonical form", async () => {
-  googlePayload = { sub: "google-1", email: "Anna@Gmail.COM", name: "Anna" };
+  googlePayload = {
+    sub: "google-1",
+    email: "Anna@Gmail.COM",
+    email_verified: true,
+    name: "Anna",
+  };
   const result = await callResolver(
     loginWithGoogleResolver,
     { code: "code" },
