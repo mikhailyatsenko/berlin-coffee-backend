@@ -1,7 +1,7 @@
-import { GraphQLError } from "graphql";
 import Interaction from "../../../models/Interaction.js";
-import { IUser } from "../../../models/User.js";
 import { resolveGuestIdentityForClaim } from "../../../utils/guestAuth.js";
+import { type Context, requireUser } from "../../context.js";
+import { appError } from "../../errors.js";
 
 /**
  * Attaches reviews left as a guest to the account that is now signed in.
@@ -17,20 +17,18 @@ import { resolveGuestIdentityForClaim } from "../../../utils/guestAuth.js";
 export async function claimGuestReviewsResolver(
   _: never,
   { guestId, guestSecret }: { guestId: string; guestSecret: string },
-  { user }: { user?: IUser | null },
+  context: Context,
 ) {
-  if (!user) {
-    throw new GraphQLError("Authentication required", {
-      extensions: { code: "UNAUTHENTICATED", requiresLogin: true },
-    });
-  }
+  const user = requireUser(context);
 
   const identity = await resolveGuestIdentityForClaim(guestId, guestSecret);
 
   if (identity.claimedBy && identity.claimedBy.toString() !== user.id) {
-    throw new GraphQLError("This guest session belongs to another account", {
-      extensions: { code: "GUEST_IDENTITY_INVALID", reason: "already_claimed" },
-    });
+    throw appError(
+      "GUEST_IDENTITY_INVALID",
+      "This guest session belongs to another account",
+      { reason: "already_claimed" },
+    );
   }
 
   const guestInteractions = await Interaction.find({ guestId }).lean();

@@ -1,5 +1,5 @@
 import crypto from "crypto";
-import { GraphQLError } from "graphql";
+import { appError } from "../graphql/errors.js";
 import mongoose from "mongoose";
 import PlaceSuggestion, {
   IPlaceSuggestion,
@@ -32,9 +32,7 @@ export function isValidReviewToken(
 
 /** One error for a wrong token and an unknown id, so the link reveals nothing about which ids exist. */
 export const invalidReviewLinkError = () =>
-  new GraphQLError("This link is not valid", {
-    extensions: { code: "INVALID_REVIEW_LINK" },
-  });
+  appError("INVALID_REVIEW_LINK", "This link is not valid");
 
 /** Every admin operation starts here: the suggestion, or the one error. */
 export async function requireSuggestionForReview(

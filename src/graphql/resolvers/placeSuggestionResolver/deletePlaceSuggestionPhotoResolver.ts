@@ -1,4 +1,4 @@
-import { GraphQLError } from "graphql";
+import { badInput, forbidden } from "../../errors.js";
 import PlaceSuggestion from "../../../models/PlaceSuggestion.js";
 import { requireSuggestionForReview } from "../../../utils/placeSuggestionToken.js";
 import {
@@ -28,26 +28,15 @@ export async function deletePlaceSuggestionPhotoResolver(
   const suggestion = await requireSuggestionForReview(id, token);
 
   if (suggestion.status !== "pending") {
-    throw new GraphQLError("This suggestion has already been decided", {
-      extensions: { code: "SUGGESTION_NOT_PENDING" },
-    });
+    throw forbidden("This suggestion has already been decided");
   }
 
   const folderPrefix = `/${placeSuggestionPhotoFolder(id)}/`;
   if (!path.startsWith(folderPrefix)) {
-    throw new GraphQLError("This photo does not belong to this suggestion", {
-      extensions: { code: "BAD_USER_INPUT" },
-    });
+    throw badInput("This photo does not belong to this suggestion");
   }
 
-  try {
-    await deleteImageKitFile(path);
-  } catch (error) {
-    console.error("Error deleting suggestion photo from ImageKit:", error);
-    throw new GraphQLError("Failed to delete photo", {
-      extensions: { code: "INTERNAL_SERVER_ERROR" },
-    });
-  }
+  await deleteImageKitFile(path);
 
   // Guarded on `photos` containing the path (not on `status` again): the file
   // is already gone from ImageKit by this point, so the array has to drop the

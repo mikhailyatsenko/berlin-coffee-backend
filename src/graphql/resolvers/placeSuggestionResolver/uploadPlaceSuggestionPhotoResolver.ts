@@ -1,5 +1,5 @@
 import { Request } from "express";
-import { GraphQLError } from "graphql";
+import { appError, badInput, forbidden } from "../../errors.js";
 import PlaceSuggestion from "../../../models/PlaceSuggestion.js";
 import { IUser } from "../../../models/User.js";
 import { REVIEW_IMAGE_UPLOAD_TIMEOUT_MS } from "../../../config/env.js";
@@ -43,16 +43,12 @@ export async function uploadPlaceSuggestionPhotoResolver(
   const actor = await resolveReviewActor(user, guest, { guestId, guestSecret });
 
   if (!fileBuffer) {
-    throw new GraphQLError("Invalid file data", {
-      extensions: { code: "BAD_USER_INPUT" },
-    });
+    throw badInput("Invalid file data");
   }
 
   const buffer = Buffer.from(fileBuffer, "base64");
   if (buffer.length === 0 || buffer.length > MAX_DECODED_BYTES) {
-    throw new GraphQLError("Photo is too large", {
-      extensions: { code: "BAD_USER_INPUT" },
-    });
+    throw badInput("Photo is too large");
   }
 
   // Fails fast on the obvious cases before spending an ImageKit call; the
@@ -63,20 +59,17 @@ export async function uploadPlaceSuggestionPhotoResolver(
   }).select("status photos");
 
   if (!suggestion) {
-    throw new GraphQLError(
+    throw forbidden(
       "Suggestion not found or you don't have permission to edit it",
-      { extensions: { code: "FORBIDDEN" } },
     );
   }
   if (suggestion.status !== "pending") {
-    throw new GraphQLError("This suggestion has already been decided", {
-      extensions: { code: "SUGGESTION_NOT_PENDING" },
-    });
+    throw forbidden("This suggestion has already been decided");
   }
   if (suggestion.photos.length >= MAX_PHOTOS_PER_SUGGESTION) {
-    throw new GraphQLError(
+    throw appError(
+      "IMAGE_LIMIT_REACHED",
       "This suggestion already has the maximum number of photos",
-      { extensions: { code: "IMAGE_LIMIT_REACHED" } },
     );
   }
 
@@ -85,15 +78,7 @@ export async function uploadPlaceSuggestionPhotoResolver(
   }
 
   const deadline = new Date(Date.now() + REVIEW_IMAGE_UPLOAD_TIMEOUT_MS);
-  let path: string;
-  try {
-    path = await uploadPlaceSuggestionPhoto(buffer, suggestionId, deadline);
-  } catch (error) {
-    console.error("Error uploading suggestion photo:", error);
-    throw new GraphQLError("Failed to upload photo", {
-      extensions: { code: "INTERNAL_SERVER_ERROR" },
-    });
-  }
+  const path = await uploadPlaceSuggestionPhoto(buffer, suggestionId, deadline);
 
   const updated = await PlaceSuggestion.findOneAndUpdate(
     {
@@ -109,12 +94,9 @@ export async function uploadPlaceSuggestionPhotoResolver(
   if (!updated) {
     // The file is uploaded but orphaned; Publish or Reject will clean it up
     // along with the rest of the suggestion's folder.
-    console.error(
+    throw new Error(
       `Suggestion photo ${path} was uploaded but not counted (suggestion ${suggestionId} changed underneath it)`,
     );
-    throw new GraphQLError("Failed to upload photo", {
-      extensions: { code: "INTERNAL_SERVER_ERROR" },
-    });
   }
 
   return { photoCount: updated.photos.length };

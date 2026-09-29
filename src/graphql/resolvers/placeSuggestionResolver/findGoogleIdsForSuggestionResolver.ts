@@ -1,4 +1,3 @@
-import { GraphQLError } from "graphql";
 import Place from "../../../models/Place.js";
 import { requireSuggestionForReview } from "../../../utils/placeSuggestionToken.js";
 import { GOOGLE_PLACES_API_KEY } from "../../../config/env.js";
@@ -15,35 +14,25 @@ interface GoogleTextSearchResponse {
   places?: { id: string }[];
 }
 
-const googleLookupError = () =>
-  new GraphQLError("Could not reach Google right now; try again", {
-    extensions: { code: "GOOGLE_LOOKUP_FAILED" },
+/**
+ * A failed lookup is unexpected: formatError logs it and masks it for the
+ * client.
+ */
+async function searchGooglePlaceIds(query: string): Promise<string[]> {
+  const response = await fetch("https://places.googleapis.com/v1/places:searchText", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Goog-Api-Key": GOOGLE_PLACES_API_KEY!,
+      "X-Goog-FieldMask": FIELD_MASK,
+    },
+    body: JSON.stringify({ textQuery: query, pageSize: MAX_RESULTS }),
   });
 
-async function searchGooglePlaceIds(query: string): Promise<string[]> {
-  let response: Response;
-  try {
-    response = await fetch("https://places.googleapis.com/v1/places:searchText", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Goog-Api-Key": GOOGLE_PLACES_API_KEY!,
-        "X-Goog-FieldMask": FIELD_MASK,
-      },
-      body: JSON.stringify({ textQuery: query, pageSize: MAX_RESULTS }),
-    });
-  } catch (error) {
-    console.error("Google Text Search request failed:", error);
-    throw googleLookupError();
-  }
-
   if (!response.ok) {
-    console.error(
-      "Google Text Search failed:",
-      response.status,
-      await response.text(),
+    throw new Error(
+      `Google Text Search failed: ${response.status} ${await response.text()}`,
     );
-    throw googleLookupError();
   }
 
   const data = (await response.json()) as GoogleTextSearchResponse;

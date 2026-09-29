@@ -1,6 +1,6 @@
-import { GraphQLError } from "graphql";
-import User, { IUser } from "../../../models/User.js";
 import bcrypt from "bcrypt";
+import { type Context, requireUser } from "../../context.js";
+import { badInput, forbidden } from "../../errors.js";
 
 export async function setNewPasswordResolver(
   _: never,
@@ -9,64 +9,32 @@ export async function setNewPasswordResolver(
     oldPassword,
     newPassword,
   }: { userId: string; oldPassword?: string; newPassword: string },
-  context: { user?: IUser },
+  context: Context,
 ) {
-  try {
-    if (!context.user || context.user.id !== userId) {
-      throw new GraphQLError("Unauthorized", {
-        extensions: {
-          code: "UNAUTHORIZED",
-        },
-      });
-    }
-
-    const user = await User.findById(userId);
-    if (!user) {
-      throw new GraphQLError("User not found", {
-        extensions: {
-          code: "NOT_FOUND",
-        },
-      });
-    }
-
-    if (!user.googleId && !user.password) {
-      throw new GraphQLError("Something wrong. Try later");
-    }
-
-    if (user.password) {
-      const isMatch = await bcrypt.compare(oldPassword || "", user.password);
-      if (!isMatch) {
-        throw new GraphQLError("Old password is incorrect", {
-          extensions: {
-            code: "UNAUTHORIZED",
-          },
-        });
-      }
-    }
-
-    if (newPassword.length < 8) {
-      throw new GraphQLError("Password must be at least 8 characters long", {
-        extensions: {
-          code: "BAD_USER_INPUT",
-        },
-      });
-    }
-
-    const hashedNewPassword = await bcrypt.hash(newPassword, 10);
-
-    user.password = hashedNewPassword;
-    await user.save();
-
-    return {
-      success: true,
-    };
-  } catch (error) {
-    console.error("Error changing password:", error);
-    throw new GraphQLError("Error changing password", {
-      extensions: {
-        code: "INTERNAL_SERVER_ERROR",
-        error: error instanceof Error ? error.message : String(error),
-      },
-    });
+  const user = requireUser(context);
+  if (user.id !== userId) {
+    throw forbidden("You can only change your own password");
   }
+
+  if (!user.googleId && !user.password) {
+    throw new Error(`User ${user.id} has neither a password nor a Google id`);
+  }
+
+  if (user.password) {
+    const isMatch = await bcrypt.compare(oldPassword || "", user.password);
+    if (!isMatch) {
+      throw badInput("Old password is incorrect");
+    }
+  }
+
+  if (newPassword.length < 8) {
+    throw badInput("Password must be at least 8 characters long");
+  }
+
+  user.password = await bcrypt.hash(newPassword, 10);
+  await user.save();
+
+  return {
+    success: true,
+  };
 }

@@ -1,4 +1,4 @@
-import { GraphQLError } from "graphql";
+import { appError } from "../graphql/errors.js";
 
 /**
  * Fixed-window, in-memory rate limiting. Single process on 127.0.0.1, so a Map
@@ -49,11 +49,8 @@ setInterval(() => {
 }, HOUR).unref();
 
 const rateLimitError = (retryAfterMs: number) =>
-  new GraphQLError("Too many requests, please try again later", {
-    extensions: {
-      code: "RATE_LIMITED",
-      retryAfterSeconds: Math.ceil(retryAfterMs / 1000),
-    },
+  appError("RATE_LIMITED", "Too many requests, please try again later", {
+    retryAfterSeconds: Math.ceil(retryAfterMs / 1000),
   });
 
 const windowsFor = (bucket: RateLimitBucket, ip: string): Window[] => {

@@ -1,4 +1,4 @@
-import { GraphQLError } from "graphql";
+import { appError, badInput, forbidden } from "../../errors.js";
 import PlaceSuggestion from "../../../models/PlaceSuggestion.js";
 import { REVIEW_IMAGE_UPLOAD_TIMEOUT_MS } from "../../../config/env.js";
 import { uploadPlaceSuggestionPhoto } from "../../../utils/imagekit.js";
@@ -34,40 +34,26 @@ export async function uploadPlaceSuggestionPhotoAsAdminResolver(
   // fast on the obvious cases before spending an ImageKit call; the atomic
   // update after the upload is what actually has to be race-safe.
   if (!fileBuffer) {
-    throw new GraphQLError("Invalid file data", {
-      extensions: { code: "BAD_USER_INPUT" },
-    });
+    throw badInput("Invalid file data");
   }
 
   const buffer = Buffer.from(fileBuffer, "base64");
   if (buffer.length === 0 || buffer.length > MAX_DECODED_BYTES) {
-    throw new GraphQLError("Photo is too large", {
-      extensions: { code: "BAD_USER_INPUT" },
-    });
+    throw badInput("Photo is too large");
   }
 
   if (suggestion.status !== "pending") {
-    throw new GraphQLError("This suggestion has already been decided", {
-      extensions: { code: "SUGGESTION_NOT_PENDING" },
-    });
+    throw forbidden("This suggestion has already been decided");
   }
   if (suggestion.photos.length >= MAX_PHOTOS_PER_SUGGESTION) {
-    throw new GraphQLError(
+    throw appError(
+      "IMAGE_LIMIT_REACHED",
       "This suggestion already has the maximum number of photos",
-      { extensions: { code: "IMAGE_LIMIT_REACHED" } },
     );
   }
 
   const deadline = new Date(Date.now() + REVIEW_IMAGE_UPLOAD_TIMEOUT_MS);
-  let path: string;
-  try {
-    path = await uploadPlaceSuggestionPhoto(buffer, id, deadline);
-  } catch (error) {
-    console.error("Error uploading suggestion photo as admin:", error);
-    throw new GraphQLError("Failed to upload photo", {
-      extensions: { code: "INTERNAL_SERVER_ERROR" },
-    });
-  }
+  const path = await uploadPlaceSuggestionPhoto(buffer, id, deadline);
 
   const updated = await PlaceSuggestion.findOneAndUpdate(
     {
@@ -82,12 +68,9 @@ export async function uploadPlaceSuggestionPhotoAsAdminResolver(
   if (!updated) {
     // The file is uploaded but orphaned; Publish or Reject will clean it up
     // along with the rest of the suggestion's folder.
-    console.error(
+    throw new Error(
       `Suggestion photo ${path} was uploaded but not counted (suggestion ${id} changed underneath it)`,
     );
-    throw new GraphQLError("Failed to upload photo", {
-      extensions: { code: "INTERNAL_SERVER_ERROR" },
-    });
   }
 
   return path;

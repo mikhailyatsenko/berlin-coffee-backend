@@ -1,6 +1,6 @@
 import User, { IUser } from "../../../models/User.js";
 import crypto from "crypto";
-import { GraphQLError } from "graphql";
+import { appError, notFound } from "../../errors.js";
 import { MailerSend, EmailParams, Sender, Recipient } from "mailersend";
 import {
   FROM_EMAIL,
@@ -19,13 +19,13 @@ export async function resendConfirmationEmailResolver(
     user = (await User.findOne({ pendingEmail: email })) as IUser | null;
   }
   if (!user) {
-    throw new GraphQLError("User with this email does not exist.");
+    throw notFound("User with this email does not exist.");
   }
 
   const isEmailChange = user.pendingEmail === email;
   if (!isEmailChange && user.isEmailConfirmed) {
     // Registration flow: if already confirmed, no need to resend
-    throw new GraphQLError("Email is already confirmed.");
+    throw appError("EMAIL_ALREADY_CONFIRMED", "Email is already confirmed.");
   }
 
   const rawToken = crypto.randomBytes(32).toString("hex");

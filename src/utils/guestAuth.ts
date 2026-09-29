@@ -1,6 +1,6 @@
 import crypto from "crypto";
 import { Request } from "express";
-import { GraphQLError } from "graphql";
+import { appError } from "../graphql/errors.js";
 import GuestIdentity, { IGuestIdentity } from "../models/GuestIdentity.js";
 
 /**
@@ -21,10 +21,8 @@ export const GUEST_SECRET_HEADER = "x-guest-secret";
 const hashSecret = (secret: string) =>
   crypto.createHash("sha256").update(secret).digest("hex");
 
-const invalidGuestError = (reason: string) =>
-  new GraphQLError("Guest session is not valid", {
-    extensions: { code: "GUEST_IDENTITY_INVALID", reason },
-  });
+export const invalidGuestError = (reason: string) =>
+  appError("GUEST_IDENTITY_INVALID", "Guest session is not valid", { reason });
 
 export async function createGuestIdentity(): Promise<{
   guestId: string;

@@ -59,13 +59,8 @@ export async function contactFormResolver(
     .setHtml(CUSTOMER_MESSAGE_HTML.replace("{{name}}", name))
     .setText(CUSTOMER_MESSAGE_TEXT.replace("{{name}}", name));
 
-  try {
-    await mailerSend.email.send(adminEmailParams);
-    await mailerSend.email.send(customerEmailParams);
-  } catch (error) {
-    console.error(error);
-    throw new Error("Failed to send email");
-  }
+  await mailerSend.email.send(adminEmailParams);
+  await mailerSend.email.send(customerEmailParams);
 
   return {
     success: true,

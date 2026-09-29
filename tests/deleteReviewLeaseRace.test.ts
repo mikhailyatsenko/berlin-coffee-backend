@@ -13,9 +13,10 @@ import { beforeEach, test } from "node:test";
 import assert from "node:assert/strict";
 import mongoose from "mongoose";
 import sharp from "sharp";
-import { GraphQLError } from "graphql";
+import type { Response } from "express";
 import type { IUser } from "../src/models/User.js";
 import { setTestEnv, useThrowawayMongod } from "./support/mongod.js";
+import { clientCode } from "./support/clientCode.js";
 
 setTestEnv({
   REVIEW_IMAGE_UPLOAD_TIMEOUT_MS: "1000",
@@ -76,10 +77,9 @@ fakeImageKit.deleteFolder = async function (folderPath) {
 
 const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
-/** An assert.rejects validator for a GraphQLError with this extensions.code. */
+/** An assert.rejects validator for the code the client sees, after formatError. */
 const withCode = (code: string) => (error: unknown) => {
-  assert.ok(error instanceof GraphQLError, String(error));
-  assert.equal(error.extensions.code, code);
+  assert.equal(clientCode(error), code);
   return true;
 };
 
@@ -127,6 +127,8 @@ const upload = (r: Review) =>
     { user: { id: r.userId.toString() } as Pick<IUser, "id"> as IUser },
   );
 
+const res = {} as Response;
+
 const deleteReview = (
   r: Review,
   deleteOptions: "deleteReviewText" | "deleteRating" | "deleteAll",
@@ -134,7 +136,7 @@ const deleteReview = (
   deleteReviewResolver(
     undefined as never,
     { reviewId: r.reviewId, deleteOptions },
-    { user: { id: r.userId.toString() } },
+    { user: { id: r.userId.toString() } as Pick<IUser, "id"> as IUser, res },
   );
 
 // --- tests ----------------------------------------------------------------
@@ -157,7 +159,6 @@ test("deleteReview run to completion after an upload took its lease fails the up
   // deleteReview now runs to completion: it clears the counter atomically
   // and awaits the ImageKit folder delete, all before it returns.
   const deleteResult = await deleteReview(review, "deleteAll");
-  assert.ok("reviewId" in deleteResult, deleteResult.message);
   assert.equal(deleteResult.reviewId, review.reviewId);
 
   const afterDelete = await Interaction.findById(review.reviewId).lean();

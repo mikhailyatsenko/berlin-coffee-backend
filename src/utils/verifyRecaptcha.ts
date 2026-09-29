@@ -1,4 +1,4 @@
-import { GraphQLError } from "graphql";
+import { appError } from "../graphql/errors.js";
 import { RECAPTCHA_V3_SECRET } from "../config/env.js";
 
 const VERIFY_URL = "https://www.google.com/recaptcha/api/siteverify";
@@ -21,9 +21,7 @@ interface SiteVerifyResponse {
 }
 
 const captchaError = (message: string, reason: string) =>
-  new GraphQLError(message, {
-    extensions: { code: "CAPTCHA_FAILED", reason },
-  });
+  appError("CAPTCHA_FAILED", message, { reason });
 
 /**
  * Verifies a Google reCAPTCHA v3 token.

@@ -1,9 +1,9 @@
-import { IUser } from "src/models/User";
+import type { Context } from "../../context.js";
 
 export async function currentUserResolver(
   _: never,
   __: never,
-  { user }: { user: IUser },
+  { user }: Context,
 ) {
   if (user) {
     return {
