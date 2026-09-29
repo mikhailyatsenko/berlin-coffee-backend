@@ -3,6 +3,7 @@ import { appError, badInput } from "../../errors.js";
 import crypto from "crypto";
 import bcrypt from "bcrypt";
 import type { MutationResolvers } from "../../generated/types.js";
+import { normalizeEmail } from "../../../utils/normalizeEmail.js";
 
 export const resetPasswordResolver: MutationResolvers["resetPassword"] = async (
   _parent,
@@ -13,7 +14,7 @@ export const resetPasswordResolver: MutationResolvers["resetPassword"] = async (
   }
 
   const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
-  const user = await User.findOne({ email: email.toLowerCase().trim() });
+  const user = await User.findOne({ email: normalizeEmail(email) });
   if (!user) {
     throw appError("INVALID_TOKEN", "Invalid token or email");
   }

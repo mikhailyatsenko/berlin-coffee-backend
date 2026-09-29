@@ -11,9 +11,10 @@ import {
 import { requireUser } from "../../context.js";
 import { badInput, forbidden } from "../../errors.js";
 import type { MutationResolvers } from "../../generated/types.js";
+import { normalizeEmail } from "../../../utils/normalizeEmail.js";
 
 export const updatePersonalDataResolver: MutationResolvers["updatePersonalData"] =
-  async (_parent, { userId, displayName, email }, context) => {
+  async (_parent, { userId, displayName, email: rawEmail }, context) => {
     const user = requireUser(context);
     if (user.id !== userId) {
       throw forbidden("You can only change your own profile");
@@ -22,7 +23,9 @@ export const updatePersonalDataResolver: MutationResolvers["updatePersonalData"]
     if (displayName) {
       user.displayName = displayName;
     }
-    if (email && email !== user.email) {
+    // A blank address still reaches isEmail and is rejected there.
+    const email = rawEmail ? normalizeEmail(rawEmail) : null;
+    if (email !== null && email !== user.email) {
       if (!isEmail(email)) {
         throw badInput("Invalid email address");
       }

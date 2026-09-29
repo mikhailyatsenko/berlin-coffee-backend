@@ -13,13 +13,16 @@ import { config } from "../../../config/config.js";
 import { clientIp } from "../../../utils/rateLimit.js";
 import { verifyRecaptcha } from "../../../utils/verifyRecaptcha.js";
 import type { MutationResolvers } from "../../generated/types.js";
+import { normalizeEmail } from "../../../utils/normalizeEmail.js";
 
 export const registerUserResolver: MutationResolvers["registerUser"] = async (
   _parent,
-  { email, displayName, password, captchaToken },
+  { email: rawEmail, displayName, password, captchaToken },
   { req },
 ) => {
   await verifyRecaptcha(captchaToken ?? "", "register_user", clientIp(req));
+
+  const email = normalizeEmail(rawEmail);
 
   if (!isEmail(email)) {
     throw badInput("Invalid email address");

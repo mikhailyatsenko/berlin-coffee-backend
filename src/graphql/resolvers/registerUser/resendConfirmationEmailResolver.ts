@@ -9,9 +9,11 @@ import {
 import { addHours } from "date-fns";
 import { config } from "../../../config/config.js";
 import type { MutationResolvers } from "../../generated/types.js";
+import { normalizeEmail } from "../../../utils/normalizeEmail.js";
 
 export const resendConfirmationEmailResolver: MutationResolvers["resendConfirmationEmail"] =
-  async (_parent, { email }) => {
+  async (_parent, { email: rawEmail }) => {
+    const email = normalizeEmail(rawEmail);
     // Find by current email (registration flow) or by pendingEmail (email change flow)
     let user = (await User.findOne({ email })) as IUser | null;
     if (!user) {

@@ -5,12 +5,13 @@ import { config } from "../../../config/config.js";
 import { MailerSend, EmailParams, Sender, Recipient } from "mailersend";
 import { FROM_EMAIL, FROM_NAME } from "../contactFormResolver/constants/index.js";
 import type { MutationResolvers } from "../../generated/types.js";
+import { normalizeEmail } from "../../../utils/normalizeEmail.js";
 
 export const requestPasswordResetResolver: MutationResolvers["requestPasswordReset"] = async (
   _parent,
   { email },
 ) => {
-  const normalizedEmail = email.trim().toLowerCase();
+  const normalizedEmail = normalizeEmail(email);
   const user = await User.findOne({ email: normalizedEmail });
 
   if (user) {

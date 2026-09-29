@@ -3,6 +3,7 @@ import crypto from "crypto";
 import { appError } from "../../errors.js";
 import { setAuthCookies, formatUserResponse } from "../../../utils/authHelpers.js";
 import type { MutationResolvers } from "../../generated/types.js";
+import { normalizeEmail } from "../../../utils/normalizeEmail.js";
 
 /**
  * An unknown email, a mismatched one and a wrong token all read as the same
@@ -13,9 +14,10 @@ const invalidLink = () =>
 
 export const confirmEmailResolver: MutationResolvers["confirmEmail"] = async (
   _parent,
-  { token, email },
+  { token, email: rawEmail },
   { res },
 ) => {
+  const email = normalizeEmail(rawEmail);
   const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
 
   // Prefer lookup by current email; if not found, try by pendingEmail
