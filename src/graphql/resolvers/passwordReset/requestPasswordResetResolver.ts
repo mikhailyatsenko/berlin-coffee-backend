@@ -2,15 +2,27 @@ import User from "../../../models/User.js";
 import crypto from "crypto";
 import { addHours } from "date-fns";
 import { config } from "../../../config/config.js";
-import { sendPasswordReset } from "../../../mail/mail.js";
+import { recipientAllowed, sendPasswordReset } from "../../../mail/mail.js";
 import type { MutationResolvers } from "../../generated/types.js";
 import { normalizeEmail } from "../../../utils/normalizeEmail.js";
+import { clientIp, consumeRateLimit } from "../../../utils/rateLimit.js";
+import { verifyRecaptcha } from "../../../utils/verifyRecaptcha.js";
 
 export const requestPasswordResetResolver: MutationResolvers["requestPasswordReset"] = async (
   _parent,
-  { email },
+  { email, captchaToken },
+  { req },
 ) => {
+  const ip = clientIp(req);
+  await verifyRecaptcha(captchaToken ?? "", "request_password_reset", ip);
+  consumeRateLimit("passwordReset", ip);
+
   const normalizedEmail = normalizeEmail(email);
+  // Silent, like an unknown address, so the limit doesn't reveal accounts.
+  if (!recipientAllowed(normalizedEmail)) {
+    return { success: true };
+  }
+
   const user = await User.findOne({ email: normalizedEmail });
 
   if (user) {

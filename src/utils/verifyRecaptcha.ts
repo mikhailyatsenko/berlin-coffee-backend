@@ -10,7 +10,9 @@ export type RecaptchaAction =
   | "create_guest_identity"
   | "register_user"
   | "contact_form"
-  | "report_inaccuracy";
+  | "report_inaccuracy"
+  | "request_password_reset"
+  | "resend_confirmation_email";
 
 interface SiteVerifyResponse {
   success: boolean;

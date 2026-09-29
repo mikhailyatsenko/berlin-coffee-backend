@@ -195,8 +195,7 @@ test("an unconfirmed email is taken over: the old password no longer signs in", 
   // Before the takeover it was refused as unconfirmed; now it has no password.
   assert.deepEqual(await clientError(signInWithPassword()), {
     code: "BAD_USER_INPUT",
-    message:
-      "This email is associated with a Google account and does not have a password",
+    message: "Invalid e-mail or password",
   });
 });
 

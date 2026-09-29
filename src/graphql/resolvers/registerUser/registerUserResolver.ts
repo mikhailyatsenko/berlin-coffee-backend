@@ -5,8 +5,11 @@ import isEmail from "validator/lib/isEmail.js";
 import crypto from "crypto";
 import { addHours } from "date-fns";
 import { config } from "../../../config/config.js";
-import { sendEmailConfirmation } from "../../../mail/mail.js";
-import { clientIp } from "../../../utils/rateLimit.js";
+import {
+  assertRecipientAllowed,
+  sendEmailConfirmation,
+} from "../../../mail/mail.js";
+import { clientIp, consumeRateLimit } from "../../../utils/rateLimit.js";
 import { verifyRecaptcha } from "../../../utils/verifyRecaptcha.js";
 import type { MutationResolvers } from "../../generated/types.js";
 import { normalizeEmail } from "../../../utils/normalizeEmail.js";
@@ -20,7 +23,8 @@ export const registerUserResolver: MutationResolvers["registerUser"] = async (
   { email: rawEmail, displayName: rawDisplayName, password, captchaToken },
   { req },
 ) => {
-  await verifyRecaptcha(captchaToken ?? "", "register_user", clientIp(req));
+  const ip = clientIp(req);
+  await verifyRecaptcha(captchaToken ?? "", "register_user", ip);
 
   const email = normalizeEmail(rawEmail);
 
@@ -30,11 +34,14 @@ export const registerUserResolver: MutationResolvers["registerUser"] = async (
 
   const displayName = parseDisplayName(rawDisplayName);
   assertNewPassword(password);
+  consumeRateLimit("registerUser", ip);
 
   const existingUser = await User.findOne({ email });
   if (existingUser) {
     throw badInput("User already exists with this email.");
   }
+  // Before the User exists, so a refused mail never leaves an account behind.
+  assertRecipientAllowed(email);
 
   const hashedPassword = await bcrypt.hash(password, 10);
 

@@ -5,30 +5,39 @@ import { setAuthCookies, formatUserResponse } from "../../../utils/authHelpers.j
 import { badInput } from "../../errors.js";
 import type { MutationResolvers } from "../../generated/types.js";
 import { normalizeEmail } from "../../../utils/normalizeEmail.js";
+import {
+  checkRateLimit,
+  clientIp,
+  consumeRateLimit,
+  countRateLimit,
+  emailKey,
+} from "../../../utils/rateLimit.js";
 
 export const signInWithEmailResolver: MutationResolvers["signInWithEmail"] = async (
   _parent,
   { email, password },
-  { res },
+  { req, res },
 ) => {
+  consumeRateLimit("signIn", clientIp(req));
+  // Checked before bcrypt, so a guessed-out account costs no hashing.
+  const failures = emailKey(email);
+  checkRateLimit("signInFailure", failures);
+
+  // One answer for an unknown address, a Google-only account and a wrong
+  // password, so none of them tells which accounts exist.
+  const fail = () => {
+    countRateLimit("signInFailure", failures);
+    return badInput("Invalid e-mail or password");
+  };
+
   const user = await User.findOne({ email: normalizeEmail(email) });
-  if (!user) {
-    throw badInput("Invalid e-mail or password");
-  }
-
-  if (user.googleId && !user.password) {
-    throw badInput(
-      "This email is associated with a Google account and does not have a password",
-    );
-  }
-
-  if (!user.password) {
-    throw badInput("Password is required");
+  if (!user?.password) {
+    throw fail();
   }
 
   const isPasswordValid = await bcrypt.compare(password, user.password);
   if (!isPasswordValid) {
-    throw badInput("Invalid e-mail or password");
+    throw fail();
   }
   if (!user.isEmailConfirmed) {
     throw badInput("Please confirm your email before logging in.");

@@ -18,6 +18,7 @@ const { setMailTransport } = await import("../src/mail/transport.js");
 const { OAuth2Client } = await import("google-auth-library");
 const { default: User } = await import("../src/models/User.js");
 const { normalizeEmail } = await import("../src/utils/normalizeEmail.js");
+const { resetRateLimits } = await import("../src/utils/rateLimit.js");
 const { registerUserResolver } = await import(
   "../src/graphql/resolvers/registerUser/registerUserResolver.js"
 );
@@ -56,14 +57,18 @@ const lastConfirmationToken = () => {
   return match[1];
 };
 
-// --- fake reCAPTCHA: every token passes for registration ---------------------
+// --- fake reCAPTCHA: a token passes for the action it names -------------------
 
 const originalFetch = globalThis.fetch;
-globalThis.fetch = (async () =>
+globalThis.fetch = (async (_url: unknown, init?: { body?: string }) =>
   ({
     ok: true,
     status: 200,
-    json: async () => ({ success: true, action: "register_user", score: 0.9 }),
+    json: async () => ({
+      success: true,
+      action: new URLSearchParams(init?.body).get("response"),
+      score: 0.9,
+    }),
   })) as unknown as typeof fetch;
 
 after(() => {
@@ -92,7 +97,7 @@ const PASSWORD = "correct-horse";
 const register = (email: string) =>
   callResolver(
     registerUserResolver,
-    { email, displayName: "Anna", password: PASSWORD, captchaToken: "ok" },
+    { email, displayName: "Anna", password: PASSWORD, captchaToken: "register_user" },
     { req: { ip: "127.0.0.1" } as never },
   );
 
@@ -115,6 +120,8 @@ useThrowawayMongod();
 
 beforeEach(async () => {
   sent.length = 0;
+  // Every test mails anna@x.de, more often than its recipient limit allows.
+  resetRateLimits();
   await User.deleteMany({});
 });
 
@@ -161,6 +168,7 @@ test("resend confirmation matches regardless of case", async () => {
   await createUser("anna@x.de", { isEmailConfirmed: false });
   const result = await callResolver(resendConfirmationEmailResolver, {
     email: "ANNA@X.DE ",
+    captchaToken: "resend_confirmation_email",
   });
   assert.equal(result?.success, true);
   assert.equal(sent.at(-1)?.to, "anna@x.de");
@@ -168,7 +176,10 @@ test("resend confirmation matches regardless of case", async () => {
 
 test("resend for a pending email change matches regardless of case", async () => {
   await createUser("anna@x.de", { pendingEmail: "new@x.de" });
-  await callResolver(resendConfirmationEmailResolver, { email: "New@X.de" });
+  await callResolver(resendConfirmationEmailResolver, {
+    email: "New@X.de",
+    captchaToken: "resend_confirmation_email",
+  });
   assert.equal(sent.at(-1)?.to, "new@x.de");
   assert.match(sent.at(-1)!.text, /email=new%40x\.de/);
 });
@@ -246,7 +257,10 @@ test("email change to another User's address in another case: already exists", a
 
 test("password reset request finds the User regardless of case", async () => {
   await createUser("anna@x.de");
-  await callResolver(requestPasswordResetResolver, { email: " ANNA@x.de" });
+  await callResolver(requestPasswordResetResolver, {
+    email: " ANNA@x.de",
+    captchaToken: "request_password_reset",
+  });
   assert.equal(sent.at(-1)?.to, "anna@x.de");
 });
 
