@@ -2,11 +2,12 @@ import User from "../../../models/User.js";
 import { appError, badInput } from "../../errors.js";
 import crypto from "crypto";
 import bcrypt from "bcrypt";
+import type { MutationResolvers } from "../../generated/types.js";
 
-export async function resetPasswordResolver(
-  _: never,
-  { token, email, newPassword }: { token: string; email: string; newPassword: string },
-) {
+export const resetPasswordResolver: MutationResolvers["resetPassword"] = async (
+  _parent,
+  { token, email, newPassword },
+) => {
   if (newPassword.length < 8) {
     throw badInput("Password must be at least 8 characters long");
   }
@@ -32,4 +33,4 @@ export async function resetPasswordResolver(
   await user.save();
 
   return { success: true };
-}
+};

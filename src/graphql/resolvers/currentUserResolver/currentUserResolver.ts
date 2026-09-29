@@ -1,10 +1,10 @@
-import type { Context } from "../../context.js";
+import type { QueryResolvers } from "../../generated/types.js";
 
-export async function currentUserResolver(
-  _: never,
-  __: never,
-  { user }: Context,
-) {
+export const currentUserResolver: QueryResolvers["currentUser"] = async (
+  _parent,
+  _args,
+  { user },
+) => {
   if (user) {
     return {
       id: user.id,
@@ -17,4 +17,4 @@ export async function currentUserResolver(
     };
   }
   return null;
-}
+};

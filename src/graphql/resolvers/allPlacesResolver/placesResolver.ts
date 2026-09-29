@@ -1,17 +1,12 @@
-import { GuestContext } from "../../../utils/guestAuth.js";
+import type { Place, QueryResolvers } from "../../generated/types.js";
 import { resolveActorRef } from "../../../utils/reviewActor.js";
 import { getPlacesWithStats } from "./services/placeAggregationService.js";
 
-interface PlacesResolverArgs {
-  limit?: number | null;
-  offset?: number;
-}
-
-export async function placesResolver(
-  _: never,
-  { limit, offset = 0 }: PlacesResolverArgs,
-  { user, guest }: { user?: { id: string }; guest?: GuestContext },
-) {
+export const placesResolver: QueryResolvers["places"] = async (
+  _parent,
+  { limit, offset },
+  { user, guest },
+) => {
   const resolvedLimit = typeof limit === "number" ? limit : undefined;
   const { places, total } = await getPlacesWithStats(
     resolveActorRef(user, guest),
@@ -19,7 +14,7 @@ export async function placesResolver(
     offset,
   );
   // Convert to GraphQL format
-  const formattedPlaces = places.map((place) => {
+  const formattedPlaces = places.map((place): Place => {
     const averageRating = place.averageRating;
     const ratingCount = place.ratingCount;
     return {
@@ -29,6 +24,7 @@ export async function placesResolver(
         type: place.geometry.type || "Point",
         coordinates: place.geometry.coordinates,
       },
+      // @ts-expect-error Ticket 09: the schema promises `characteristicCounts` and `reviews`, which list queries never return.
       properties: {
         id: place._id.toString(),
         name: place.properties.name || "",
@@ -51,4 +47,4 @@ export async function placesResolver(
     places: formattedPlaces,
     total,
   };
-}
+};

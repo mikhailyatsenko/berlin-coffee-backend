@@ -1,8 +1,8 @@
 import User, { IUser } from "../../../models/User.js";
 import crypto from "crypto";
 import { appError } from "../../errors.js";
-import { Response } from "express";
 import { setAuthCookies, formatUserResponse } from "../../../utils/authHelpers.js";
+import type { MutationResolvers } from "../../generated/types.js";
 
 /**
  * An unknown email, a mismatched one and a wrong token all read as the same
@@ -11,11 +11,11 @@ import { setAuthCookies, formatUserResponse } from "../../../utils/authHelpers.j
 const invalidLink = () =>
   appError("INVALID_TOKEN", "Invalid confirmation link");
 
-export async function confirmEmailResolver(
-  _: never,
-  { token, email }: { token: string; email: string },
-  { res }: { res: Response },
-) {
+export const confirmEmailResolver: MutationResolvers["confirmEmail"] = async (
+  _parent,
+  { token, email },
+  { res },
+) => {
   const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
 
   // Prefer lookup by current email; if not found, try by pendingEmail
@@ -69,4 +69,4 @@ export async function confirmEmailResolver(
     user: formatUserResponse(user),
     emailChanged: isEmailChange,
   };
-}
+};

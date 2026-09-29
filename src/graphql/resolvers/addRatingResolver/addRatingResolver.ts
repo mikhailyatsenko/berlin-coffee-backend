@@ -1,25 +1,14 @@
-import { Request } from "express";
 import Interaction from "../../../models/Interaction.js";
 import mongoose from "mongoose";
-import { IUser } from "../../../models/User.js";
 import { clientIp, consumeRateLimit } from "../../../utils/rateLimit.js";
-import { GuestContext } from "../../../utils/guestAuth.js";
-import { GuestArgs, resolveReviewActor } from "../../../utils/reviewActor.js";
+import { resolveReviewActor } from "../../../utils/reviewActor.js";
+import type { MutationResolvers } from "../../generated/types.js";
 
-interface AddRatingArgs extends GuestArgs {
-  placeId: string;
-  rating: number;
-}
-
-export async function addRatingResolver(
-  _: never,
-  { placeId, rating, guestId, guestSecret }: AddRatingArgs,
-  {
-    user,
-    guest,
-    req,
-  }: { user?: IUser | null; guest?: GuestContext; req?: Request },
-) {
+export const addRatingResolver: MutationResolvers["addRating"] = async (
+  _parent,
+  { placeId, rating, guestId, guestSecret },
+  { user, guest, req },
+) => {
   const actor = await resolveReviewActor(user, guest, { guestId, guestSecret });
 
   const interaction = await Interaction.findOne({
@@ -80,4 +69,4 @@ export async function addRatingResolver(
     reviewId,
     userRating: rating,
   };
-}
+};

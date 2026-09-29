@@ -1,9 +1,9 @@
 import { OAuth2Client } from "google-auth-library";
-import { Response } from "express";
 import User from "../../../models/User.js";
 import { badInput } from "../../errors.js";
 import { updateLastActive } from "../../../utils/updateLastActive.js";
 import { setAuthCookies, formatUserResponse } from "../../../utils/authHelpers.js";
+import type { MutationResolvers } from "../../generated/types.js";
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID!;
 
@@ -17,11 +17,11 @@ const client = new OAuth2Client(
     : "http://localhost:5173",
 );
 
-export async function loginWithGoogleResolver(
-  _: never,
-  { code }: { code: string },
-  { res }: { res: Response },
-) {
+export const loginWithGoogleResolver: MutationResolvers["loginWithGoogle"] = async (
+  _parent,
+  { code },
+  { res },
+) => {
   const { tokens } = await client.getToken({
     code,
     redirect_uri:
@@ -82,4 +82,4 @@ export async function loginWithGoogleResolver(
     },
     isFirstLogin,
   };
-}
+};

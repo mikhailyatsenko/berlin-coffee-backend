@@ -1,28 +1,16 @@
-import { Request } from "express";
 import { badInput } from "../../errors.js";
 import validator from "validator";
 import PlaceSuggestion from "../../../models/PlaceSuggestion.js";
-import { IUser } from "../../../models/User.js";
-import { GuestContext } from "../../../utils/guestAuth.js";
 import { clientIp, consumeRateLimit } from "../../../utils/rateLimit.js";
-import { GuestArgs, resolveReviewActor } from "../../../utils/reviewActor.js";
+import { resolveReviewActor } from "../../../utils/reviewActor.js";
 import { sendAdminSuggestionEmail } from "./sendAdminSuggestionEmail.js";
+import type { MutationResolvers } from "../../generated/types.js";
 
 const MAX_NAME_LENGTH = 200;
 const MAX_ADDRESS_LENGTH = 300;
 const MAX_DESCRIPTION_LENGTH = 500;
 const MAX_INSTAGRAM_LENGTH = 200;
 const MAX_EMAIL_LENGTH = 254;
-
-interface SubmitPlaceSuggestionArgs extends GuestArgs {
-  input: {
-    name: string;
-    address: string;
-    description?: string | null;
-    instagram?: string | null;
-    email?: string | null;
-  };
-}
 
 /** Trimmed text, or undefined when there is none: absent, never empty, in the database. */
 function optionalText(
@@ -48,58 +36,54 @@ function requiredText(
   return text;
 }
 
-export async function submitPlaceSuggestionResolver(
-  _: never,
-  { input, guestId, guestSecret }: SubmitPlaceSuggestionArgs,
-  {
-    user,
-    guest,
-    req,
-  }: { user?: IUser | null; guest?: GuestContext; req?: Request },
-): Promise<string> {
-  const actor = await resolveReviewActor(user, guest, { guestId, guestSecret });
+export const submitPlaceSuggestionResolver: MutationResolvers["submitPlaceSuggestion"] =
+  async (_parent, { input, guestId, guestSecret }, { user, guest, req }) => {
+    const actor = await resolveReviewActor(user, guest, {
+      guestId,
+      guestSecret,
+    });
 
-  const name = requiredText(input.name, "name", MAX_NAME_LENGTH);
-  const address = requiredText(input.address, "address", MAX_ADDRESS_LENGTH);
-  const description = optionalText(
-    input.description,
-    "description",
-    MAX_DESCRIPTION_LENGTH,
-  );
-  const instagram = optionalText(
-    input.instagram,
-    "instagram",
-    MAX_INSTAGRAM_LENGTH,
-  );
+    const name = requiredText(input.name, "name", MAX_NAME_LENGTH);
+    const address = requiredText(input.address, "address", MAX_ADDRESS_LENGTH);
+    const description = optionalText(
+      input.description,
+      "description",
+      MAX_DESCRIPTION_LENGTH,
+    );
+    const instagram = optionalText(
+      input.instagram,
+      "instagram",
+      MAX_INSTAGRAM_LENGTH,
+    );
 
-  // Only a Guest leaves an email. A User's is read from their account when the
-  // outcome email goes out, so one sent along with a User's suggestion is dropped.
-  let guestEmail: string | undefined;
-  if (actor.isGuest) {
-    guestEmail = optionalText(input.email, "email", MAX_EMAIL_LENGTH);
-    if (guestEmail && !validator.isEmail(guestEmail)) {
-      throw badInput("email is not valid");
+    // Only a Guest leaves an email. A User's is read from their account when the
+    // outcome email goes out, so one sent along with a User's suggestion is dropped.
+    let guestEmail: string | undefined;
+    if (actor.isGuest) {
+      guestEmail = optionalText(input.email, "email", MAX_EMAIL_LENGTH);
+      if (guestEmail && !validator.isEmail(guestEmail)) {
+        throw badInput("email is not valid");
+      }
     }
-  }
 
-  // After validation, so a form the person has to fix costs them nothing.
-  consumeRateLimit("placeSuggestion", clientIp(req));
+    // After validation, so a form the person has to fix costs them nothing.
+    consumeRateLimit("placeSuggestion", clientIp(req));
 
-  const suggestion = await PlaceSuggestion.create({
-    ...actor.owner,
-    name,
-    address,
-    ...(description && { description }),
-    ...(instagram && { instagram }),
-    ...(guestEmail && { guestEmail }),
-  });
+    const suggestion = await PlaceSuggestion.create({
+      ...actor.owner,
+      name,
+      address,
+      ...(description && { description }),
+      ...(instagram && { instagram }),
+      ...(guestEmail && { guestEmail }),
+    });
 
-  await sendAdminSuggestionEmail({
-    id: suggestion.id,
-    name,
-    address,
-    suggestedBy: actor.isGuest ? "guest" : "user",
-  });
+    await sendAdminSuggestionEmail({
+      id: suggestion.id,
+      name,
+      address,
+      suggestedBy: actor.isGuest ? "guest" : "user",
+    });
 
-  return suggestion.id;
-}
+    return suggestion.id;
+  };

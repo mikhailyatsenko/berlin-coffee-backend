@@ -1,3 +1,4 @@
+import type { Characteristic } from "../../../generated/types.js";
 import Place, { VISIBLE_PLACE_MATCH } from "../../../../models/Place.js";
 import mongoose from "mongoose";
 import { ActorRef, ownInteractionCond } from "../../../../utils/reviewActor.js";
@@ -27,7 +28,7 @@ export interface PlaceWithStats {
     /** The caller's own Review of the Place, absent when they have none. */
     ownReview?: {
         rating?: number | null;
-        characteristics?: Record<string, boolean> | null;
+        characteristics?: Partial<Record<Characteristic, boolean>> | null;
     };
 }
 

@@ -4,59 +4,50 @@ import {
   FROM_EMAIL,
   FROM_NAME,
 } from "../contactFormResolver/constants/index.js";
-import { Request } from "express";
 import { clientIp } from "../../../utils/rateLimit.js";
 import { verifyRecaptcha } from "../../../utils/verifyRecaptcha.js";
+import type { MutationResolvers } from "../../generated/types.js";
 
-export async function reportInaccuracyResolver(
-  _: never,
-  {
-    placeId,
-    placeName,
-    message,
-    captchaToken,
-  }: {
-    placeId: string;
-    placeName: string;
-    message: string;
-    captchaToken?: string | null;
-  },
-  { req }: { req?: Request },
-) {
-  await verifyRecaptcha(captchaToken ?? "", "report_inaccuracy", clientIp(req));
+export const reportInaccuracyResolver: MutationResolvers["reportInaccuracy"] =
+  async (_parent, { placeId, placeName, message, captchaToken }, { req }) => {
+    await verifyRecaptcha(
+      captchaToken ?? "",
+      "report_inaccuracy",
+      clientIp(req),
+    );
 
-  if (!process.env.MAILERSEND_API_KEY) {
-    throw new Error("MAILERSEND_API_KEY is not defined");
-  }
-  const mailerSend = new MailerSend({
-    apiKey: process.env.MAILERSEND_API_KEY,
-  });
+    if (!process.env.MAILERSEND_API_KEY) {
+      throw new Error("MAILERSEND_API_KEY is not defined");
+    }
+    const mailerSend = new MailerSend({
+      apiKey: process.env.MAILERSEND_API_KEY,
+    });
 
-  const ADMIN_MESSAGE_SUBJECT = "New 3.Welle inaccuracy report";
-  const ADMIN_MESSAGE_HTML = `
+    const ADMIN_MESSAGE_SUBJECT = "New 3.Welle inaccuracy report";
+    const ADMIN_MESSAGE_HTML = `
     <p>New inaccuracy report</p>
     <p>Place ID: ${placeId}</p>
     <p>Place Name: ${placeName}</p>
     <p>Message: ${message}</p>
   `;
-  const ADMIN_MESSAGE_TEXT = `
+    const ADMIN_MESSAGE_TEXT = `
     New inaccuracy report
     Place ID: ${placeId}
     Place Name: ${placeName}
     Message: ${message}
   `;
 
-  const adminEmailParams = new EmailParams()
-    .setFrom(new Sender(FROM_EMAIL, FROM_NAME))
-    .setTo([new Recipient(ADMIN_EMAIL)])
-    .setSubject(ADMIN_MESSAGE_SUBJECT)
-    .setHtml(ADMIN_MESSAGE_HTML)
-    .setText(ADMIN_MESSAGE_TEXT);
+    const adminEmailParams = new EmailParams()
+      .setFrom(new Sender(FROM_EMAIL, FROM_NAME))
+      .setTo([new Recipient(ADMIN_EMAIL)])
+      .setSubject(ADMIN_MESSAGE_SUBJECT)
+      .setHtml(ADMIN_MESSAGE_HTML)
+      .setText(ADMIN_MESSAGE_TEXT);
 
-  await mailerSend.email.send(adminEmailParams);
+    await mailerSend.email.send(adminEmailParams);
 
-  return {
-    success: true,
-    placeName,
+    return {
+      success: true,
+      placeName,
+    };
   };
-}

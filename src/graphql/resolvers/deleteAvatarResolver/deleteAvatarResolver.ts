@@ -1,12 +1,13 @@
 import { deleteAvatar } from "../../../utils/imagekit.js";
 import { IMAGEKIT_URL_ENDPOINT } from "../../../config/env.js";
-import { type Context, requireUser } from "../../context.js";
+import { requireUser } from "../../context.js";
+import type { MutationResolvers } from "../../generated/types.js";
 
-export async function deleteAvatarResolver(
-  _: never,
-  __: never,
-  context: Context,
-) {
+export const deleteAvatarResolver: MutationResolvers["deleteAvatar"] = async (
+  _parent,
+  _args,
+  context,
+) => {
   const user = requireUser(context);
 
   if (user.avatar) {
@@ -24,4 +25,4 @@ export async function deleteAvatarResolver(
   return {
     success: true,
   };
-}
+};

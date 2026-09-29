@@ -1,14 +1,14 @@
 import { appError } from "../../errors.js";
-import { Response, Request } from "express";
 import { refreshAccessToken } from "../../../utils/tokenUtils.js";
 import { formatUserResponse } from "../../../utils/authHelpers.js";
+import type { MutationResolvers } from "../../generated/types.js";
 
-export async function refreshTokenResolver(
-  _: never,
-  _args: Record<string, never>,
-  { req, res }: { req: Request; res: Response },
-) {
-  const refreshToken = req.cookies.refreshToken;
+export const refreshTokenResolver: MutationResolvers["refreshToken"] = async (
+  _parent,
+  _args,
+  { req, res },
+) => {
+  const refreshToken = req?.cookies.refreshToken;
 
   if (!refreshToken) {
     throw appError("UNAUTHENTICATED", "No refresh token provided");
@@ -24,4 +24,4 @@ export async function refreshTokenResolver(
     accessToken: result.accessToken,
     user: formatUserResponse(result.user),
   };
-}
+};

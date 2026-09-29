@@ -1,4 +1,3 @@
-import { Request } from "express";
 import { GraphQLError } from "graphql";
 import { createGuestIdentity } from "../../../utils/guestAuth.js";
 import {
@@ -7,6 +6,7 @@ import {
   countRateLimit,
 } from "../../../utils/rateLimit.js";
 import { verifyRecaptcha } from "../../../utils/verifyRecaptcha.js";
+import type { MutationResolvers } from "../../generated/types.js";
 
 /**
  * The single point where a guest captcha is verified. Everything a guest does
@@ -14,33 +14,30 @@ import { verifyRecaptcha } from "../../../utils/verifyRecaptcha.js";
  * caps in rateLimit.ts matter more than the captcha itself: clearing
  * localStorage and asking for a new identity is cheap.
  */
-export async function createGuestIdentityResolver(
-  _: never,
-  { captchaToken }: { captchaToken?: string | null },
-  { req }: { req?: Request },
-) {
-  const ip = clientIp(req);
+export const createGuestIdentityResolver: MutationResolvers["createGuestIdentity"] =
+  async (_parent, { captchaToken }, { req }) => {
+    const ip = clientIp(req);
 
-  // Checked before the captcha call, counted after it: verification fails
-  // closed, so an outage at Google must not burn a visitor's hourly quota and
-  // lock them out once it is over. A captcha that actually rejects them still
-  // counts, which is what keeps identity minting from being brute-forced.
-  checkRateLimit("guestIdentity", ip);
+    // Checked before the captcha call, counted after it: verification fails
+    // closed, so an outage at Google must not burn a visitor's hourly quota and
+    // lock them out once it is over. A captcha that actually rejects them still
+    // counts, which is what keeps identity minting from being brute-forced.
+    checkRateLimit("guestIdentity", ip);
 
-  try {
-    await verifyRecaptcha(captchaToken ?? "", "create_guest_identity", ip);
-  } catch (error) {
-    const reason =
-      error instanceof GraphQLError ? error.extensions?.reason : undefined;
+    try {
+      await verifyRecaptcha(captchaToken ?? "", "create_guest_identity", ip);
+    } catch (error) {
+      const reason =
+        error instanceof GraphQLError ? error.extensions?.reason : undefined;
 
-    if (reason !== "verification_unavailable") {
-      countRateLimit("guestIdentity", ip);
+      if (reason !== "verification_unavailable") {
+        countRateLimit("guestIdentity", ip);
+      }
+
+      throw error;
     }
 
-    throw error;
-  }
+    countRateLimit("guestIdentity", ip);
 
-  countRateLimit("guestIdentity", ip);
-
-  return createGuestIdentity();
-}
+    return createGuestIdentity();
+  };

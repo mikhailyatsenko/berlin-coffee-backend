@@ -1,11 +1,12 @@
 import User from "../../../models/User.js";
 import { appError } from "../../errors.js";
 import crypto from "crypto";
+import type { MutationResolvers } from "../../generated/types.js";
 
-export async function validatePasswordResetTokenResolver(
-  _: never,
-  { token, email }: { token: string; email: string },
-) {
+export const validatePasswordResetTokenResolver: MutationResolvers["validatePasswordResetToken"] = async (
+  _parent,
+  { token, email },
+) => {
   const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
   const user = await User.findOne({ email: email.toLowerCase().trim() });
   
@@ -22,4 +23,4 @@ export async function validatePasswordResetTokenResolver(
   }
 
   return { success: true };
-}
+};

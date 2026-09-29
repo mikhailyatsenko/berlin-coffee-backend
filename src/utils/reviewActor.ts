@@ -63,7 +63,7 @@ export async function resolveReviewActor(
 export type ActorRef = { userId: string } | { guestId: string } | undefined;
 
 export function resolveActorRef(
-  user: { id: string } | null | undefined,
+  user: { id?: string } | null | undefined,
   guest: GuestContext | undefined,
 ): ActorRef {
   if (user?.id) {

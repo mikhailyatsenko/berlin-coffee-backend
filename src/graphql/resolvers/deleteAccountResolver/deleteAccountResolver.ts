@@ -1,11 +1,12 @@
 import User from "../../../models/User.js";
 import Interaction from "../../../models/Interaction.js";
-import { type Context, requireUser } from "../../context.js";
+import { requireUser } from "../../context.js";
+import type { MutationResolvers } from "../../generated/types.js";
 
-export const deleteAccountResolver = async (
-  _: never,
-  __: never,
-  context: Context,
+export const deleteAccountResolver: MutationResolvers["deleteAccount"] = async (
+  _parent,
+  _args,
+  context,
 ) => {
   const userId = requireUser(context)._id;
 

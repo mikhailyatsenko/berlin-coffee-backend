@@ -16,6 +16,7 @@ const { default: Place } = await import("../src/models/Place.js");
 const { filteredPlacesResolver } = await import(
   "../src/graphql/resolvers/filteredPlacesResolver/filteredPlacesResolver.js"
 );
+import { callResolver } from "./support/callResolver.js";
 
 useThrowawayMongod();
 
@@ -47,8 +48,8 @@ async function seedPlace(
 }
 
 async function namesFor(additionalInfo: string[]) {
-  const { places, total } = await filteredPlacesResolver(
-    undefined as never,
+  const { places, total } = await callResolver(
+    filteredPlacesResolver,
     { additionalInfo },
     {},
   );

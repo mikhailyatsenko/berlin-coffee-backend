@@ -1,4 +1,4 @@
-import { GuestContext } from "../../../utils/guestAuth.js";
+import type { QueryResolvers } from "../../generated/types.js";
 import { normalizeNeighborhood } from "../../../utils/neighborhood.js";
 import { resolveActorRef } from "../../../utils/reviewActor.js";
 import {
@@ -9,11 +9,11 @@ import {
 import { getFilteredPlacesWithStats } from "../filteredPlacesResolver/services/filteredPlacesAggregationService.js";
 import { formatFilteredPlace } from "../filteredPlacesResolver/services/formatFilteredPlace.js";
 
-export async function neighborhoodShortlistsResolver(
-    _: never,
-    { neighborhood }: { neighborhood: string },
-    { user, guest }: { user?: { id: string }; guest?: GuestContext },
-) {
+export const neighborhoodShortlistsResolver: QueryResolvers["neighborhoodShortlists"] = async (
+    _parent,
+    { neighborhood },
+    { user, guest },
+) => {
     const actor = resolveActorRef(user, guest);
     const normalizedNeighborhood = normalizeNeighborhood([neighborhood]);
 
@@ -35,4 +35,4 @@ export async function neighborhoodShortlistsResolver(
             };
         }),
     );
-}
+};

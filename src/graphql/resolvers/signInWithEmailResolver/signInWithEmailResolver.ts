@@ -1,20 +1,15 @@
 import User from "../../../models/User.js";
 import bcrypt from "bcrypt";
-import { Response } from "express";
 import { updateLastActive } from "../../../utils/updateLastActive.js";
 import { setAuthCookies, formatUserResponse } from "../../../utils/authHelpers.js";
 import { badInput } from "../../errors.js";
+import type { MutationResolvers } from "../../generated/types.js";
 
-interface signInWithEmailArgs {
-  email: string;
-  password: string;
-}
-
-export async function signInWithEmailResolver(
-  _: never,
-  { email, password }: signInWithEmailArgs,
-  { res }: { res: Response },
-) {
+export const signInWithEmailResolver: MutationResolvers["signInWithEmail"] = async (
+  _parent,
+  { email, password },
+  { res },
+) => {
   const user = await User.findOne({ email });
   if (!user) {
     throw badInput("Invalid e-mail or password");
@@ -44,4 +39,4 @@ export async function signInWithEmailResolver(
   return {
     user: formatUserResponse(user),
   };
-}
+};
