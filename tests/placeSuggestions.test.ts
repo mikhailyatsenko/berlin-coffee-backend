@@ -612,6 +612,8 @@ test("a duplicate Google Place ID fails with the existing Place's id", async () 
   } catch (error) {
     assert.ok(error instanceof GraphQLError);
     assert.equal(error.extensions.code, "DUPLICATE_GOOGLE_PLACE_ID");
+    assert.equal(error.extensions.existingPlaceId, existing._id.toString());
+    // Older clients still parse the id out of the message.
     assert.ok(error.message.includes(existing._id.toString()));
   }
 

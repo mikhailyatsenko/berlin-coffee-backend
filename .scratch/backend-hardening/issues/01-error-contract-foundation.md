@@ -1,6 +1,6 @@
 # 01: Error contract foundation: error module, `formatError`, `requireUser`
 
-Status: ready-for-agent
+Status: done
 Blocked by: None (can start immediately)
 Source: [Error contract and auth guards](../../backend-audit/issues/01-error-contract-and-auth-guards.md), points 1, 4, 5, 9, 10
 
@@ -27,12 +27,24 @@ Resolvers have no shared rule for which errors reach the client. `formatError` k
 
 ## Acceptance criteria
 
-- [ ] An error module with the typed code catalogue and constructors exists; `UNAUTHORIZED` is not in it.
-- [ ] The server uses the new `formatError`; it is importable without starting the server.
-- [ ] `requireUser` exists and throws `UNAUTHENTICATED` for an anonymous context.
-- [ ] `DUPLICATE_GOOGLE_PLACE_ID` carries `extensions.existingPlaceId`.
-- [ ] Test: an unexpected error (e.g. a plain `Error` thrown from a resolver) reaches the client as `INTERNAL_SERVER_ERROR` with the generic message and no other extensions, and is logged once.
-- [ ] Test: `retryAfterSeconds`, `reason` and `existingPlaceId` on an authored error reach the client; `stacktrace` never does.
-- [ ] Test: `requireUser` returns the User when present and throws `UNAUTHENTICATED` otherwise.
-- [ ] `tsc --noEmit` and `npm test` pass.
-- [ ] Frontend follow-up exists: `../berlincoffeemap/.scratch/backend-hardening/issues/01-existing-place-id-from-extensions.md` (reads `existingPlaceId`; the message stays, so nothing breaks before it lands).
+- [x] An error module with the typed code catalogue and constructors exists; `UNAUTHORIZED` is not in it.
+- [x] The server uses the new `formatError`; it is importable without starting the server.
+- [x] `requireUser` exists and throws `UNAUTHENTICATED` for an anonymous context.
+- [x] `DUPLICATE_GOOGLE_PLACE_ID` carries `extensions.existingPlaceId`.
+- [x] Test: an unexpected error (e.g. a plain `Error` thrown from a resolver) reaches the client as `INTERNAL_SERVER_ERROR` with the generic message and no other extensions, and is logged once.
+- [x] Test: `retryAfterSeconds`, `reason` and `existingPlaceId` on an authored error reach the client; `stacktrace` never does.
+- [x] Test: `requireUser` returns the User when present and throws `UNAUTHENTICATED` otherwise.
+- [x] `tsc --noEmit` and `npm test` pass.
+- [x] Frontend follow-up exists: `../berlincoffeemap/.scratch/backend-hardening/issues/01-existing-place-id-from-extensions.md` (reads `existingPlaceId`; the message stays, so nothing breaks before it lands).
+
+## Comments
+
+**2026-09-29, implemented** (branch `feat/error-contract-foundation`).
+
+- `src/graphql/errors.ts`: the `ErrorCode` union (no `UNAUTHORIZED`), `appError(code, message, details?)` and the `unauthenticated()` / `forbidden()` / `notFound()` / `badInput()` constructors.
+- `src/graphql/formatError.ts`: `formatError`, importable on its own and wired into `src/index.ts`. Expected errors keep their message and every extension except `stacktrace` and aren't logged. Unexpected ones become `INTERNAL_SERVER_ERROR` / "Something went wrong. Please try again." and are logged once with the error (stack) and field path.
+- A refinement of the `unwrapResolverError(error) instanceof GraphQLError` rule: a GraphQLError *without a code* that wraps a raw (non-GraphQL) error is also unexpected. This is what Apollo builds for "Context creation failed: …", so a Mongo failure in the context function no longer leaks its message. Apollo's validation and coercion errors carry a code, so they pass even when a custom scalar threw a plain `TypeError` underneath (tested). An authored `GraphQLError` with `originalError` but no code would be masked; ticket 02 gives every authored error a code anyway.
+- `src/graphql/context.ts`: `Context` moved here, plus `requireUser`. `src/index.ts` re-exports `Context` only because the generated types still import it from there. Ticket 04 points codegen at `context.ts` and drops the re-export.
+- `DUPLICATE_GOOGLE_PLACE_ID` carries `extensions.existingPlaceId`; the message is unchanged.
+- Tests: `tests/errorContract.test.ts` (a toy ApolloServer with the real `formatError`, the constructors, `requireUser`) and `existingPlaceId` in `tests/placeSuggestions.test.ts`. `tsc --noEmit` is clean and `npm test` passes 104/104.
+- The frontend follow-up already existed: `../berlincoffeemap/.scratch/backend-hardening/issues/01-existing-place-id-from-extensions.md`.

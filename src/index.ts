@@ -1,5 +1,5 @@
 import "./config/env.js";
-import express, { Request, Response } from "express";
+import express from "express";
 import { ApolloServer } from "@apollo/server";
 import { expressMiddleware } from "@apollo/server/express4";
 import cors from "cors";
@@ -8,7 +8,6 @@ import { typeDefs } from "./graphql/index.js";
 import { resolvers } from "./graphql/index.js";
 import { connectDatabase } from "./config/database.js";
 import cookieParser from "cookie-parser";
-import User, { IUser } from "./models/User.js";
 import { updateLastActive } from "./utils/updateLastActive.js";
 import http from "http";
 import { ApolloServerPluginDrainHttpServer } from "@apollo/server/plugin/drainHttpServer";
@@ -27,16 +26,14 @@ import {
 import {
   GUEST_ID_HEADER,
   GUEST_SECRET_HEADER,
-  GuestContext,
   guestContextFromRequest,
 } from "./utils/guestAuth.js";
-export interface Context {
-  user?: IUser | null;
-  /** Absent for signed-in users: an account always wins over guest headers. */
-  guest?: GuestContext;
-  req?: Request;
-  res: Response;
-}
+import type { Context } from "./graphql/context.js";
+import { formatError } from "./graphql/formatError.js";
+
+// Generated resolver types still import Context from here (ticket 04 points
+// codegen at graphql/context.ts).
+export type { Context };
 
 const app = express();
 app.set("trust proxy", 1);
@@ -65,15 +62,7 @@ const bootstrapServer = async () => {
     resolvers,
     introspection: process.env.NODE_ENV !== "production",
     plugins: [ApolloServerPluginDrainHttpServer({ httpServer })],
-    formatError: (error) => {
-      console.error("GraphQL Error:", error);
-      return {
-        message: error.message,
-        extensions: {
-          code: error.extensions?.code || "INTERNAL_SERVER_ERROR",
-        },
-      };
-    },
+    formatError,
   });
 
   await server.start();

@@ -18,6 +18,7 @@ import {
   placeSuggestionPhotoFolder,
 } from "../../../utils/imagekit.js";
 import { REVIEW_IMAGE_UPLOAD_TIMEOUT_MS } from "../../../config/env.js";
+import { appError } from "../../errors.js";
 
 interface PublishPlaceSuggestionInput {
   name: string;
@@ -37,14 +38,14 @@ const badInput = (message: string) =>
   new GraphQLError(message, { extensions: { code: "BAD_USER_INPUT" } });
 
 /**
- * The message carries the existing Place's id (its last, 24-hex-char word) so
- * the review page can link to it, since only `code` and `message` survive
- * `formatError` — see `index.ts`.
+ * `existingPlaceId` lets the review page link to the Place. The message keeps
+ * the id as its last, 24-hex-char word for clients that still parse it out.
  */
 const duplicateGooglePlaceIdError = (placeId: string) =>
-  new GraphQLError(
+  appError(
+    "DUPLICATE_GOOGLE_PLACE_ID",
     `This Google Place ID already belongs to a Place: ${placeId}`,
-    { extensions: { code: "DUPLICATE_GOOGLE_PLACE_ID" } },
+    { existingPlaceId: placeId },
   );
 
 const trimmed = (value: string | null | undefined): string | undefined => {
