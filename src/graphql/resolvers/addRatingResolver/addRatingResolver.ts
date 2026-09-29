@@ -1,7 +1,7 @@
 import Interaction from "../../../models/Interaction.js";
 import mongoose from "mongoose";
-import { clientIp, consumeRateLimit } from "../../../utils/rateLimit.js";
 import { resolveReviewActor } from "../../../utils/reviewActor.js";
+import { upsertInteraction } from "../../../utils/upsertInteraction.js";
 import {
   assertPlaceExists,
   assertRating,
@@ -17,36 +17,13 @@ export const addRatingResolver: MutationResolvers["addRating"] = async (
   const actor = await resolveReviewActor(user, guest, { guestId, guestSecret });
   await assertPlaceExists(placeId);
 
-  const interaction = await Interaction.findOne({
-    ...actor.owner,
+  const interaction = await upsertInteraction(
+    actor,
     placeId,
-  }).lean();
-
-  // Only a first rating costs quota: a guest owns this document through its
-  // secret and may revise it, the same as an account may.
-  if (actor.isGuest && !interaction) {
-    consumeRateLimit("guestReview", clientIp(req));
-  }
-
-  const updateData = { date: new Date(), rating };
-
-  let reviewId: string | null = null;
-
-  if (interaction) {
-    await Interaction.findOneAndUpdate(
-      { ...actor.owner, placeId },
-      { $set: updateData },
-      { new: true, lean: true },
-    );
-    reviewId = interaction._id.toString();
-  } else {
-    const newInteraction = await Interaction.create({
-      ...actor.owner,
-      placeId,
-      ...updateData,
-    });
-    reviewId = newInteraction._id.toString();
-  }
+    { $set: { date: new Date(), rating } },
+    req,
+  );
+  const reviewId = interaction._id.toString();
 
   const aggregationResult = await Interaction.aggregate([
     {

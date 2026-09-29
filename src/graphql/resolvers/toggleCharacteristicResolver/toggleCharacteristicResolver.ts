@@ -1,7 +1,6 @@
-import Interaction from "../../../models/Interaction.js";
 import Place from "../../../models/Place.js";
-import { clientIp, consumeRateLimit } from "../../../utils/rateLimit.js";
 import { resolveReviewActor } from "../../../utils/reviewActor.js";
+import { toggleInteractionField } from "../../../utils/upsertInteraction.js";
 import { notFound } from "../../errors.js";
 import type { MutationResolvers } from "../../generated/types.js";
 
@@ -20,28 +19,12 @@ export const toggleCharacteristicResolver: MutationResolvers["toggleCharacterist
     if (!place) {
       throw notFound("Place not found");
     }
-    const existingInteraction = await Interaction.findOne({
-      ...actor.owner,
+    await toggleInteractionField(
+      actor,
       placeId,
-    });
-
-    if (existingInteraction) {
-      existingInteraction.characteristics[characteristic] =
-        !existingInteraction.characteristics[characteristic];
-      await existingInteraction.save();
-    } else {
-      if (actor.isGuest) {
-        consumeRateLimit("guestReview", clientIp(req));
-      }
-      const newInteraction = new Interaction({
-        ...actor.owner,
-        placeId,
-        characteristics: {
-          [characteristic]: true,
-        },
-      });
-      await newInteraction.save();
-    }
+      `characteristics.${characteristic}`,
+      req,
+    );
 
     return {
       success: true,
