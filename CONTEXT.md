@@ -25,7 +25,7 @@ A Place a person has been to, known from their own Review of it. Not marked sepa
 _Avoid_: Check-in, been there, visited place
 
 **Place suggestion**:
-A proposal from a User or Guest to add a Place that is not yet on the map, with its name, address and optionally Place photos. Not shown on the map until the admin publishes it; the admin completes the Place's details before publishing.
+A proposal from a User or Guest to add a Place that is not yet on the map, with its name, address and optionally Place photos. Not shown on the map until the admin publishes it; the admin completes the Place's details before publishing. Outlives its author: when a User deletes their account, their suggestions stay, anonymous.
 _Avoid_: Submission, request, new place
 
 **Inaccuracy report**:
@@ -35,15 +35,19 @@ _Avoid_: Complaint, feedback, correction
 ### People
 
 **User**:
-A person with an account, signed in by email or Google.
+A person with an account, signed in by email and password, by Google, or by both. The email identifies the User: signing in with a Google account whose verified email belongs to a User signs in to that User. An email the User has not confirmed does not hold the address: whoever first proves they own the mailbox, by confirming it or by signing in with Google, takes it. Deleting the account removes the User with their Reviews (Photos included), Favorites, avatar and Sessions; only their Place suggestions outlive them, with no author.
 _Avoid_: Account, member
+
+**Session**:
+A User being signed in on one device. Ends when they sign out on that device, after 7 days, or when all their Sessions are revoked by a password change or reset (the device that changed the password stays signed in).
+_Avoid_: Login, token
 
 **Guest**:
 A person without an account who has rated, reviewed or saved something. Identified only by their Guest identity.
 _Avoid_: Anonymous, visitor
 
 **Guest identity**:
-The proof held in one browser that a Guest's Reviews and Favorites belong to them: a `guestId` plus a secret, of which only the hash is stored. Issued once after a reCAPTCHA check. Losing it leaves the Reviews public but no longer editable by that Guest.
+The proof held in one browser that a Guest's Reviews and Favorites belong to them: a `guestId` plus a secret, of which only the hash is stored. Issued once after a reCAPTCHA check. Losing it leaves the Reviews public but no longer editable or removable by that Guest.
 _Avoid_: Guest session, guest token
 
 **Claim**:
@@ -53,7 +57,7 @@ _Avoid_: Merge, migrate, transfer
 ### Reviews
 
 **Review**:
-One opinion about one Place: a Rating, Review text, Characteristics and Photos, any of which may be missing. Left by a User or Guest (at most one per Place), or imported as a Google review.
+One opinion about one Place: a Rating, Review text, Characteristics and Photos, any of which may be missing. Left by a User or Guest (at most one per Place), or imported as a Google review. Its author, User or Guest, can remove any part of it.
 _Avoid_: Feedback, comment, interaction (in prose and API names)
 
 **Google review**:
