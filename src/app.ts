@@ -7,20 +7,11 @@ import compression from "compression";
 import { typeDefs } from "./graphql/index.js";
 import { resolvers } from "./graphql/index.js";
 import cookieParser from "cookie-parser";
-import { updateLastActive } from "./utils/updateLastActive.js";
 import http from "http";
 import { ApolloServerPluginDrainHttpServer } from "@apollo/server/plugin/drainHttpServer";
-import {
-  getUserFromAccessToken,
-  refreshAccessToken,
-  clearAuthCookies,
-} from "./utils/tokenUtils.js";
-import {
-  GUEST_ID_HEADER,
-  GUEST_SECRET_HEADER,
-  guestContextFromRequest,
-} from "./utils/guestAuth.js";
+import { GUEST_ID_HEADER, GUEST_SECRET_HEADER } from "./utils/guestAuth.js";
 import type { Context } from "./graphql/context.js";
+import { buildContext } from "./graphql/buildContext.js";
 import { formatError } from "./graphql/formatError.js";
 
 /**
@@ -77,36 +68,7 @@ export const createApp = async () => {
       methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     }),
     express.json(),
-    expressMiddleware(server, {
-      context: async ({ req, res }) => {
-        const accessToken = req.cookies.jwt;
-        const refreshToken = req.cookies.refreshToken;
-
-        // Try access token first
-        let user = await getUserFromAccessToken(accessToken);
-
-        // If access token failed, try refresh token
-        if (!user && refreshToken) {
-          const result = await refreshAccessToken(refreshToken, res);
-          user = result?.user ?? null;
-        }
-
-        // Clear cookies if both tokens are invalid
-        if (!user) {
-          clearAuthCookies(res);
-        } else {
-          // Update last active only if we have a valid user
-          await updateLastActive(user);
-        }
-
-        // Resolved once here rather than per resolver: a single operation can
-        // touch several of them, and each would otherwise repeat the lookup.
-        // Skipped entirely for signed-in users, whose account is the identity.
-        const guest = user ? undefined : await guestContextFromRequest(req);
-
-        return { user: user ?? null, guest, req, res };
-      },
-    }),
+    expressMiddleware(server, { context: buildContext }),
   );
 
   return { httpServer };

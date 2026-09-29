@@ -65,7 +65,7 @@ export const confirmEmailResolver: MutationResolvers["confirmEmail"] = async (
   user.lastActive = new Date();
   await user.save();
 
-  setAuthCookies(user._id.toString(), res);
+  setAuthCookies(user, res);
 
   return {
     user: formatUserResponse(user),

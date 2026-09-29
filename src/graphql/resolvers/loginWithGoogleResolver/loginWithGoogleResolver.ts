@@ -1,7 +1,6 @@
 import { OAuth2Client } from "google-auth-library";
 import User from "../../../models/User.js";
 import { badInput } from "../../errors.js";
-import { updateLastActive } from "../../../utils/updateLastActive.js";
 import { setAuthCookies, formatUserResponse } from "../../../utils/authHelpers.js";
 import type { MutationResolvers } from "../../generated/types.js";
 import { config } from "../../../config/config.js";
@@ -51,9 +50,11 @@ export const loginWithGoogleResolver: MutationResolvers["loginWithGoogle"] = asy
       avatar: payload.picture,
     });
   }
-  await updateLastActive(user, { force: true });
+  // A full save, not updateLastActive: a first sign-in creates the User here.
+  user.lastActive = new Date();
+  await user.save();
 
-  setAuthCookies(user.id, res);
+  setAuthCookies(user, res);
 
   res.setHeader("Access-Control-Allow-Credentials", "true");
   res.setHeader("Access-Control-Allow-Origin", config.frontendUrl);

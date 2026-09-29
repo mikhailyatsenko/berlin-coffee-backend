@@ -4,11 +4,12 @@ import { createAccessToken, createRefreshToken } from "./jwt.js";
 import { config } from "../config/config.js";
 
 /**
- * Set both access and refresh token cookies
+ * Starts a Session on this device: both cookies, for the User's current
+ * `sessionVersion`.
  */
-export const setAuthCookies = (userId: string, res: Response): void => {
-  const accessToken = createAccessToken(userId);
-  const refreshToken = createRefreshToken(userId);
+export const setAuthCookies = (user: IUser, res: Response): void => {
+  const accessToken = createAccessToken(user);
+  const refreshToken = createRefreshToken(user);
 
   res.cookie("jwt", accessToken, config.accessTokenCookie);
   res.cookie("refreshToken", refreshToken, config.refreshTokenCookie);
