@@ -31,6 +31,15 @@ export const RATE_LIMITS = {
   // Users and Guests alike: an account costs nothing to make, so it is no
   // stronger a signal than a Guest identity.
   placeSuggestion: [{ limit: 3, windowMs: DAY }],
+  // Each one mails the admin.
+  contactForm: [
+    { limit: 5, windowMs: HOUR },
+    { limit: 20, windowMs: DAY },
+  ],
+  reportInaccuracy: [
+    { limit: 5, windowMs: HOUR },
+    { limit: 20, windowMs: DAY },
+  ],
 } satisfies Record<string, LimitRule[]>;
 
 export type RateLimitBucket = keyof typeof RATE_LIMITS;

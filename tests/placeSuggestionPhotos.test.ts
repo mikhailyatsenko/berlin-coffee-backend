@@ -18,7 +18,7 @@ import { clientCode } from "./support/clientCode.js";
 
 setTestEnv();
 
-const { MailerSend } = await import("mailersend");
+const { setMailTransport } = await import("../src/mail/transport.js");
 const { default: ImageKit } = await import("imagekit");
 const { default: PlaceSuggestion } = await import(
   "../src/models/PlaceSuggestion.js"
@@ -51,15 +51,12 @@ const { rejectPlaceSuggestionResolver } = await import(
   "../src/graphql/resolvers/placeSuggestionResolver/rejectPlaceSuggestionResolver.js"
 );
 import { callResolver } from "./support/callResolver.js";
+import { RecordingTransport } from "./support/mailTransport.js";
 
-// --- fake MailerSend: submit fires an admin email; the send itself does not
-// matter to these tests, only that it never reaches the network. -----------
+// --- fake mail transport: submit fires an admin email; the send itself does
+// not matter to these tests, only that it never reaches the network. --------
 
-(
-  Object.getPrototypeOf(new MailerSend({ apiKey: "test" }).email) as {
-    send: (...args: unknown[]) => Promise<unknown>;
-  }
-).send = async () => ({});
+setMailTransport(new RecordingTransport());
 
 // --- fake ImageKit bucket ---------------------------------------------------
 

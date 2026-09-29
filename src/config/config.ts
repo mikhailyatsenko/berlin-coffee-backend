@@ -22,6 +22,7 @@ const REQUIRED = [
   "RECAPTCHA_V3_SECRET",
   "PLACE_SUGGESTION_REVIEW_SECRET",
   "GOOGLE_PLACES_API_KEY",
+  "ADMIN_EMAIL",
 ] as const;
 
 type RawEnv = Record<string, string | undefined>;
@@ -74,6 +75,8 @@ export const buildConfig = (raw: RawEnv) => {
     googleClientSecret: env.GOOGLE_CLIENT_SECRET,
     googlePlacesApiKey: env.GOOGLE_PLACES_API_KEY,
     mailerSendApiKey: env.MAILERSEND_API_KEY,
+    /** Where contact messages, inaccuracy reports and Place suggestions go. */
+    adminEmail: env.ADMIN_EMAIL,
     recaptchaV3Secret: env.RECAPTCHA_V3_SECRET,
     placeSuggestionReviewSecret: env.PLACE_SUGGESTION_REVIEW_SECRET,
     imagekit: {
