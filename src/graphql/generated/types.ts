@@ -427,7 +427,8 @@ export type PlaceProperties = {
   additionalInfo?: Maybe<Scalars['JSON']['output']>;
   address: Scalars['String']['output'];
   averageRating?: Maybe<Scalars['Float']['output']>;
-  characteristicCounts: CharacteristicCounts;
+  /** How many Reviews marked each Characteristic. Filled by place only, null elsewhere. */
+  characteristicCounts?: Maybe<CharacteristicCounts>;
   description: Scalars['String']['output'];
   favoriteCount: Scalars['Int']['output'];
   googleId?: Maybe<Scalars['String']['output']>;
@@ -445,7 +446,6 @@ export type PlaceProperties = {
   ownRating?: Maybe<Scalars['Int']['output']>;
   phone?: Maybe<Scalars['String']['output']>;
   ratingCount: Scalars['Int']['output'];
-  reviews: Array<Review>;
   website?: Maybe<Scalars['String']['output']>;
 };
 
@@ -1057,7 +1057,7 @@ export type PlacePropertiesResolvers<ContextType = Context, ParentType extends R
   additionalInfo?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType>;
   address?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   averageRating?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
-  characteristicCounts?: Resolver<ResolversTypes['CharacteristicCounts'], ParentType, ContextType>;
+  characteristicCounts?: Resolver<Maybe<ResolversTypes['CharacteristicCounts']>, ParentType, ContextType>;
   description?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   favoriteCount?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   googleId?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
@@ -1073,7 +1073,6 @@ export type PlacePropertiesResolvers<ContextType = Context, ParentType extends R
   ownRating?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   phone?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   ratingCount?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
-  reviews?: Resolver<Array<ResolversTypes['Review']>, ParentType, ContextType>;
   website?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 };
