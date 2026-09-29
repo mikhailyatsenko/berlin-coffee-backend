@@ -65,8 +65,8 @@ type PlaceProperties {
   ownRating: Int
   "The Characteristics the caller marked in their own Review. Filled by filteredPlaces and neighborhoodShortlists only, null elsewhere."
   ownCharacteristics: [Characteristic!]
-  reviews: [Review!]!
-  characteristicCounts: CharacteristicCounts!
+  "How many Reviews marked each Characteristic. Filled by place only, null elsewhere."
+  characteristicCounts: CharacteristicCounts
   additionalInfo: JSON
   googleId: String
   neighborhood: String

@@ -46,7 +46,6 @@ export const placeResolver: QueryResolvers["place"] = async (
       type: place.geometry.type || "Point",
       coordinates: place.geometry.coordinates,
     },
-    // @ts-expect-error Ticket 09: the schema promises `reviews`, which `place` never returns.
     properties: {
       id: place._id.toString(),
       name: place.properties.name || "",

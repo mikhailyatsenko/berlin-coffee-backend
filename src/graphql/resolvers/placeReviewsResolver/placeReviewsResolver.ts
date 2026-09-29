@@ -43,7 +43,6 @@ export const placeReviewsResolver: QueryResolvers["placeReviews"] = async (
       // Guest reviews carry no userId and have no User document behind them.
       const userId = interaction.userId?.toString() ?? null;
 
-      // @ts-expect-error Ticket 09: the schema promises `placeId`, which `placeReviews` never returns.
       return {
         id: interaction._id.toString(),
         text: interaction.reviewText || null,
@@ -54,6 +53,7 @@ export const placeReviewsResolver: QueryResolvers["placeReviews"] = async (
             ? userMap[userId]?.name || "Unknown User"
             : "Anonymous User",
         userAvatar: userId ? userMap[userId]?.avatar || null : null,
+        placeId,
         createdAt: interaction.date.toISOString(),
         isOwnReview: userId
           ? Boolean(context.user) && userId === context.user?.id

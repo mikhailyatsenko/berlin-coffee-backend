@@ -11,7 +11,6 @@ export function formatFilteredPlace(place: PlaceWithStats): Place {
             type: place.geometry.type || "Point",
             coordinates: place.geometry.coordinates,
         },
-        // @ts-expect-error Ticket 09: the schema promises `characteristicCounts` and `reviews`, which list queries never return.
         properties: {
             id: place._id.toString(),
             // slug: place.properties.slug || "",
