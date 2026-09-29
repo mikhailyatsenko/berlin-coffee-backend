@@ -19,25 +19,25 @@ export const signInWithEmailResolver: MutationResolvers["signInWithEmail"] = asy
   { req, res },
 ) => {
   consumeRateLimit("signIn", clientIp(req));
-  // Checked before bcrypt, so a guessed-out account costs no hashing.
-  const failures = emailKey(email);
-  checkRateLimit("signInFailure", failures);
+  // Checked before bcrypt, so a guessed-out address costs no hashing.
+  const failureKey = emailKey(email);
+  checkRateLimit("signInFailure", failureKey);
 
-  // One answer for an unknown address, a Google-only account and a wrong
-  // password, so none of them tells which accounts exist.
-  const fail = () => {
-    countRateLimit("signInFailure", failures);
+  // One answer for an unknown address, a Google-only User and a wrong
+  // password, so none of them tells which Users exist.
+  const failedAttempt = () => {
+    countRateLimit("signInFailure", failureKey);
     return badInput("Invalid e-mail or password");
   };
 
   const user = await User.findOne({ email: normalizeEmail(email) });
   if (!user?.password) {
-    throw fail();
+    throw failedAttempt();
   }
 
   const isPasswordValid = await bcrypt.compare(password, user.password);
   if (!isPasswordValid) {
-    throw fail();
+    throw failedAttempt();
   }
   if (!user.isEmailConfirmed) {
     throw badInput("Please confirm your email before logging in.");

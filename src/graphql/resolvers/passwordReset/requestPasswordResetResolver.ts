@@ -18,7 +18,7 @@ export const requestPasswordResetResolver: MutationResolvers["requestPasswordRes
   consumeRateLimit("passwordReset", ip);
 
   const normalizedEmail = normalizeEmail(email);
-  // Silent, like an unknown address, so the limit doesn't reveal accounts.
+  // Silent, like an unknown address, so the limit doesn't reveal which Users exist.
   if (!recipientAllowed(normalizedEmail)) {
     return { success: true };
   }

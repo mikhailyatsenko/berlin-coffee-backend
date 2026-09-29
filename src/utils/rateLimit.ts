@@ -27,6 +27,12 @@ const MINUTE = 60 * 1000;
 const HOUR = 60 * MINUTE;
 const DAY = 24 * HOUR;
 
+/** Per IP, for a form that sends mail: the contact forms, reset, resend, registration, email change. */
+const PER_IP_FORM: LimitRule[] = [
+  { limit: 5, windowMs: HOUR },
+  { limit: 20, windowMs: DAY },
+];
+
 export const RATE_LIMITS = {
   guestIdentity: [{ limit: 5, windowMs: HOUR }],
   guestReview: [
@@ -38,39 +44,21 @@ export const RATE_LIMITS = {
   // stronger a signal than a Guest identity.
   placeSuggestion: [{ limit: 3, windowMs: DAY }],
   // Each one mails the admin.
-  contactForm: [
-    { limit: 5, windowMs: HOUR },
-    { limit: 20, windowMs: DAY },
-  ],
-  reportInaccuracy: [
-    { limit: 5, windowMs: HOUR },
-    { limit: 20, windowMs: DAY },
-  ],
+  contactForm: PER_IP_FORM,
+  reportInaccuracy: PER_IP_FORM,
   // Every attempt, per IP.
   signIn: [
     { limit: 20, windowMs: 15 * MINUTE },
     { limit: 100, windowMs: DAY },
   ],
-  // Failed attempts only, per email: password guessing against one account
+  // Failed attempts only, per email: password guessing against one User
   // from many IPs.
   signInFailure: [{ limit: 10, windowMs: HOUR }],
   // Per IP; each one can mail an address the caller typed.
-  passwordReset: [
-    { limit: 5, windowMs: HOUR },
-    { limit: 20, windowMs: DAY },
-  ],
-  resendConfirmation: [
-    { limit: 5, windowMs: HOUR },
-    { limit: 20, windowMs: DAY },
-  ],
-  registerUser: [
-    { limit: 5, windowMs: HOUR },
-    { limit: 20, windowMs: DAY },
-  ],
-  emailChange: [
-    { limit: 5, windowMs: HOUR },
-    { limit: 20, windowMs: DAY },
-  ],
+  passwordReset: PER_IP_FORM,
+  resendConfirmation: PER_IP_FORM,
+  registerUser: PER_IP_FORM,
+  emailChange: PER_IP_FORM,
   // Per recipient address, shared by every mail to a caller-supplied address;
   // counted inside the mail module.
   mailRecipient: [

@@ -191,7 +191,7 @@ test("sign-in: successes don't count toward the email's failures", async () => {
   await assert.rejects(signIn(email, "wrong"), withCode("BAD_USER_INPUT"));
 });
 
-test("sign-in with a password to a Google-only account: 'Invalid e-mail or password'", async () => {
+test("sign-in with a password to a Google-only User: 'Invalid e-mail or password'", async () => {
   const email = anAddress();
   await User.create({
     email,
@@ -356,3 +356,14 @@ for (const [name, call] of [
     await call(anIp());
   });
 }
+
+test("reset and resend to one address share its recipient bucket", async () => {
+  const email = anAddress();
+  await createUser(email, { isEmailConfirmed: false });
+  await requestReset(email);
+  await resend(email);
+  await requestReset(email);
+
+  assert.deepEqual(await resend(email), { success: true });
+  assert.equal(mailsTo(email), 3);
+});
