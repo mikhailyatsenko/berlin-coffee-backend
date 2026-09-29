@@ -3,7 +3,7 @@ import isEmail from "validator/lib/isEmail.js";
 import crypto from "crypto";
 import { addHours } from "date-fns";
 import { MailerSend, EmailParams, Sender, Recipient } from "mailersend";
-import { env } from "../../../utils/env.utils.js";
+import { config } from "../../../config/config.js";
 import {
   FROM_EMAIL,
   FROM_NAME,
@@ -43,14 +43,10 @@ export const updatePersonalDataResolver: MutationResolvers["updatePersonalData"]
       user.emailConfirmationToken = hashedToken;
       user.emailConfirmationTokenExpires = tokenExpires;
 
-      const confirmationUrl = `${env.frontendUrl}/confirm-email?token=${rawToken}&email=${encodeURIComponent(email)}`;
-
-      if (!process.env.MAILERSEND_API_KEY) {
-        throw new Error("MAILERSEND_API_KEY is not defined");
-      }
+      const confirmationUrl = `${config.frontendUrl}/confirm-email?token=${rawToken}&email=${encodeURIComponent(email)}`;
 
       const mailerSend = new MailerSend({
-        apiKey: process.env.MAILERSEND_API_KEY,
+        apiKey: config.mailerSendApiKey,
       });
 
       try {

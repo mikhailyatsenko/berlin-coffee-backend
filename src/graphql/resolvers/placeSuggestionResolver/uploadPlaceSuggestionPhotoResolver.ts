@@ -1,6 +1,6 @@
 import { appError, badInput, forbidden } from "../../errors.js";
 import PlaceSuggestion from "../../../models/PlaceSuggestion.js";
-import { REVIEW_IMAGE_UPLOAD_TIMEOUT_MS } from "../../../config/env.js";
+import { config } from "../../../config/config.js";
 import { uploadPlaceSuggestionPhoto } from "../../../utils/imagekit.js";
 import { clientIp, consumeRateLimit } from "../../../utils/rateLimit.js";
 import { resolveReviewActor } from "../../../utils/reviewActor.js";
@@ -66,7 +66,7 @@ export const uploadPlaceSuggestionPhotoResolver: MutationResolvers["uploadPlaceS
     consumeRateLimit("guestPhoto", clientIp(req));
   }
 
-  const deadline = new Date(Date.now() + REVIEW_IMAGE_UPLOAD_TIMEOUT_MS);
+  const deadline = new Date(Date.now() + config.photoUploadTimeoutMs);
   const path = await uploadPlaceSuggestionPhoto(buffer, suggestionId, deadline);
 
   const updated = await PlaceSuggestion.findOneAndUpdate(

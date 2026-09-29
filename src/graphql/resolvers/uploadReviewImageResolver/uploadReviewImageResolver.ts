@@ -1,10 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { appError, badInput, forbidden } from "../../errors.js";
 import Interaction from "../../../models/Interaction.js";
-import {
-  REVIEW_IMAGE_ABANDONED_LEASE_MS,
-  REVIEW_IMAGE_UPLOAD_TIMEOUT_MS,
-} from "../../../config/env.js";
+import { config } from "../../../config/config.js";
 import {
   uploadReviewImage,
   UploadTimeoutError,
@@ -29,7 +26,7 @@ const LEASE_MARGIN_MS = 15_000;
 
 /** When an upload whose lease was taken at `now` stops waiting for ImageKit. */
 function uploadDeadline(now: Date): Date {
-  return new Date(now.getTime() + REVIEW_IMAGE_UPLOAD_TIMEOUT_MS);
+  return new Date(now.getTime() + config.photoUploadTimeoutMs);
 }
 
 /**
@@ -167,7 +164,7 @@ export const uploadReviewImageResolver: MutationResolvers["uploadReviewImage"] =
   // now is either us or deleteReview's fence, and the late file must be held
   // off either way. Someone else's lease is only ever extended, never cut short.
   const holdLeaseWhileAbandoned = () => {
-    const holdUntil = new Date(Date.now() + REVIEW_IMAGE_ABANDONED_LEASE_MS);
+    const holdUntil = new Date(Date.now() + config.reviewImageAbandonedLeaseMs);
     return Interaction.updateOne(
       {
         _id: reviewId,

@@ -1,7 +1,7 @@
 import User from "../../../models/User.js";
 import crypto from "crypto";
 import { addHours } from "date-fns";
-import { env } from "../../../utils/env.utils.js";
+import { config } from "../../../config/config.js";
 import { MailerSend, EmailParams, Sender, Recipient } from "mailersend";
 import { FROM_EMAIL, FROM_NAME } from "../contactFormResolver/constants/index.js";
 import type { MutationResolvers } from "../../generated/types.js";
@@ -22,13 +22,9 @@ export const requestPasswordResetResolver: MutationResolvers["requestPasswordRes
     user.passwordResetTokenExpires = tokenExpires;
     await user.save();
 
-    const resetUrl = `${env.frontendUrl}/reset-password?token=${rawToken}&email=${encodeURIComponent(normalizedEmail)}`;
+    const resetUrl = `${config.frontendUrl}/reset-password?token=${rawToken}&email=${encodeURIComponent(normalizedEmail)}`;
 
-    if (!process.env.MAILERSEND_API_KEY) {
-      throw new Error("MAILERSEND_API_KEY is not defined");
-    }
-
-    const mailerSend = new MailerSend({ apiKey: process.env.MAILERSEND_API_KEY });
+    const mailerSend = new MailerSend({ apiKey: config.mailerSendApiKey });
 
     try {
       await mailerSend.email.send(

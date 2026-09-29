@@ -4,7 +4,7 @@ import mongoose from "mongoose";
 import PlaceSuggestion, {
   IPlaceSuggestion,
 } from "../models/PlaceSuggestion.js";
-import { PLACE_SUGGESTION_REVIEW_SECRET } from "../config/env.js";
+import { config } from "../config/config.js";
 
 /**
  * The admin acts on a Place suggestion through a link that carries this token,
@@ -14,7 +14,7 @@ import { PLACE_SUGGESTION_REVIEW_SECRET } from "../config/env.js";
 
 export const signReviewToken = (suggestionId: string): string =>
   crypto
-    .createHmac("sha256", PLACE_SUGGESTION_REVIEW_SECRET!)
+    .createHmac("sha256", config.placeSuggestionReviewSecret)
     .update(suggestionId)
     .digest("hex");
 

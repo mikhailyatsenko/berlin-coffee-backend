@@ -16,7 +16,7 @@ import {
   placePhotoFolder,
   placeSuggestionPhotoFolder,
 } from "../../../utils/imagekit.js";
-import { REVIEW_IMAGE_UPLOAD_TIMEOUT_MS } from "../../../config/env.js";
+import { config } from "../../../config/config.js";
 import { appError, badInput } from "../../errors.js";
 import type { MutationResolvers } from "../../generated/types.js";
 
@@ -107,7 +107,7 @@ export const publishPlaceSuggestionResolver: MutationResolvers["publishPlaceSugg
   let cardImage: string | undefined;
 
   if (keptPhotoPaths.length > 0) {
-    const deadline = new Date(Date.now() + REVIEW_IMAGE_UPLOAD_TIMEOUT_MS);
+    const deadline = new Date(Date.now() + config.photoUploadTimeoutMs);
     await Promise.all(
       keptPhotoPaths.map((path, index) =>
         copyPlaceSuggestionPhotoToPlace(

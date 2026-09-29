@@ -7,6 +7,7 @@ import {
 import { clientIp } from "../../../utils/rateLimit.js";
 import { verifyRecaptcha } from "../../../utils/verifyRecaptcha.js";
 import type { MutationResolvers } from "../../generated/types.js";
+import { config } from "../../../config/config.js";
 
 export const reportInaccuracyResolver: MutationResolvers["reportInaccuracy"] =
   async (_parent, { placeId, placeName, message, captchaToken }, { req }) => {
@@ -16,11 +17,8 @@ export const reportInaccuracyResolver: MutationResolvers["reportInaccuracy"] =
       clientIp(req),
     );
 
-    if (!process.env.MAILERSEND_API_KEY) {
-      throw new Error("MAILERSEND_API_KEY is not defined");
-    }
     const mailerSend = new MailerSend({
-      apiKey: process.env.MAILERSEND_API_KEY,
+      apiKey: config.mailerSendApiKey,
     });
 
     const ADMIN_MESSAGE_SUBJECT = "New 3.Welle inaccuracy report";

@@ -1,4 +1,4 @@
-import "../config/env.js";
+import { config } from "../config/config.js";
 import mongoose from "mongoose";
 import { listReviewPhotoNames } from "../utils/imagekit.js";
 import {
@@ -25,7 +25,7 @@ import {
 const APPLY = process.argv.includes("--apply");
 
 const repair = async () => {
-  await mongoose.connect(process.env.MONGO_URI!);
+  await mongoose.connect(config.mongoUri);
   console.log(`Connected to MongoDB (${APPLY ? "APPLY" : "DRY RUN"})`);
 
   const { checked, repairs, failed } =

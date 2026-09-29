@@ -1,4 +1,4 @@
-import { IMAGEKIT_URL_ENDPOINT } from "../../../config/env.js";
+import { config } from "../../../config/config.js";
 import { uploadAvatar, deleteAvatar } from "../../../utils/imagekit.js";
 import { requireUser } from "../../context.js";
 import { badInput, forbidden } from "../../errors.js";
@@ -35,7 +35,7 @@ export const uploadAvatarResolver: MutationResolvers["uploadAvatar"] = async (
 
   // Save file ID to user
   const filePath = `3welle/avatars/${userId}/avatar-${userId}.jpeg`;
-  const avatarUrl = `${IMAGEKIT_URL_ENDPOINT}/${filePath}`;
+  const avatarUrl = `${config.imagekit.urlEndpoint}/${filePath}`;
   user.avatar = avatarUrl;
   await user.save();
 

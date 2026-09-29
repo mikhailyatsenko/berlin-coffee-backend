@@ -1,6 +1,6 @@
 import { MailerSend, EmailParams, Sender, Recipient } from "mailersend";
 import validator from "validator";
-import { env } from "../../../utils/env.utils.js";
+import { config } from "../../../config/config.js";
 import { signReviewToken } from "../../../utils/placeSuggestionToken.js";
 import {
   ADMIN_EMAIL,
@@ -16,7 +16,7 @@ interface SuggestionToAnnounce {
 }
 
 export const reviewLinkFor = (suggestionId: string) =>
-  `${env.frontendUrl}/suggestions/${suggestionId}/review?token=${signReviewToken(suggestionId)}`;
+  `${config.frontendUrl}/suggestions/${suggestionId}/review?token=${signReviewToken(suggestionId)}`;
 
 /**
  * Tells the admin about a new suggestion. A failed send is logged, not thrown:
@@ -48,7 +48,7 @@ export async function sendAdminSuggestionEmail(
 
   try {
     await new MailerSend({
-      apiKey: env.mailerSendApiKey,
+      apiKey: config.mailerSendApiKey,
     }).email.send(
       new EmailParams()
         .setFrom(new Sender(FROM_EMAIL, FROM_NAME))

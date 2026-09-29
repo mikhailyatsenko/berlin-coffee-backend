@@ -1,5 +1,5 @@
 import { MailerSend, EmailParams, Sender, Recipient } from "mailersend";
-import { env } from "../../../utils/env.utils.js";
+import { config } from "../../../config/config.js";
 import { FROM_EMAIL, FROM_NAME } from "../contactFormResolver/constants/index.js";
 
 /**
@@ -11,7 +11,7 @@ export async function sendSuggestionPublishedEmail(
   to: string,
   placeId: string,
 ): Promise<void> {
-  const link = `${env.frontendUrl}/place/${placeId}`;
+  const link = `${config.frontendUrl}/place/${placeId}`;
 
   const html = `
     <p>Your suggested Place is live on 3.Welle!</p>
@@ -24,7 +24,7 @@ export async function sendSuggestionPublishedEmail(
 
   try {
     await new MailerSend({
-      apiKey: env.mailerSendApiKey,
+      apiKey: config.mailerSendApiKey,
     }).email.send(
       new EmailParams()
         .setFrom(new Sender(FROM_EMAIL, FROM_NAME))

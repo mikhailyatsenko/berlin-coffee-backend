@@ -1,6 +1,6 @@
 import { appError, badInput, forbidden } from "../../errors.js";
 import PlaceSuggestion from "../../../models/PlaceSuggestion.js";
-import { REVIEW_IMAGE_UPLOAD_TIMEOUT_MS } from "../../../config/env.js";
+import { config } from "../../../config/config.js";
 import { uploadPlaceSuggestionPhoto } from "../../../utils/imagekit.js";
 import { requireSuggestionForReview } from "../../../utils/placeSuggestionToken.js";
 import {
@@ -45,7 +45,7 @@ export const uploadPlaceSuggestionPhotoAsAdminResolver: MutationResolvers["uploa
       );
     }
 
-    const deadline = new Date(Date.now() + REVIEW_IMAGE_UPLOAD_TIMEOUT_MS);
+    const deadline = new Date(Date.now() + config.photoUploadTimeoutMs);
     const path = await uploadPlaceSuggestionPhoto(buffer, id, deadline);
 
     const updated = await PlaceSuggestion.findOneAndUpdate(

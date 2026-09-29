@@ -2,18 +2,10 @@ import { randomUUID } from "node:crypto";
 import ImageKit from "imagekit";
 import type { FileObject, FolderObject } from "imagekit/dist/libs/interfaces";
 import sharp from "sharp";
-import {
-  IMAGEKIT_PUBLIC_KEY,
-  IMAGEKIT_PRIVATE_KEY,
-  IMAGEKIT_URL_ENDPOINT,
-} from "../config/env.js";
+import { config } from "../config/config.js";
 
 // Инициализация ImageKit
-const imagekit = new ImageKit({
-  publicKey: IMAGEKIT_PUBLIC_KEY!,
-  privateKey: IMAGEKIT_PRIVATE_KEY!,
-  urlEndpoint: IMAGEKIT_URL_ENDPOINT!,
-});
+const imagekit = new ImageKit(config.imagekit);
 
 /** listFiles returns folders too; this keeps only the files. */
 const isFile = (item: FileObject | FolderObject): item is FileObject =>

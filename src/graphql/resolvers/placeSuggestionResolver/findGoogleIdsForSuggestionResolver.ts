@@ -1,7 +1,7 @@
 import Place from "../../../models/Place.js";
 import type { QueryResolvers } from "../../generated/types.js";
 import { requireSuggestionForReview } from "../../../utils/placeSuggestionToken.js";
-import { GOOGLE_PLACES_API_KEY } from "../../../config/env.js";
+import { config } from "../../../config/config.js";
 
 /**
  * `places.id` only: the free, uncapped "Text Search Essentials IDs Only" SKU
@@ -24,7 +24,7 @@ async function searchGooglePlaceIds(query: string): Promise<string[]> {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "X-Goog-Api-Key": GOOGLE_PLACES_API_KEY!,
+      "X-Goog-Api-Key": config.googlePlacesApiKey,
       "X-Goog-FieldMask": FIELD_MASK,
     },
     body: JSON.stringify({ textQuery: query, pageSize: MAX_RESULTS }),

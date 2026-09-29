@@ -4,17 +4,12 @@ import { badInput } from "../../errors.js";
 import { updateLastActive } from "../../../utils/updateLastActive.js";
 import { setAuthCookies, formatUserResponse } from "../../../utils/authHelpers.js";
 import type { MutationResolvers } from "../../generated/types.js";
-
-const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID!;
-
-const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
+import { config } from "../../../config/config.js";
 
 const client = new OAuth2Client(
-  GOOGLE_CLIENT_ID,
-  GOOGLE_CLIENT_SECRET,
-  process.env.NODE_ENV === "production"
-    ? "https://3welle.com"
-    : "http://localhost:5173",
+  config.googleClientId,
+  config.googleClientSecret,
+  config.frontendUrl,
 );
 
 export const loginWithGoogleResolver: MutationResolvers["loginWithGoogle"] = async (
@@ -24,10 +19,7 @@ export const loginWithGoogleResolver: MutationResolvers["loginWithGoogle"] = asy
 ) => {
   const { tokens } = await client.getToken({
     code,
-    redirect_uri:
-      process.env.NODE_ENV === "production"
-        ? "https://3welle.com"
-        : "http://localhost:5173",
+    redirect_uri: config.frontendUrl,
   });
   const idToken = tokens.id_token;
 
@@ -36,7 +28,7 @@ export const loginWithGoogleResolver: MutationResolvers["loginWithGoogle"] = asy
   }
   const ticket = await client.verifyIdToken({
     idToken,
-    audience: GOOGLE_CLIENT_ID,
+    audience: config.googleClientId,
   });
 
   const payload = ticket.getPayload();
@@ -63,12 +55,7 @@ export const loginWithGoogleResolver: MutationResolvers["loginWithGoogle"] = asy
   setAuthCookies(user.id, res);
 
   res.setHeader("Access-Control-Allow-Credentials", "true");
-  res.setHeader(
-    "Access-Control-Allow-Origin",
-    process.env.NODE_ENV === "production"
-      ? "https://3welle.com"
-      : "http://localhost:5173",
-  );
+  res.setHeader("Access-Control-Allow-Origin", config.frontendUrl);
 
   return {
     user: {
