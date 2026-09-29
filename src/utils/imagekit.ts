@@ -155,11 +155,15 @@ export async function listReviewPhotoNames(
 }
 
 /**
- * Uploads avatar to ImageKit with resizing and compression
+ * Uploads avatar to ImageKit with resizing and compression.
+ *
+ * Every upload gets a new, timestamped file name, so the avatar URL changes
+ * and the CDN never serves the previous picture from its cache. Deleting the
+ * previous file is the caller's job, once the new URL is saved.
+ *
  * @param fileBuffer - File buffer
- * @param fileName - File name
  * @param userId - User ID
- * @returns Promise<string> - ImageKit file ID
+ * @returns Promise<string> - ImageKit file path
  */
 export async function uploadAvatar(
   fileBuffer: Buffer,
@@ -189,12 +193,11 @@ export async function uploadAvatar(
 
     const result = await imagekit.upload({
       file: processedBuffer,
-      fileName: `avatar-${userId}.jpeg`,
+      fileName: `avatar-${userId}-${Date.now()}.jpeg`,
       folder: `3welle/avatars/${userId}`,
       useUniqueFileName: false,
     });
 
-    // Return filePath instead of fileId for compatibility
     return result.filePath;
   } catch (error) {
     // Logged once, with this cause, by formatError.
@@ -281,43 +284,41 @@ export async function uploadReviewImage(
   }
 }
 
+/** The ImageKit URL endpoint without a trailing slash. */
+function imagekitEndpoint(): string {
+  return config.imagekit.urlEndpoint.replace(/\/+$/, "");
+}
+
 /**
- * Deletes avatar from ImageKit
- * @param fileId - ImageKit file ID
- * @returns Promise<boolean> - Success status
+ * Turns a stored avatar URL into its ImageKit file path, e.g.
+ * `/3welle/avatars/<userId>/avatar-<userId>-<timestamp>.jpeg`. Returns null for
+ * a URL that isn't served by our ImageKit endpoint, such as a Google avatar:
+ * there is no file of ours to delete.
  */
-export async function deleteAvatar(filePath: string): Promise<boolean> {
+export function avatarFilePath(avatarUrl: string): string | null {
+  const endpoint = imagekitEndpoint();
+  if (!avatarUrl.startsWith(`${endpoint}/`)) return null;
+  const path = avatarUrl.slice(endpoint.length).split(/[?#]/)[0];
+  return `/${path.replace(/^\/+/, "")}`;
+}
+
+/** The public URL of an avatar file path; the inverse of avatarFilePath. */
+export function avatarUrlFor(filePath: string): string {
+  return `${imagekitEndpoint()}/${filePath.replace(/^\/+/, "")}`;
+}
+
+/**
+ * Deletes an avatar file by its ImageKit path (see avatarFilePath). A missing
+ * file counts as deleted; any ImageKit error is thrown, so a caller that must
+ * know the file is gone can tell.
+ */
+export async function deleteAvatar(filePath: string): Promise<void> {
   try {
-    // Rate limiting
-    const now = Date.now();
-    const timeSinceLastRequest = now - lastRequestTime;
-    if (timeSinceLastRequest < MIN_REQUEST_INTERVAL) {
-      await delay(MIN_REQUEST_INTERVAL - timeSinceLastRequest);
-    }
-    lastRequestTime = Date.now();
-
-    // First, get the fileId from filePath
-    const files = await imagekit.listFiles({
-      path: filePath.substring(0, filePath.lastIndexOf("/")),
-    });
-
-    const file = files.find(
-      (item): item is FileObject => isFile(item) && item.filePath === filePath,
-    );
-    if (!file) {
-      return true; // File doesn't exist, consider it deleted
-    }
-
-    await imagekit.deleteFile(file.fileId);
-
-    return true;
+    await deleteImageKitFile(filePath);
   } catch (error) {
-    console.error("Error deleting avatar from ImageKit:", {
-      filePath,
-      error: error instanceof Error ? error.message : error,
-      stack: error instanceof Error ? error.stack : undefined,
+    throw new Error(`Failed to delete avatar ${filePath} from ImageKit`, {
+      cause: error,
     });
-    return false;
   }
 }
 
