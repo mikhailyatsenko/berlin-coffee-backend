@@ -30,6 +30,7 @@ const validEnv = (overrides: Record<string, string | undefined> = {}) => ({
   RECAPTCHA_V3_SECRET: "recaptcha",
   PLACE_SUGGESTION_REVIEW_SECRET: "review-secret",
   GOOGLE_PLACES_API_KEY: "places-key",
+  ADMIN_EMAIL: "admin@example.com",
   ...overrides,
 });
 
@@ -52,6 +53,14 @@ test("a missing required variable fails, naming every missing one", () => {
     () =>
       buildConfig(validEnv({ JWT_SECRET: undefined, GOOGLE_PLACES_API_KEY: "" })),
     /Missing required environment variables: JWT_SECRET, GOOGLE_PLACES_API_KEY/,
+  );
+});
+
+test("the admin address comes from ADMIN_EMAIL, which is required", () => {
+  assert.equal(buildConfig(validEnv()).adminEmail, "admin@example.com");
+  assert.throws(
+    () => buildConfig(validEnv({ ADMIN_EMAIL: undefined })),
+    /Missing required environment variables: ADMIN_EMAIL/,
   );
 });
 

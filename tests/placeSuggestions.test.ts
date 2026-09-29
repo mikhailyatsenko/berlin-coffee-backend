@@ -1,6 +1,6 @@
 /**
  * Place suggestions: submitting one and opening it from the admin's review
- * link, against a throwaway mongod and a fake MailerSend.
+ * link, against a throwaway mongod and a fake mail transport.
  *
  * Run: npm test
  */
@@ -13,10 +13,11 @@ import type { IUser } from "../src/models/User.js";
 import type { GuestContext } from "../src/utils/guestAuth.js";
 import { setTestEnv, useThrowawayMongod } from "./support/mongod.js";
 import { clientCode } from "./support/clientCode.js";
+import { RecordingTransport } from "./support/mailTransport.js";
 
 setTestEnv();
 
-const { MailerSend } = await import("mailersend");
+const { setMailTransport } = await import("../src/mail/transport.js");
 const { default: PlaceSuggestion } = await import(
   "../src/models/PlaceSuggestion.js"
 );
@@ -38,46 +39,16 @@ const { rejectPlaceSuggestionResolver } = await import(
 const { findGoogleIdsForSuggestionResolver } = await import(
   "../src/graphql/resolvers/placeSuggestionResolver/findGoogleIdsForSuggestionResolver.js"
 );
-const { ADMIN_EMAIL, FROM_EMAIL } = await import(
-  "../src/graphql/resolvers/contactFormResolver/constants/index.js"
-);
+const { FROM_EMAIL } = await import("../src/mail/mail.js");
+const { config } = await import("../src/config/config.js");
 import { callResolver } from "./support/callResolver.js";
 
-// --- fake MailerSend -------------------------------------------------------
+// --- fake mail transport ---------------------------------------------------
 
-interface SentEmail {
-  from: string;
-  to: string[];
-  subject: string;
-  text: string;
-  html: string;
-}
-
-const sent: SentEmail[] = [];
-let sendFails = false;
-
-const emailModule = new MailerSend({ apiKey: "test" }).email;
-(
-  Object.getPrototypeOf(emailModule) as {
-    send: (params: {
-      from: { email: string };
-      to: { email: string }[];
-      subject: string;
-      text: string;
-      html: string;
-    }) => Promise<unknown>;
-  }
-).send = async (params) => {
-  if (sendFails) throw new Error("MailerSend 500");
-  sent.push({
-    from: params.from.email,
-    to: params.to.map((r) => r.email),
-    subject: params.subject,
-    text: params.text,
-    html: params.html,
-  });
-  return {};
-};
+const transport = new RecordingTransport();
+setMailTransport(transport);
+const sent = transport.sent;
+type SentEmail = (typeof sent)[number];
 
 // --- fake Google Text Search -----------------------------------------------
 
@@ -123,7 +94,7 @@ useThrowawayMongod();
 
 beforeEach(async () => {
   sent.length = 0;
-  sendFails = false;
+  transport.fails = false;
   fetchCalls.length = 0;
   setGoogleResponse(200, { places: [] });
   await PlaceSuggestion.deleteMany({});
@@ -387,8 +358,8 @@ test("the admin gets an email with the suggestion and a link whose token opens i
 
   assert.equal(sent.length, 1);
   const [email] = sent;
-  assert.deepEqual(email.to, [ADMIN_EMAIL]);
-  assert.equal(email.from, FROM_EMAIL);
+  assert.equal(email.to, config.adminEmail);
+  assert.equal(email.from.email, FROM_EMAIL);
   for (const body of [email.text, email.html]) {
     assert.ok(body.includes("Bonanza Coffee"));
     assert.ok(body.includes("Oderberger Str. 35, 10435 Berlin"));
@@ -435,7 +406,7 @@ test("the admin email says a Guest suggested it, and HTML in the name is escaped
 });
 
 test("a failed email is logged but the suggestion is still saved and returned", async () => {
-  sendFails = true;
+  transport.fails = true;
   const originalError = console.error;
   const logged: unknown[][] = [];
   console.error = (...args) => void logged.push(args);
@@ -682,7 +653,7 @@ test("the outcome email goes to the User's account email", async () => {
   const outcome = await publish(id, token, publishInput());
 
   assert.equal(sent.length, 1);
-  assert.deepEqual(sent[0].to, ["owner@example.com"]);
+  assert.equal(sent[0].to, "owner@example.com");
   assert.ok(sent[0].text.includes(`/place/${outcome.publishedPlaceId}`));
 });
 
@@ -698,7 +669,7 @@ test("the outcome email goes to the Guest's email, then it is erased", async () 
   await publish(id, token, publishInput());
 
   assert.equal(sent.length, 1);
-  assert.deepEqual(sent[0].to, ["guest@example.com"]);
+  assert.equal(sent[0].to, "guest@example.com");
 
   const doc = await PlaceSuggestion.findById(id).lean();
   assert.ok(!("guestEmail" in (doc ?? {})));

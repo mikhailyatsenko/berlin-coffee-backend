@@ -2,8 +2,7 @@ import User from "../../../models/User.js";
 import crypto from "crypto";
 import { addHours } from "date-fns";
 import { config } from "../../../config/config.js";
-import { MailerSend, EmailParams, Sender, Recipient } from "mailersend";
-import { FROM_EMAIL, FROM_NAME } from "../contactFormResolver/constants/index.js";
+import { sendPasswordReset } from "../../../mail/mail.js";
 import type { MutationResolvers } from "../../generated/types.js";
 import { normalizeEmail } from "../../../utils/normalizeEmail.js";
 
@@ -25,26 +24,7 @@ export const requestPasswordResetResolver: MutationResolvers["requestPasswordRes
 
     const resetUrl = `${config.frontendUrl}/reset-password?token=${rawToken}&email=${encodeURIComponent(normalizedEmail)}`;
 
-    const mailerSend = new MailerSend({ apiKey: config.mailerSendApiKey });
-
-    try {
-      await mailerSend.email.send(
-        new EmailParams()
-          .setFrom(new Sender(FROM_EMAIL, FROM_NAME))
-          .setTo([new Recipient(normalizedEmail)])
-          .setSubject("Reset your password on 3.Welle")
-          .setHtml(
-            `<p>You (or someone else) requested to reset the password for your 3.Welle account.</p>
-             <p>If it was you, click <a href="${resetUrl}">this link</a> to set a new password. The link is valid for 1 hour.</p>
-             <p>If you did not request this, you can safely ignore this message.</p>`,
-          )
-          .setText(
-            `You requested to reset the password for your 3.Welle account.\n\nReset link: ${resetUrl}\nThis link is valid for 1 hour. If you didn't request this, ignore this email.`,
-          ),
-      );
-    } catch (error) {
-      console.error("Error sending reset password email:", error);
-    }
+    await sendPasswordReset(normalizedEmail, resetUrl);
   }
 
   // Always return success to prevent email enumeration

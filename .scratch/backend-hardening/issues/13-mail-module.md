@@ -1,6 +1,6 @@
 # 13: One mail module with escaped templates
 
-Status: ready-for-agent
+Status: done
 Blocked by: 01 (Error contract foundation), 03 (Config module), 04 (Typed resolvers)
 Source: [Email module, escaping, and the contact-form confirmation mail](../../backend-audit/issues/07-email-module-and-escaping.md)
 
@@ -32,11 +32,23 @@ Eight resolvers each build and send their own MailerSend mail. User input is int
 
 ## Acceptance criteria
 
-- [ ] No resolver imports MailerSend or reads the MailerSend key; all 8 senders go through `src/mail/`.
-- [ ] Test: a `<script>`/`"` in a name or message arrives escaped in the HTML body and unescaped in the text part.
-- [ ] Test: `contactForm` sends exactly one mail (to the admin, `Reply-To` = submitter); a transport failure fails the operation with `INTERNAL_SERVER_ERROR`.
-- [ ] Test: a transport failure on registration still creates the User and returns success (logged).
-- [ ] Test: the 6th `contactForm` from one IP within an hour → `RATE_LIMITED`; same for `reportInaccuracy`.
-- [ ] Existing Place suggestion tests use the transport fake and pass.
-- [ ] `ADMIN_EMAIL` is required by config; the personal address is gone from the code.
-- [ ] `tsc --noEmit` and `npm test` pass.
+- [x] No resolver imports MailerSend or reads the MailerSend key; all 8 senders go through `src/mail/`.
+- [x] Test: a `<script>`/`"` in a name or message arrives escaped in the HTML body and unescaped in the text part.
+- [x] Test: `contactForm` sends exactly one mail (to the admin, `Reply-To` = submitter); a transport failure fails the operation with `INTERNAL_SERVER_ERROR`.
+- [x] Test: a transport failure on registration still creates the User and returns success (logged).
+- [x] Test: the 6th `contactForm` from one IP within an hour → `RATE_LIMITED`; same for `reportInaccuracy`.
+- [x] Existing Place suggestion tests use the transport fake and pass.
+- [x] `ADMIN_EMAIL` is required by config; the personal address is gone from the code.
+- [x] `tsc --noEmit` and `npm test` pass.
+
+## Comments
+
+2026-09-29 (implement): Done on `feat/mail-module`.
+
+- `src/mail/`: `mail.ts` (one function per mail, `FROM_EMAIL`/`FROM_NAME`, admin address from `config.adminEmail`; a private throwing `send` and a logging `sendBestEffort`, and each mail's role is fixed inside the module), `html.ts` (tagged `html` template, escapes every interpolation; a `SafeHtml` fragment nests unescaped), `transport.ts` (`MailTransport` interface, MailerSend built from config, `setMailTransport` for tests).
+- Registration, resend and email change share one confirmation mail. The registration mail loses its "Welcome to 3.Welle" subject and wording. Resend no longer throws on a failed send.
+- Email change now sends after `user.save()`, so a link never carries a token that wasn't stored. `contactForm` rejects a malformed address with `BAD_USER_INPUT`, since it becomes the `Reply-To`.
+- Links (confirm, reset, review, place) are still built in the resolvers. The review link helper `reviewLinkFor` is inlined in `submitPlaceSuggestion`.
+- Rate limit: `contactForm` / `reportInaccuracy` buckets (5/hour, 20/day), counted after the captcha passes; a failed send still counts. Only the hourly limit is tested.
+- Tests: `tests/mail.test.ts` (8), plus `tests/support/mailTransport.ts` (`RecordingTransport`), which replaces the prototype spies in `placeSuggestions`, `placeSuggestionPhotos` and `emailNormalization`. `ADMIN_EMAIL` is in `setTestEnv` and in the config tests.
+- Deploy: `ADMIN_EMAIL` must be added to the server's `.env` before this ships, otherwise the server won't boot (see README).

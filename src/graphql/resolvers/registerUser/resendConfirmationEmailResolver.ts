@@ -1,13 +1,9 @@
 import User, { IUser } from "../../../models/User.js";
 import crypto from "crypto";
 import { appError, notFound } from "../../errors.js";
-import { MailerSend, EmailParams, Sender, Recipient } from "mailersend";
-import {
-  FROM_EMAIL,
-  FROM_NAME,
-} from "../contactFormResolver/constants/index.js";
 import { addHours } from "date-fns";
 import { config } from "../../../config/config.js";
+import { sendEmailConfirmation } from "../../../mail/mail.js";
 import type { MutationResolvers } from "../../generated/types.js";
 import { normalizeEmail } from "../../../utils/normalizeEmail.js";
 
@@ -42,20 +38,7 @@ export const resendConfirmationEmailResolver: MutationResolvers["resendConfirmat
 
     const confirmationUrl = `${config.frontendUrl}/confirm-email?token=${rawToken}&email=${encodeURIComponent(email)}`;
 
-    const mailerSend = new MailerSend({
-      apiKey: config.mailerSendApiKey,
-    });
-
-    await mailerSend.email.send(
-      new EmailParams()
-        .setFrom(new Sender(FROM_EMAIL, FROM_NAME))
-        .setTo([new Recipient(email)])
-        .setSubject("Confirm your email")
-        .setHtml(
-          `<p>Click <a href="${confirmationUrl}">here</a> to confirm your email. This link is valid for 1 hour.</p>`,
-        )
-        .setText(`Confirm your email: ${confirmationUrl} (valid for 1 hour)`),
-    );
+    await sendEmailConfirmation(email, confirmationUrl);
 
     return { success: true };
   };

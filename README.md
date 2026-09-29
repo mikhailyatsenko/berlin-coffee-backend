@@ -59,6 +59,12 @@ is capped by the per-IP limits in `src/utils/rateLimit.ts`.
 The server refuses to boot without it: captcha verification fails closed, so
 starting without a secret would only reject every submission at runtime.
 
+### Admin address
+
+    ADMIN_EMAIL=...   # gets contact messages, inaccuracy reports and Place suggestions
+
+Required as well: the server refuses to boot without it.
+
 ### Deploy order
 
 1. Run the index migration, **before** deploying the new code:

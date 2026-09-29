@@ -7,7 +7,7 @@ import {
   isInsideBerlin,
 } from "../../../utils/berlinGeography.js";
 import { invalidateNeighborhoodsCache } from "../availableNeighborhoodsResolver/services/neighborhoodsService.js";
-import { sendSuggestionPublishedEmail } from "./sendSuggestionPublishedEmail.js";
+import { sendSuggestionPublished } from "../../../mail/mail.js";
 import { suggestionOutcome } from "./placeSuggestionOutcome.js";
 import PlaceSuggestion from "../../../models/PlaceSuggestion.js";
 import {
@@ -178,7 +178,10 @@ export const publishPlaceSuggestionResolver: MutationResolvers["publishPlaceSugg
     : suggestion.guestEmail;
 
   if (recipientEmail) {
-    await sendSuggestionPublishedEmail(recipientEmail, place._id.toString());
+    await sendSuggestionPublished(
+      recipientEmail,
+      `${config.frontendUrl}/place/${place._id.toString()}`,
+    );
   }
 
   return suggestionOutcome({ status: "published", publishedPlaceId: place._id });

@@ -3,7 +3,9 @@ import validator from "validator";
 import PlaceSuggestion from "../../../models/PlaceSuggestion.js";
 import { clientIp, consumeRateLimit } from "../../../utils/rateLimit.js";
 import { resolveReviewActor } from "../../../utils/reviewActor.js";
-import { sendAdminSuggestionEmail } from "./sendAdminSuggestionEmail.js";
+import { config } from "../../../config/config.js";
+import { sendSuggestionToAdmin } from "../../../mail/mail.js";
+import { signReviewToken } from "../../../utils/placeSuggestionToken.js";
 import type { MutationResolvers } from "../../generated/types.js";
 
 const MAX_NAME_LENGTH = 200;
@@ -78,11 +80,11 @@ export const submitPlaceSuggestionResolver: MutationResolvers["submitPlaceSugges
       ...(guestEmail && { guestEmail }),
     });
 
-    await sendAdminSuggestionEmail({
-      id: suggestion.id,
+    await sendSuggestionToAdmin({
       name,
       address,
       suggestedBy: actor.isGuest ? "guest" : "user",
+      reviewUrl: `${config.frontendUrl}/suggestions/${suggestion.id}/review?token=${signReviewToken(suggestion.id)}`,
     });
 
     return suggestion.id;

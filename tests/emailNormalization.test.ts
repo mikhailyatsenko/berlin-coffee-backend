@@ -1,7 +1,7 @@
 /**
  * One canonical form for an email address (trimmed, lowercase) on every write
  * and every lookup, so the same address in a different case is the same User.
- * Against a throwaway mongod, a fake MailerSend, a fake reCAPTCHA and a fake
+ * Against a throwaway mongod, a fake mail transport, a fake reCAPTCHA and a fake
  * Google OAuth client.
  *
  * Run: npm test
@@ -14,7 +14,7 @@ import { setTestEnv, useThrowawayMongod } from "./support/mongod.js";
 
 setTestEnv();
 
-const { MailerSend } = await import("mailersend");
+const { setMailTransport } = await import("../src/mail/transport.js");
 const { OAuth2Client } = await import("google-auth-library");
 const { default: User } = await import("../src/models/User.js");
 const { normalizeEmail } = await import("../src/utils/normalizeEmail.js");
@@ -41,19 +41,13 @@ const { loginWithGoogleResolver } = await import(
 );
 import { callResolver } from "./support/callResolver.js";
 import { clientCode } from "./support/clientCode.js";
+import { RecordingTransport } from "./support/mailTransport.js";
 
-// --- fake MailerSend: keeps who got mail and the link in it ------------------
+// --- fake mail transport: keeps who got mail and the link in it -------------
 
-const sent: { to: string[]; text: string }[] = [];
-
-(
-  Object.getPrototypeOf(new MailerSend({ apiKey: "test" }).email) as {
-    send: (params: { to: { email: string }[]; text: string }) => Promise<unknown>;
-  }
-).send = async (params) => {
-  sent.push({ to: params.to.map((r) => r.email), text: params.text });
-  return {};
-};
+const transport = new RecordingTransport();
+setMailTransport(transport);
+const sent = transport.sent;
 
 /** The token from the confirmation link in the last email sent. */
 const lastConfirmationToken = () => {
@@ -135,7 +129,7 @@ test("register as ' Anna@X.de ', then sign in as anna@x.de: success, stored as a
 
   const stored = await User.findOne({}).lean();
   assert.equal(stored?.email, "anna@x.de");
-  assert.deepEqual(sent.at(-1)?.to, ["anna@x.de"]);
+  assert.equal(sent.at(-1)?.to, "anna@x.de");
 
   await User.updateOne({}, { isEmailConfirmed: true });
   const result = await callResolver(
@@ -169,13 +163,13 @@ test("resend confirmation matches regardless of case", async () => {
     email: "ANNA@X.DE ",
   });
   assert.equal(result?.success, true);
-  assert.deepEqual(sent.at(-1)?.to, ["anna@x.de"]);
+  assert.equal(sent.at(-1)?.to, "anna@x.de");
 });
 
 test("resend for a pending email change matches regardless of case", async () => {
   await createUser("anna@x.de", { pendingEmail: "new@x.de" });
   await callResolver(resendConfirmationEmailResolver, { email: "New@X.de" });
-  assert.deepEqual(sent.at(-1)?.to, ["new@x.de"]);
+  assert.equal(sent.at(-1)?.to, "new@x.de");
   assert.match(sent.at(-1)!.text, /email=new%40x\.de/);
 });
 
@@ -202,7 +196,7 @@ test("email change: stored and confirmed regardless of case", async () => {
   );
   assert.equal(changed?.pendingEmail, "new@x.de");
   assert.equal((await User.findById(user._id).lean())?.pendingEmail, "new@x.de");
-  assert.deepEqual(sent.at(-1)?.to, ["new@x.de"]);
+  assert.equal(sent.at(-1)?.to, "new@x.de");
 
   const token = lastConfirmationToken();
   const confirmed = await callResolver(
@@ -253,7 +247,7 @@ test("email change to another User's address in another case: already exists", a
 test("password reset request finds the User regardless of case", async () => {
   await createUser("anna@x.de");
   await callResolver(requestPasswordResetResolver, { email: " ANNA@x.de" });
-  assert.deepEqual(sent.at(-1)?.to, ["anna@x.de"]);
+  assert.equal(sent.at(-1)?.to, "anna@x.de");
 });
 
 test("Google sign-in stores the email in canonical form", async () => {
