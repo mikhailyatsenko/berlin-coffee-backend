@@ -1,6 +1,6 @@
 # 06: Mutations validate their input (Rating range, Place id, lengths)
 
-Status: ready-for-agent
+Status: done
 Blocked by: 04 (Typed resolvers)
 Source: `map.md` Notes, "Rating range on update", "Length limits", "Input validation"
 
@@ -24,7 +24,22 @@ All violations throw `BAD_USER_INPUT` with a user-facing message (error module f
 
 ## Acceptance criteria
 
-- [ ] Test: `addRating` with `4.5`, `0` and `6` → `BAD_USER_INPUT`, both on a first Rating and on an update; stored Rating unchanged.
-- [ ] Test: `addRating` / `addTextReview` with a malformed `placeId` → `BAD_USER_INPUT`; with an unknown valid id → `NOT_FOUND`; no Interaction created.
-- [ ] Test: over-long `reviewText`, empty/over-long `displayName`, and a password over 72 bytes (multi-byte characters counted as bytes) are refused.
-- [ ] `tsc --noEmit` and `npm test` pass.
+- [x] Test: `addRating` with `4.5`, `0` and `6` → `BAD_USER_INPUT`, both on a first Rating and on an update; stored Rating unchanged.
+- [x] Test: `addRating` / `addTextReview` with a malformed `placeId` → `BAD_USER_INPUT`; with an unknown valid id → `NOT_FOUND`; no Interaction created.
+- [x] Test: over-long `reviewText`, empty/over-long `displayName`, and a password over 72 bytes (multi-byte characters counted as bytes) are refused.
+- [x] `tsc --noEmit` and `npm test` pass.
+
+## Comments
+
+**2026-09-29, implemented** (branch `feat/mutations-validate-input`).
+
+- `src/utils/validateInput.ts`: `assertRating` (whole number 1–5), `assertReviewText` (≤ 1000 characters after trim), `parseDisplayName` (returns the trimmed name, 1–50 characters), `assertNewPassword` (8–72 UTF-8 bytes) and `assertPlaceExists` (malformed id → `BAD_USER_INPUT` "Invalid placeId", the same message as `placeResolver`; unknown id → `NOT_FOUND` "Place not found"). All errors come from the `errors.ts` constructors.
+- `addRating` / `addTextReview`: the value check runs first, then the actor, then the Place check. So a refused call creates no Interaction and costs no guest quota. The schema type for Rating stays `Float!`; the check is in the resolver, as the ticket asks.
+- register, `setNewPassword` and `resetPassword` go through `assertNewPassword`. Sign-in is untouched (tested with a 5-character password).
+- Decisions beyond the letter of the ticket:
+  - The name is **stored trimmed** (register and `updatePersonalData`). Review text is only *measured* after trim and stored as sent, so the returned `text` stays unchanged.
+  - `updatePersonalData`: `displayName: null` means "no change". An empty or blank string is now refused (it used to be "no change"; the frontend always sends a required, trimmed name). Resending the **current** name is also "no change", so a User whose name is already over 50 characters (e.g. from Google) can still change their email in AccountSettings, which always sends the name.
+  - The password minimum is also counted in bytes, as the ticket says. A 4-character Cyrillic password (8 bytes) passes the server, while the frontend's Yup `min(8)` counts characters and stops it first. The message stays "at least 8 characters long". Over 72 bytes the message is "Password is too long".
+- Code review: Standards found no hard violations and Spec found nothing missing. Applied: `parseDisplayName` instead of `validDisplayName`, constants for the Rating bounds, the `placeId` message aligned with `placeResolver`, test titles in glossary terms, and the exemption for an unchanged long name (plus a test). Not applied, as candidates for later: the same placeId check hand-rolled in `toggleFavorite`, `toggleCharacteristic` and `placeResolver` (not in this ticket's scope), and `withCode` / the fake reCAPTCHA copied between test files (they could move to `tests/support/`).
+- Tests: `tests/inputValidation.test.ts` covers every acceptance criterion, both boundaries (1 and 5, 1000 characters, 50 characters, exactly 72 bytes) and sign-in. `tsc --noEmit` is clean and `npm test` passes 164/164.
+- Frontend: nothing blocking, since the schema is unchanged. Optional follow-up: `maxLength` 50 on the name and a 72-byte limit on the password in the forms, so the user sees the limit before the server refuses. Not handed off.

@@ -2,6 +2,7 @@ import bcrypt from "bcrypt";
 import { requireUser } from "../../context.js";
 import { badInput, forbidden } from "../../errors.js";
 import type { MutationResolvers } from "../../generated/types.js";
+import { assertNewPassword } from "../../../utils/validateInput.js";
 
 export const setNewPasswordResolver: MutationResolvers["setNewPassword"] =
   async (_parent, { userId, oldPassword, newPassword }, context) => {
@@ -21,9 +22,7 @@ export const setNewPasswordResolver: MutationResolvers["setNewPassword"] =
       }
     }
 
-    if (newPassword.length < 8) {
-      throw badInput("Password must be at least 8 characters long");
-    }
+    assertNewPassword(newPassword);
 
     user.password = await bcrypt.hash(newPassword, 10);
     await user.save();

@@ -14,10 +14,14 @@ import { clientIp } from "../../../utils/rateLimit.js";
 import { verifyRecaptcha } from "../../../utils/verifyRecaptcha.js";
 import type { MutationResolvers } from "../../generated/types.js";
 import { normalizeEmail } from "../../../utils/normalizeEmail.js";
+import {
+  assertNewPassword,
+  parseDisplayName,
+} from "../../../utils/validateInput.js";
 
 export const registerUserResolver: MutationResolvers["registerUser"] = async (
   _parent,
-  { email: rawEmail, displayName, password, captchaToken },
+  { email: rawEmail, displayName: rawDisplayName, password, captchaToken },
   { req },
 ) => {
   await verifyRecaptcha(captchaToken ?? "", "register_user", clientIp(req));
@@ -28,9 +32,8 @@ export const registerUserResolver: MutationResolvers["registerUser"] = async (
     throw badInput("Invalid email address");
   }
 
-  if (password.length < 8) {
-    throw badInput("Password must be at least 8 characters long");
-  }
+  const displayName = parseDisplayName(rawDisplayName);
+  assertNewPassword(password);
 
   const existingUser = await User.findOne({ email });
   if (existingUser) {
