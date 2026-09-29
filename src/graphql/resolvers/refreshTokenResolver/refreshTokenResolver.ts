@@ -1,4 +1,4 @@
-import { GraphQLError } from "graphql";
+import { appError } from "../../errors.js";
 import { Response, Request } from "express";
 import { refreshAccessToken } from "../../../utils/tokenUtils.js";
 import { formatUserResponse } from "../../../utils/authHelpers.js";
@@ -11,21 +11,13 @@ export async function refreshTokenResolver(
   const refreshToken = req.cookies.refreshToken;
 
   if (!refreshToken) {
-    throw new GraphQLError("No refresh token provided", {
-      extensions: {
-        code: "UNAUTHENTICATED",
-      },
-    });
+    throw appError("UNAUTHENTICATED", "No refresh token provided");
   }
 
   const result = await refreshAccessToken(refreshToken, res);
 
   if (!result) {
-    throw new GraphQLError("Invalid or expired refresh token", {
-      extensions: {
-        code: "UNAUTHENTICATED",
-      },
-    });
+    throw appError("UNAUTHENTICATED", "Invalid or expired refresh token");
   }
 
   return {

@@ -12,6 +12,7 @@ import type { Request } from "express";
 import type { IUser } from "../src/models/User.js";
 import type { GuestContext } from "../src/utils/guestAuth.js";
 import { setTestEnv, useThrowawayMongod } from "./support/mongod.js";
+import { clientCode } from "./support/clientCode.js";
 
 setTestEnv();
 
@@ -202,12 +203,12 @@ const reject = (id: string, token: string) =>
 const findGoogleIds = (id: string, token: string) =>
   findGoogleIdsForSuggestionResolver(undefined as never, { id, token });
 
+/** The code the client sees for the rejection, after formatError. */
 const codeOf = async (p: Promise<unknown>) => {
   try {
     await p;
   } catch (e) {
-    assert.ok(e instanceof GraphQLError, `not a GraphQLError: ${String(e)}`);
-    return e.extensions.code;
+    return clientCode(e);
   }
   assert.fail("expected the call to be rejected");
 };
@@ -849,7 +850,7 @@ test("a failed Google response is a clear error", async () => {
 
   assert.equal(
     await codeOf(findGoogleIds(id, token)),
-    "GOOGLE_LOOKUP_FAILED",
+    "INTERNAL_SERVER_ERROR",
   );
 });
 

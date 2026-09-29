@@ -205,8 +205,8 @@ export async function uploadAvatar(
     // Return filePath instead of fileId for compatibility
     return result.filePath;
   } catch (error) {
-    console.error("Error uploading avatar to ImageKit:", error);
-    throw new Error("Failed to upload avatar to ImageKit");
+    // Logged once, with this cause, by formatError.
+    throw new Error("Failed to upload avatar to ImageKit", { cause: error });
   }
 }
 
@@ -280,10 +280,12 @@ export async function uploadReviewImage(
 
     return result.filePath;
   } catch (error) {
-    console.error("Error uploading review image to ImageKit:", error);
     // The caller needs to know when an abandoned upload is really over.
     if (error instanceof UploadTimeoutError) throw error;
-    throw new Error("Failed to upload review image to ImageKit");
+    // Logged once, with this cause, by formatError.
+    throw new Error("Failed to upload review image to ImageKit", {
+      cause: error,
+    });
   }
 }
 
@@ -417,9 +419,11 @@ export async function uploadPlaceSuggestionPhoto(
 
     return result.filePath;
   } catch (error) {
-    console.error("Error uploading suggestion photo to ImageKit:", error);
     if (error instanceof UploadTimeoutError) throw error;
-    throw new Error("Failed to upload suggestion photo to ImageKit");
+    // Logged once, with this cause, by formatError.
+    throw new Error("Failed to upload suggestion photo to ImageKit", {
+      cause: error,
+    });
   }
 }
 

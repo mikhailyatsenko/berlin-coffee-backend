@@ -1,7 +1,11 @@
-import { GraphQLError } from "graphql";
+import { unauthenticated } from "../graphql/errors.js";
 import mongoose from "mongoose";
 import { IUser } from "../models/User.js";
-import { GuestContext, requireGuestIdentity } from "./guestAuth.js";
+import {
+  GuestContext,
+  invalidGuestError,
+  requireGuestIdentity,
+} from "./guestAuth.js";
 
 /**
  * Reviews belong to either a signed-in user or a guest identity. This resolves
@@ -40,21 +44,14 @@ export async function resolveReviewActor(
   // falling through to "sign in": the client has to drop them and mint a new
   // identity, which is a different instruction.
   if (guest?.status === "invalid") {
-    throw new GraphQLError("Guest session is not valid", {
-      extensions: { code: "GUEST_IDENTITY_INVALID", reason: guest.reason },
-    });
+    throw invalidGuestError(guest.reason);
   }
 
   // Argument form, kept while the previous frontend build is still being
   // served. Remove together with the rest of the rollout compatibility once
   // every client sends the headers.
   if (!guestId || !guestSecret) {
-    throw new GraphQLError("Authentication required", {
-      extensions: {
-        code: "UNAUTHENTICATED",
-        requiresLogin: true,
-      },
-    });
+    throw unauthenticated();
   }
 
   const identity = await requireGuestIdentity(guestId, guestSecret);

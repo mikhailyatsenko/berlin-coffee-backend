@@ -1,4 +1,3 @@
-import { GraphQLError } from "graphql";
 import mongoose from "mongoose";
 import Place from "../../../models/Place.js";
 import User from "../../../models/User.js";
@@ -18,7 +17,7 @@ import {
   placeSuggestionPhotoFolder,
 } from "../../../utils/imagekit.js";
 import { REVIEW_IMAGE_UPLOAD_TIMEOUT_MS } from "../../../config/env.js";
-import { appError } from "../../errors.js";
+import { appError, badInput } from "../../errors.js";
 
 interface PublishPlaceSuggestionInput {
   name: string;
@@ -33,9 +32,6 @@ interface PublishPlaceSuggestionInput {
   /** The suggestion's own photo paths to keep, in upload order. Must belong to this suggestion. */
   photoPaths?: string[] | null;
 }
-
-const badInput = (message: string) =>
-  new GraphQLError(message, { extensions: { code: "BAD_USER_INPUT" } });
 
 /**
  * `existingPlaceId` lets the review page link to the Place. The message keeps
@@ -125,24 +121,16 @@ export async function publishPlaceSuggestionResolver(
 
   if (keptPhotoPaths.length > 0) {
     const deadline = new Date(Date.now() + REVIEW_IMAGE_UPLOAD_TIMEOUT_MS);
-    try {
-      await Promise.all(
-        keptPhotoPaths.map((path, index) =>
-          copyPlaceSuggestionPhotoToPlace(
-            path,
-            placeId.toString(),
-            index === 0,
-            deadline,
-          ),
+    await Promise.all(
+      keptPhotoPaths.map((path, index) =>
+        copyPlaceSuggestionPhotoToPlace(
+          path,
+          placeId.toString(),
+          index === 0,
+          deadline,
         ),
-      );
-    } catch (error) {
-      console.error("Error copying suggestion photos to the new Place:", error);
-      throw new GraphQLError(
-        "Failed to copy the suggestion's photos to the new Place; try Publish again",
-        { extensions: { code: "INTERNAL_SERVER_ERROR" } },
-      );
-    }
+      ),
+    );
     // Real ImageKit paths always carry a leading slash (as `photos` entries and
     // getPlaceImages() results already do); match that here too.
     cardImage = `/${placePhotoFolder(placeId.toString())}/main.jpg`;

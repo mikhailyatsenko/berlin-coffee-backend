@@ -1,9 +1,15 @@
 import User, { IUser } from "../../../models/User.js";
 import crypto from "crypto";
-import { GraphQLError } from "graphql";
+import { appError } from "../../errors.js";
 import { Response } from "express";
 import { setAuthCookies, formatUserResponse } from "../../../utils/authHelpers.js";
 
+/**
+ * An unknown email, a mismatched one and a wrong token all read as the same
+ * broken link, so the link reveals nothing about which emails are registered.
+ */
+const invalidLink = () =>
+  appError("INVALID_TOKEN", "Invalid confirmation link");
 
 export async function confirmEmailResolver(
   _: never,
@@ -18,48 +24,30 @@ export async function confirmEmailResolver(
     user = (await User.findOne({ pendingEmail: email })) as IUser | null;
   }
   if (!user) {
-    throw new GraphQLError("User not found", {
-      extensions: {
-        code: "USER_NOT_FOUND",
-      },
-    });
+    throw invalidLink();
   }
 
   // Two flows with guard clauses: registration (no pendingEmail) vs email-change (has pendingEmail)
   const isEmailChange = Boolean(user.pendingEmail);
   if (isEmailChange && user.pendingEmail !== email) {
-    throw new GraphQLError("Invalid email", {
-      extensions: { code: "INVALID_EMAIL" },
-    });
+    throw invalidLink();
   }
   if (!isEmailChange && user.isEmailConfirmed) {
-    throw new GraphQLError("Email is already confirmed", {
-      extensions: { code: "EMAIL_ALREADY_CONFIRMED" },
-    });
+    throw appError("EMAIL_ALREADY_CONFIRMED", "Email is already confirmed");
   }
   if (!isEmailChange && user.email !== email) {
-    throw new GraphQLError("Invalid email", {
-      extensions: { code: "INVALID_EMAIL" },
-    });
+    throw invalidLink();
   }
 
   if (
     !user.emailConfirmationTokenExpires ||
     user.emailConfirmationTokenExpires < new Date()
   ) {
-    throw new GraphQLError("Confirmation link has expired", {
-      extensions: {
-        code: "TOKEN_EXPIRED",
-      },
-    });
+    throw appError("TOKEN_EXPIRED", "Confirmation link has expired");
   }
 
   if (user.emailConfirmationToken !== hashedToken) {
-    throw new GraphQLError("Invalid confirmation link", {
-      extensions: {
-        code: "INVALID_TOKEN",
-      },
-    });
+    throw invalidLink();
   }
 
   // If this is a pending email change, swap emails; otherwise mark confirmed

@@ -1,5 +1,5 @@
 import { Request } from "express";
-import { GraphQLError } from "graphql";
+import { badInput } from "../../errors.js";
 import validator from "validator";
 import PlaceSuggestion from "../../../models/PlaceSuggestion.js";
 import { IUser } from "../../../models/User.js";
@@ -23,9 +23,6 @@ interface SubmitPlaceSuggestionArgs extends GuestArgs {
     email?: string | null;
   };
 }
-
-const badInput = (message: string) =>
-  new GraphQLError(message, { extensions: { code: "BAD_USER_INPUT" } });
 
 /** Trimmed text, or undefined when there is none: absent, never empty, in the database. */
 function optionalText(

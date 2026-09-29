@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { Request } from "express";
-import { GraphQLError } from "graphql";
+import { appError, badInput, forbidden } from "../../errors.js";
 import Interaction from "../../../models/Interaction.js";
 import { IUser } from "../../../models/User.js";
 import {
@@ -102,17 +102,13 @@ export async function uploadReviewImageResolver(
   const actor = await resolveReviewActor(user, guest, { guestId, guestSecret });
 
   if (!fileBuffer) {
-    throw new GraphQLError("Invalid file data", {
-      extensions: { code: "BAD_USER_INPUT" },
-    });
+    throw badInput("Invalid file data");
   }
 
   const buffer = Buffer.from(fileBuffer, "base64");
 
   if (buffer.length === 0 || buffer.length > MAX_DECODED_BYTES) {
-    throw new GraphQLError("Photo is too large", {
-      extensions: { code: "BAD_USER_INPUT" },
-    });
+    throw badInput("Photo is too large");
   }
 
   if (actor.isGuest) {
@@ -152,20 +148,18 @@ export async function uploadReviewImageResolver(
     }).select("reviewImages");
 
     if (!current) {
-      throw new GraphQLError(
-        "Review not found or you don't have permission to edit it",
-        { extensions: { code: "FORBIDDEN" } },
-      );
+      throw forbidden("Review not found or you don't have permission to edit it");
     }
     if ((current.reviewImages ?? 0) >= MAX_IMAGES_PER_REVIEW) {
-      throw new GraphQLError(
+      throw appError(
+        "IMAGE_LIMIT_REACHED",
         "This review already has the maximum number of photos",
-        { extensions: { code: "IMAGE_LIMIT_REACHED" } },
       );
     }
-    throw new GraphQLError("Another photo of this review is still uploading", {
-      extensions: { code: "UPLOAD_IN_PROGRESS" },
-    });
+    throw appError(
+      "UPLOAD_IN_PROGRESS",
+      "Another photo of this review is still uploading",
+    );
   }
 
   const previous = leased.reviewImages ?? 0;
@@ -216,10 +210,7 @@ export async function uploadReviewImageResolver(
     } else {
       await releaseLease();
     }
-    console.error("Error uploading review image:", error);
-    throw new GraphQLError("Failed to upload photo", {
-      extensions: { code: "INTERNAL_SERVER_ERROR" },
-    });
+    throw error;
   }
 
   // The file exists now: count it, but only if nothing changed under us. A
@@ -236,12 +227,9 @@ export async function uploadReviewImageResolver(
 
   if (committed.modifiedCount !== 1) {
     await releaseLease();
-    console.error(
+    throw new Error(
       `Review image ${index} of review ${reviewId} was uploaded but not counted`,
     );
-    throw new GraphQLError("Failed to upload photo", {
-      extensions: { code: "INTERNAL_SERVER_ERROR" },
-    });
   }
 
   return { reviewImages: index };

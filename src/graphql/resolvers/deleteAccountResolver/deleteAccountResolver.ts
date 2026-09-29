@@ -1,34 +1,18 @@
-import User, { IUser } from "../../../models/User.js";
+import User from "../../../models/User.js";
 import Interaction from "../../../models/Interaction.js";
-
-interface DeleteAccountContext {
-  user?: IUser;
-}
+import { type Context, requireUser } from "../../context.js";
 
 export const deleteAccountResolver = async (
-  _: any,
-  __: any,
-  context: DeleteAccountContext
+  _: never,
+  __: never,
+  context: Context,
 ) => {
-  try {
-    // Проверяем, что пользователь авторизован
-    if (!context.user) {
-      throw new Error("Пользователь не авторизован");
-    }
+  const userId = requireUser(context)._id;
 
-    const userId = context.user._id;
+  await Interaction.deleteMany({ userId });
+  await User.findByIdAndDelete(userId);
 
-    // Удаляем все интеракции пользователя
-    await Interaction.deleteMany({ userId });
-
-    // Удаляем самого пользователя
-    await User.findByIdAndDelete(userId);
-
-    return {
-      success: true,
-    };
-  } catch (error) {
-    console.error("Ошибка при удалении аккаунта:", error);
-    throw new Error("Не удалось удалить аккаунт");
-  }
+  return {
+    success: true,
+  };
 };

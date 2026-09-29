@@ -10,11 +10,11 @@ import { beforeEach, test } from "node:test";
 import assert from "node:assert/strict";
 import mongoose from "mongoose";
 import sharp from "sharp";
-import { GraphQLError } from "graphql";
 import type { Request } from "express";
 import type { IUser } from "../src/models/User.js";
 import type { GuestContext } from "../src/utils/guestAuth.js";
 import { setTestEnv, useThrowawayMongod } from "./support/mongod.js";
+import { clientCode } from "./support/clientCode.js";
 
 setTestEnv();
 
@@ -245,12 +245,12 @@ const publish = (
 const reject = (id: string, token: string) =>
   rejectPlaceSuggestionResolver(undefined as never, { id, token });
 
+/** The code the client sees for the rejection, after formatError. */
 const codeOf = async (p: Promise<unknown>) => {
   try {
     await p;
   } catch (e) {
-    assert.ok(e instanceof GraphQLError, `not a GraphQLError: ${String(e)}`);
-    return e.extensions.code;
+    return clientCode(e);
   }
   assert.fail("expected the call to be rejected");
 };
@@ -281,7 +281,7 @@ test("a decided suggestion rejects uploads", async () => {
 
   assert.equal(
     await codeOf(uploadPhoto(id, { user: owner })),
-    "SUGGESTION_NOT_PENDING",
+    "FORBIDDEN",
   );
 });
 
@@ -420,11 +420,11 @@ test("a bad token and a decided suggestion are refused by both admin photo opera
   await reject(id, token);
   assert.equal(
     await codeOf(uploadPhotoAsAdmin(id, token)),
-    "SUGGESTION_NOT_PENDING",
+    "FORBIDDEN",
   );
   assert.equal(
     await codeOf(deletePhoto(id, token, path)),
-    "SUGGESTION_NOT_PENDING",
+    "FORBIDDEN",
   );
 });
 

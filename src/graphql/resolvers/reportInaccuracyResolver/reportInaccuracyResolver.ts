@@ -53,12 +53,7 @@ export async function reportInaccuracyResolver(
     .setHtml(ADMIN_MESSAGE_HTML)
     .setText(ADMIN_MESSAGE_TEXT);
 
-  try {
-    await mailerSend.email.send(adminEmailParams);
-  } catch (error) {
-    console.error(error);
-    throw new Error("Failed to send email");
-  }
+  await mailerSend.email.send(adminEmailParams);
 
   return {
     success: true,

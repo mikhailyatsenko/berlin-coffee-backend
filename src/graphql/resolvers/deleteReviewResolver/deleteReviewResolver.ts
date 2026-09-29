@@ -1,9 +1,10 @@
 import { randomUUID } from "node:crypto";
 import mongoose from "mongoose";
 import Interaction from "../../../models/Interaction.js";
-import { GraphQLError } from "graphql";
 import { deleteImageKitFolder } from "../../../utils/imagekit.js";
 import { uploadLeaseUntil } from "../uploadReviewImageResolver/uploadReviewImageResolver.js";
+import { type Context, requireUser } from "../../context.js";
+import { notFound } from "../../errors.js";
 
 /**
  * Clears the review's Photos (and the given text/rating fields) while holding
@@ -75,76 +76,64 @@ export async function deleteReviewResolver(
     reviewId: string;
     deleteOptions: "deleteReviewText" | "deleteRating" | "deleteAll";
   },
-  context: { user: { id: string } },
+  context: Context,
 ) {
-  if (!context.user) {
-    return {
-      success: false,
-      message: "You must be logged in to delete a review",
-    };
+  const user = requireUser(context);
+
+  const interaction = await Interaction.findById(reviewId);
+
+  // Someone else's Review reads as a missing one, so ids don't leak. Guest
+  // reviews have no userId, so this also keeps them out of reach until they
+  // are claimed by an account.
+  if (!interaction || interaction.userId?.toString() !== user.id) {
+    throw notFound("Review not found");
   }
 
-  try {
-    const interaction = await Interaction.findById(reviewId);
+  const unset: Record<string, ""> = {};
+  const clearsText =
+    deleteOptions === "deleteReviewText" || deleteOptions === "deleteAll";
+  const clearsImages =
+    clearsText && !!interaction.reviewImages && interaction.reviewImages > 0;
 
-    // Guest reviews have no userId, so this also keeps them out of reach until
-    // they are claimed by an account.
-    if (!interaction || interaction.userId?.toString() !== context.user.id) {
-      return {
-        success: false,
-        message: "Review not found or you don't have permission to delete it",
-      };
-    }
-
-    const unset: Record<string, ""> = {};
-    const clearsText =
-      deleteOptions === "deleteReviewText" || deleteOptions === "deleteAll";
-    const clearsImages =
-      clearsText && !!interaction.reviewImages && interaction.reviewImages > 0;
-
-    if (clearsText) unset.reviewText = "";
-    if (deleteOptions === "deleteRating" || deleteOptions === "deleteAll") {
-      unset.rating = "";
-    }
-
-    // A single atomic update, not load-mutate-save: it can't race a concurrent
-    // write (another delete, or the upload resolver's own atomic commit) and
-    // lose it.
-    if (!clearsImages) {
-      await Interaction.updateOne({ _id: reviewId }, { $unset: unset });
-    } else {
-      await clearPhotosBehindFence(reviewId, unset, () =>
-        deleteImageKitFolder(
-          `3welle/review-images/${interaction.placeId}/${reviewId}`,
-        ),
-      );
-    }
-
-    const aggregationResult = await Interaction.aggregate([
-      {
-        $match: {
-          placeId: new mongoose.Types.ObjectId(interaction.placeId),
-          rating: { $exists: true, $ne: null },
-        },
-      },
-      {
-        $group: {
-          _id: null,
-          averageRating: { $avg: "$rating" },
-          ratingCount: { $sum: 1 },
-        },
-      },
-    ]);
-
-    const stats = aggregationResult[0] || { averageRating: 0, ratingCount: 0 };
-
-    return {
-      reviewId: reviewId,
-      averageRating: stats.averageRating.toFixed(1),
-      ratingCount: stats.ratingCount,
-    };
-  } catch (error) {
-    console.error("Error deleting review:", error);
-    throw new GraphQLError("Error processing review deletion or rating update");
+  if (clearsText) unset.reviewText = "";
+  if (deleteOptions === "deleteRating" || deleteOptions === "deleteAll") {
+    unset.rating = "";
   }
+
+  // A single atomic update, not load-mutate-save: it can't race a concurrent
+  // write (another delete, or the upload resolver's own atomic commit) and
+  // lose it.
+  if (!clearsImages) {
+    await Interaction.updateOne({ _id: reviewId }, { $unset: unset });
+  } else {
+    await clearPhotosBehindFence(reviewId, unset, () =>
+      deleteImageKitFolder(
+        `3welle/review-images/${interaction.placeId}/${reviewId}`,
+      ),
+    );
+  }
+
+  const aggregationResult = await Interaction.aggregate([
+    {
+      $match: {
+        placeId: new mongoose.Types.ObjectId(interaction.placeId),
+        rating: { $exists: true, $ne: null },
+      },
+    },
+    {
+      $group: {
+        _id: null,
+        averageRating: { $avg: "$rating" },
+        ratingCount: { $sum: 1 },
+      },
+    },
+  ]);
+
+  const stats = aggregationResult[0] || { averageRating: 0, ratingCount: 0 };
+
+  return {
+    reviewId: reviewId,
+    averageRating: stats.averageRating.toFixed(1),
+    ratingCount: stats.ratingCount,
+  };
 }
