@@ -1,6 +1,6 @@
 # 10: Replacing an avatar removes the old file and shows the new one
 
-Status: ready-for-agent
+Status: done
 Blocked by: 04 (Typed resolvers)
 Source: `map.md` Notes, "Avatar"
 
@@ -24,8 +24,19 @@ Uploading a new avatar never deletes the old file, and the new picture often doe
 
 ## Acceptance criteria
 
-- [ ] Test (ImageKit stubbed): uploading a second avatar deletes the first file by its path and stores a different URL.
-- [ ] Test: replacing a Google avatar URL doesn't call ImageKit delete.
-- [ ] Test: a failing delete of the old file still leaves the new avatar saved.
-- [ ] Test: `deleteAvatar` treats a missing file as success and throws on an ImageKit error.
-- [ ] `tsc --noEmit` and `npm test` pass.
+- [x] Test (ImageKit stubbed): uploading a second avatar deletes the first file by its path and stores a different URL.
+- [x] Test: replacing a Google avatar URL doesn't call ImageKit delete.
+- [x] Test: a failing delete of the old file still leaves the new avatar saved.
+- [x] Test: `deleteAvatar` treats a missing file as success and throws on an ImageKit error.
+- [x] `tsc --noEmit` and `npm test` pass.
+
+## Comments
+
+**2026-09-29, implemented** (branch `feat/avatar-replacement`).
+
+- `src/utils/imagekit.ts`: `avatarFilePath(url)` turns a stored avatar URL into its ImageKit path (leading slash, query stripped) or `null` for a URL outside `IMAGEKIT_URL_ENDPOINT`, such as a Google avatar. `avatarUrlFor(path)` is its inverse. `deleteAvatar(path)` now goes through `deleteImageKitFile` and returns `Promise<void>`: a missing file is success, any ImageKit error is thrown with `cause`. Ticket 16 can call `avatarFilePath` then `deleteAvatar` directly.
+- `uploadAvatar` names files `avatar-<userId>-<Date.now()>.jpeg`, so each upload has a new URL. The resolver uploads, saves the new URL, then deletes the old file by its path; a failed delete is only logged. If the old path equals the new one (two uploads in the same millisecond), the delete is skipped, so the new file is never removed.
+- `deleteAvatarResolver` uses the same helper, skips ImageKit for a Google avatar, and still clears the avatar and returns success when ImageKit fails.
+- New `tests/avatarReplacement.test.ts` (fake ImageKit bucket, throwaway mongod): the four criteria, plus an avatar URL stored by the old code (`avatar-<id>.jpeg`) being deleted on upload, and the `deleteAvatar` mutation's three outcomes.
+- Code review, spec axis: applied a test for the old-style stored URL, an assertion that the old file stays when its delete fails, and collapsing repeated leading slashes in `avatarFilePath`. Standards axis: split the two-failure test, restored the reason `fileId` carries a path, made the endpoint helper a documented function, renamed `avatarUrl` to `avatarUrlFor`. Not applied: merging the resolvers' "resolve path, delete, log" shape into one swallowing helper (ticket 16 needs the throwing one; two copies), renaming the helpers to generic ImageKit names (only avatars use them), and stubbing `Date.now` instead of `sleep(2)` in the test.
+- `tsc --noEmit` is clean and `npm test` passes 200/200. No frontend change: the client takes `avatarUrl` from the response and never builds the path.
