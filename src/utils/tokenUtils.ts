@@ -35,20 +35,6 @@ export const getUserFromAccessToken = async (
 };
 
 /**
- * Get user from any valid token (used for legacy endpoints)
- */
-export const getUserFromToken = async (
-  token: string | undefined
-): Promise<IUser | null> => {
-  if (!token) return null;
-  
-  const payload = verifyTokenPayload(token);
-  if (!payload) return null;
-
-  return User.findById(payload.id);
-};
-
-/**
  * Refresh access token using refresh token
  * Creates new access token and sets it in cookie
  * Returns user and new access token if successful, null otherwise
