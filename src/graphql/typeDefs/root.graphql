@@ -43,9 +43,13 @@ type Mutation {
     # is live.
     captchaToken: String
   ): SuccessResponse!
-  resendConfirmationEmail(email: String!): SuccessResponse!
+  # captchaToken: nullable for the same rollout reason as registerUser; the
+  # resolver requires it. Always success: it doesn't say whether the address
+  # has an account.
+  resendConfirmationEmail(email: String!, captchaToken: String): SuccessResponse!
   confirmEmail(token: String!, email: String!): AuthPayload!
-  requestPasswordReset(email: String!): SuccessResponse!
+  # captchaToken: as on resendConfirmationEmail.
+  requestPasswordReset(email: String!, captchaToken: String): SuccessResponse!
   validatePasswordResetToken(email: String!, token: String!): SuccessResponse!
   resetPassword(
     token: String!

@@ -10,10 +10,21 @@
  *   throws, and the error contract masks it as INTERNAL_SERVER_ERROR;
  * - the mail follows state that is already saved (confirmation, password
  *   reset, suggestion mails): it is logged and the operation succeeds.
+ *
+ * Mail to an address the caller typed (confirmation, password reset) is capped
+ * per recipient, so the site can't be used to flood a mailbox. The cap is
+ * counted here, so no caller can skip it; resolvers ask first, before they
+ * write the state the mail is about.
  */
 import { config } from "../config/config.js";
 import { html, type SafeHtml } from "./html.js";
 import { mailTransport } from "./transport.js";
+import {
+  checkRateLimit,
+  countRateLimit,
+  emailKey,
+  isRateLimited,
+} from "../utils/rateLimit.js";
 
 export const FROM_EMAIL = "support@3welle.com";
 export const FROM_NAME = "3 Welle";
@@ -44,9 +55,34 @@ const sendBestEffort = async (
   }
 };
 
+/** Whether this address may get another mail now; for a caller that answers silently. */
+export const recipientAllowed = (email: string): boolean =>
+  !isRateLimited("mailRecipient", emailKey(email));
+
+/** Throws RATE_LIMITED if this address may not get another mail now. */
+export const assertRecipientAllowed = (email: string): void =>
+  checkRateLimit("mailRecipient", emailKey(email));
+
+/**
+ * Best-effort, and counted against the recipient's cap. An exhausted cap
+ * skips the mail; callers that asked first only get here in a race.
+ */
+const sendToCallerAddress = async (
+  content: Content,
+  what: string,
+): Promise<void> => {
+  const recipient = emailKey(content.to);
+  if (isRateLimited("mailRecipient", recipient)) {
+    console.warn(`Not sending ${what}: the recipient's limit is reached`);
+    return;
+  }
+  countRateLimit("mailRecipient", recipient);
+  await sendBestEffort(content, what);
+};
+
 /** Registration, a resend and an email change all confirm an address this way. Best-effort. */
 export const sendEmailConfirmation = (to: string, url: string) =>
-  sendBestEffort(
+  sendToCallerAddress(
     {
       to,
       subject: "Confirm your email on 3.Welle",
@@ -74,7 +110,7 @@ The 3.Welle Team`,
 
 /** Best-effort. */
 export const sendPasswordReset = (to: string, url: string) =>
-  sendBestEffort(
+  sendToCallerAddress(
     {
       to,
       subject: "Reset your password on 3.Welle",
@@ -183,7 +219,8 @@ Review it: ${reviewUrl}`,
 /**
  * Tells the suggester their Place is live. Best-effort: the Place is already
  * created, so failing Publish would only make the admin retry a step that
- * already worked.
+ * already worked. Not capped per recipient: it goes to a User's confirmed
+ * address, and only when the admin publishes.
  */
 export const sendSuggestionPublished = (to: string, placeUrl: string) =>
   sendBestEffort(

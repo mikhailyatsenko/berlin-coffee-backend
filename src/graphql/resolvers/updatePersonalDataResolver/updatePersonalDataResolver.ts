@@ -3,12 +3,16 @@ import isEmail from "validator/lib/isEmail.js";
 import crypto from "crypto";
 import { addHours } from "date-fns";
 import { config } from "../../../config/config.js";
-import { sendEmailConfirmation } from "../../../mail/mail.js";
+import {
+  assertRecipientAllowed,
+  sendEmailConfirmation,
+} from "../../../mail/mail.js";
 import { requireUser } from "../../context.js";
 import { badInput, forbidden } from "../../errors.js";
 import type { MutationResolvers } from "../../generated/types.js";
 import { normalizeEmail } from "../../../utils/normalizeEmail.js";
 import { parseDisplayName } from "../../../utils/validateInput.js";
+import { clientIp, consumeRateLimit } from "../../../utils/rateLimit.js";
 
 export const updatePersonalDataResolver: MutationResolvers["updatePersonalData"] =
   async (_parent, { userId, displayName, email: rawEmail }, context) => {
@@ -29,11 +33,14 @@ export const updatePersonalDataResolver: MutationResolvers["updatePersonalData"]
       if (!isEmail(email)) {
         throw badInput("Invalid email address");
       }
+      consumeRateLimit("emailChange", clientIp(context.req));
 
       const existingUser = await User.findOne({ email });
       if (existingUser && String(existingUser._id) !== String(user._id)) {
         throw badInput("User already exists with this email.");
       }
+      // Before pendingEmail is stored, so a refused mail leaves nothing behind.
+      assertRecipientAllowed(email);
 
       const rawToken = crypto.randomBytes(32).toString("hex");
       const hashedToken = crypto

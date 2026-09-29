@@ -1,28 +1,42 @@
 import User, { IUser } from "../../../models/User.js";
 import crypto from "crypto";
-import { appError, notFound } from "../../errors.js";
 import { addHours } from "date-fns";
 import { config } from "../../../config/config.js";
-import { sendEmailConfirmation } from "../../../mail/mail.js";
+import {
+  recipientAllowed,
+  sendEmailConfirmation,
+} from "../../../mail/mail.js";
 import type { MutationResolvers } from "../../generated/types.js";
 import { normalizeEmail } from "../../../utils/normalizeEmail.js";
+import { clientIp, consumeRateLimit } from "../../../utils/rateLimit.js";
+import { verifyRecaptcha } from "../../../utils/verifyRecaptcha.js";
 
 export const resendConfirmationEmailResolver: MutationResolvers["resendConfirmationEmail"] =
-  async (_parent, { email: rawEmail }) => {
+  async (_parent, { email: rawEmail, captchaToken }, { req }) => {
+    const ip = clientIp(req);
+    await verifyRecaptcha(captchaToken ?? "", "resend_confirmation_email", ip);
+    consumeRateLimit("resendConfirmation", ip);
+
     const email = normalizeEmail(rawEmail);
+    // Always success, whether or not a mail goes out, so the answer doesn't
+    // say which addresses have an account; the recipient limit is silent too.
+    if (!recipientAllowed(email)) {
+      return { success: true };
+    }
+
     // Find by current email (registration flow) or by pendingEmail (email change flow)
     let user = (await User.findOne({ email })) as IUser | null;
     if (!user) {
       user = (await User.findOne({ pendingEmail: email })) as IUser | null;
     }
     if (!user) {
-      throw notFound("User with this email does not exist.");
+      return { success: true };
     }
 
     const isEmailChange = user.pendingEmail === email;
     if (!isEmailChange && user.isEmailConfirmed) {
-      // Registration flow: if already confirmed, no need to resend
-      throw appError("EMAIL_ALREADY_CONFIRMED", "Email is already confirmed.");
+      // Registration flow: already confirmed, nothing to resend.
+      return { success: true };
     }
 
     const rawToken = crypto.randomBytes(32).toString("hex");

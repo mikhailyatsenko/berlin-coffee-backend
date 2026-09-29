@@ -317,11 +317,13 @@ export type MutationReportInaccuracyArgs = {
 
 
 export type MutationRequestPasswordResetArgs = {
+  captchaToken?: InputMaybe<Scalars['String']['input']>;
   email: Scalars['String']['input'];
 };
 
 
 export type MutationResendConfirmationEmailArgs = {
+  captchaToken?: InputMaybe<Scalars['String']['input']>;
   email: Scalars['String']['input'];
 };
 
