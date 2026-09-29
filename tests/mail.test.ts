@@ -51,7 +51,7 @@ let nextIp = 0;
 const anIp = () => ({ ip: `10.0.0.${++nextIp}` }) as never;
 
 const contact = (
-  fields: { name?: string; message?: string } = {},
+  fields: { name?: string; email?: string; message?: string } = {},
   req = anIp(),
 ) => {
   captchaAction = "contact_form";
@@ -59,7 +59,7 @@ const contact = (
     contactFormResolver,
     {
       name: fields.name ?? "Anna",
-      email: "anna@example.com",
+      email: fields.email ?? "anna@example.com",
       message: fields.message ?? "Hello there",
       captchaToken: "ok",
     },
@@ -118,6 +118,14 @@ test("a contact message is one mail to the admin, replying to the submitter", as
   assert.equal(mail.to, ADMIN_EMAIL);
   assert.equal(mail.replyTo, "anna@example.com");
   assert.ok(mail.text.includes("Hello there"));
+});
+
+test("a contact message with a malformed address is BAD_USER_INPUT and sends nothing", async () => {
+  await assert.rejects(
+    contact({ email: "not-an-address" }),
+    withCode("BAD_USER_INPUT"),
+  );
+  assert.equal(transport.sent.length, 0);
 });
 
 test("markup in a name or message arrives escaped in the HTML body and as typed in the text part", async () => {

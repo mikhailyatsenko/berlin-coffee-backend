@@ -24,6 +24,7 @@ export const updatePersonalDataResolver: MutationResolvers["updatePersonalData"]
     }
     // A blank address still reaches isEmail and is rejected there.
     const email = rawEmail ? normalizeEmail(rawEmail) : null;
+    let confirmationUrl: string | null = null;
     if (email !== null && email !== user.email) {
       if (!isEmail(email)) {
         throw badInput("Invalid email address");
@@ -45,12 +46,15 @@ export const updatePersonalDataResolver: MutationResolvers["updatePersonalData"]
       user.emailConfirmationToken = hashedToken;
       user.emailConfirmationTokenExpires = tokenExpires;
 
-      const confirmationUrl = `${config.frontendUrl}/confirm-email?token=${rawToken}&email=${encodeURIComponent(email)}`;
-
-      await sendEmailConfirmation(email, confirmationUrl);
+      confirmationUrl = `${config.frontendUrl}/confirm-email?token=${rawToken}&email=${encodeURIComponent(email)}`;
     }
 
     await user.save();
+
+    // After the save, so a link never carries a token that was not stored.
+    if (email !== null && confirmationUrl !== null) {
+      await sendEmailConfirmation(email, confirmationUrl);
+    }
 
     return {
       success: true,
