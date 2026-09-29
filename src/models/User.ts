@@ -16,6 +16,8 @@ export interface IUser extends Document {
   emailConfirmationTokenExpires?: Date | null;
   passwordResetToken?: string | null;
   passwordResetTokenExpires?: Date | null;
+  /** Carried by both auth tokens; incrementing it revokes every Session. */
+  sessionVersion: number;
 }
 const canonicalEmail = (email: string | null) =>
   email == null ? email : normalizeEmail(email);
@@ -35,6 +37,7 @@ const UserSchema = new mongoose.Schema({
   emailConfirmationTokenExpires: { type: Date, default: null },
   passwordResetToken: { type: String, default: null },
   passwordResetTokenExpires: { type: Date, default: null },
+  sessionVersion: { type: Number, default: 0 },
 });
 
 export default mongoose.model<IUser>("User", UserSchema);

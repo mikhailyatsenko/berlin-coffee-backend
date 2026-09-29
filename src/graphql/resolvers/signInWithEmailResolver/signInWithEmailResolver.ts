@@ -34,7 +34,7 @@ export const signInWithEmailResolver: MutationResolvers["signInWithEmail"] = asy
     throw badInput("Please confirm your email before logging in.");
   }
 
-  setAuthCookies(user._id.toString(), res);
+  setAuthCookies(user, res);
   await updateLastActive(user, { force: true });
 
   return {

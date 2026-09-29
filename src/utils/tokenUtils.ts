@@ -1,58 +1,45 @@
-import jwt from "jsonwebtoken";
 import { Response } from "express";
 import User, { IUser } from "../models/User.js";
-import { createAccessToken } from "./jwt.js";
+import { createAccessToken, verifyTokenOfType, type TokenType } from "./jwt.js";
 import { config } from "../config/config.js";
 
-interface TokenPayload {
-  id: string;
-  type?: "access" | "refresh";
-}
-
 /**
- * Verify and decode token safely
+ * The User a token of this type belongs to, or null when the token is invalid,
+ * expired or revoked: a password change or reset moves the User's
+ * `sessionVersion` past the one the token carries.
  */
-const verifyTokenPayload = (token: string): TokenPayload | null => {
-  try {
-    return jwt.verify(token, config.jwtSecret) as TokenPayload;
-  } catch {
-    return null;
-  }
-};
-
-/**
- * Get user from access token only
- */
-export const getUserFromAccessToken = async (
-  accessToken: string | undefined
+const userFromToken = async (
+  token: string | undefined,
+  type: TokenType,
 ): Promise<IUser | null> => {
-  if (!accessToken) return null;
-  
-  const payload = verifyTokenPayload(accessToken);
-  if (!payload || payload.type !== "access") return null;
+  if (!token) return null;
 
-  return User.findById(payload.id);
+  const payload = verifyTokenOfType(token, type);
+  if (!payload) return null;
+
+  const user = await User.findById(payload.id);
+  if (!user || user.sessionVersion !== payload.sessionVersion) return null;
+  return user;
 };
 
+/** The User whose live Session this access token belongs to, or null. */
+export const getUserFromAccessToken = (
+  accessToken: string | undefined,
+): Promise<IUser | null> => userFromToken(accessToken, "access");
+
 /**
- * Refresh access token using refresh token
- * Creates new access token and sets it in cookie
- * Returns user and new access token if successful, null otherwise
+ * Issues a new access token cookie for the User whose live Session this
+ * refresh token belongs to. The refresh token itself is not renewed, so a
+ * Session still ends 7 days after sign-in. Null if the Session is not live.
  */
 export const refreshAccessToken = async (
   refreshToken: string | undefined,
-  res: Response
+  res: Response,
 ): Promise<{ user: IUser; accessToken: string } | null> => {
-  if (!refreshToken) return null;
-  
-  const payload = verifyTokenPayload(refreshToken);
-  if (!payload || payload.type !== "refresh") return null;
-
-  const user = await User.findById(payload.id);
+  const user = await userFromToken(refreshToken, "refresh");
   if (!user) return null;
 
-  // Issue new access token
-  const newAccessToken = createAccessToken(user.id.toString());
+  const newAccessToken = createAccessToken(user);
   res.cookie("jwt", newAccessToken, config.accessTokenCookie);
 
   return { user, accessToken: newAccessToken };

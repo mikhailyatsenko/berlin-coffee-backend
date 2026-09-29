@@ -30,6 +30,8 @@ export const resetPasswordResolver: MutationResolvers["resetPassword"] = async (
   user.password = hashedNewPassword;
   user.passwordResetToken = null;
   user.passwordResetTokenExpires = null;
+  // Revokes every Session: whoever held one may be why the password was reset.
+  user.$inc("sessionVersion", 1);
   await user.save();
 
   return { success: true };

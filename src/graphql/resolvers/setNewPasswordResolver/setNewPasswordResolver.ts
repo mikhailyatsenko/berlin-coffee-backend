@@ -3,6 +3,7 @@ import { requireUser } from "../../context.js";
 import { badInput, forbidden } from "../../errors.js";
 import type { MutationResolvers } from "../../generated/types.js";
 import { assertNewPassword } from "../../../utils/validateInput.js";
+import { setAuthCookies } from "../../../utils/authHelpers.js";
 
 export const setNewPasswordResolver: MutationResolvers["setNewPassword"] =
   async (_parent, { userId, oldPassword, newPassword }, context) => {
@@ -25,7 +26,11 @@ export const setNewPasswordResolver: MutationResolvers["setNewPassword"] =
     assertNewPassword(newPassword);
 
     user.password = await bcrypt.hash(newPassword, 10);
+    // Revokes every Session, this one included; the new cookies keep the
+    // calling device signed in.
+    user.$inc("sessionVersion", 1);
     await user.save();
+    setAuthCookies(user, context.res);
 
     return {
       success: true,
