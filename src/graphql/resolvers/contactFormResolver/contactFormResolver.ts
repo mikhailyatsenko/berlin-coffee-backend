@@ -13,6 +13,7 @@ import {
 import { clientIp } from "../../../utils/rateLimit.js";
 import { verifyRecaptcha } from "../../../utils/verifyRecaptcha.js";
 import type { MutationResolvers } from "../../generated/types.js";
+import { config } from "../../../config/config.js";
 
 export const contactFormResolver: MutationResolvers["contactForm"] = async (
   _parent,
@@ -21,11 +22,8 @@ export const contactFormResolver: MutationResolvers["contactForm"] = async (
 ) => {
   await verifyRecaptcha(captchaToken ?? "", "contact_form", clientIp(req));
 
-  if (!process.env.MAILERSEND_API_KEY) {
-    throw new Error("MAILERSEND_API_KEY is not defined");
-  }
   const mailerSend = new MailerSend({
-    apiKey: process.env.MAILERSEND_API_KEY,
+    apiKey: config.mailerSendApiKey,
   });
   const adminEmailParams = new EmailParams()
     .setFrom(new Sender(FROM_EMAIL, FROM_NAME))

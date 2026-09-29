@@ -1,4 +1,4 @@
-import "../config/env.js";
+import { config } from "../config/config.js";
 import mongoose from "mongoose";
 import Place, { BusinessStatus, IOpeningHour } from "../models/Place.js";
 
@@ -23,7 +23,6 @@ import Place, { BusinessStatus, IOpeningHour } from "../models/Place.js";
  * Full guide, costs and pitfalls: docs/google-places-sync.md
  */
 
-const API_KEY = process.env.GOOGLE_PLACES_API_KEY;
 const APPLY = process.argv.includes("--apply");
 // --limit=N syncs only the first N places: every request is billed, so test small.
 const LIMIT = Number(process.argv.find((arg) => arg.startsWith("--limit="))?.split("=")[1]) || 0;
@@ -58,7 +57,7 @@ const fetchPlace = async (placeId: string, attempt = 0): Promise<FetchResult> =>
     `https://places.googleapis.com/v1/places/${placeId}?languageCode=en`,
     {
       headers: {
-        "X-Goog-Api-Key": API_KEY!,
+        "X-Goog-Api-Key": config.googlePlacesApiKey,
         "X-Goog-FieldMask": FIELD_MASK,
       },
     },
@@ -107,9 +106,7 @@ const runPool = async <T>(items: T[], worker: (item: T) => Promise<void>) => {
 };
 
 const sync = async () => {
-  if (!API_KEY) throw new Error("Missing environment variable: GOOGLE_PLACES_API_KEY");
-
-  await mongoose.connect(process.env.MONGO_URI!);
+  await mongoose.connect(config.mongoUri);
   console.log(`Connected to MongoDB (${APPLY ? "APPLY" : "DRY RUN"})`);
 
   const places = await Place.find({ "properties.googleId": { $nin: [null, ""] } })

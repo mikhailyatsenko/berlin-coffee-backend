@@ -1,8 +1,9 @@
 import jwt from "jsonwebtoken";
+import { config } from "../config/config.js";
 
 const verifyToken = (token: string, userId: string): boolean => {
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET!) as {
+    const decoded = jwt.verify(token, config.jwtSecret) as {
       exp: number;
       id: string;
     };

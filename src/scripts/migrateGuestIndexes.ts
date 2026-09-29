@@ -1,4 +1,4 @@
-import "../config/env.js";
+import { config } from "../config/config.js";
 import mongoose from "mongoose";
 
 /**
@@ -18,7 +18,7 @@ const OLD_INDEX_NAME = "userId_1_placeId_1";
 const GUEST_INDEX_NAME = "guestId_1_placeId_1";
 
 const migrate = async () => {
-  await mongoose.connect(process.env.MONGO_URI!);
+  await mongoose.connect(config.mongoUri);
   console.log("Connected to MongoDB");
 
   const collection = mongoose.connection.collection("interactions");

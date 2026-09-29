@@ -2,7 +2,7 @@ import jwt from "jsonwebtoken";
 import { Response } from "express";
 import User, { IUser } from "../models/User.js";
 import { createAccessToken } from "./jwt.js";
-import { env } from "./env.utils.js";
+import { config } from "../config/config.js";
 
 interface TokenPayload {
   id: string;
@@ -14,7 +14,7 @@ interface TokenPayload {
  */
 const verifyTokenPayload = (token: string): TokenPayload | null => {
   try {
-    return jwt.verify(token, process.env.JWT_SECRET!) as TokenPayload;
+    return jwt.verify(token, config.jwtSecret) as TokenPayload;
   } catch {
     return null;
   }
@@ -67,7 +67,7 @@ export const refreshAccessToken = async (
 
   // Issue new access token
   const newAccessToken = createAccessToken(user.id.toString());
-  res.cookie("jwt", newAccessToken, env.accessTokenCookieSettings);
+  res.cookie("jwt", newAccessToken, config.accessTokenCookie);
 
   return { user, accessToken: newAccessToken };
 };
@@ -76,12 +76,6 @@ export const refreshAccessToken = async (
  * Clear both auth cookies
  */
 export const clearAuthCookies = (res: Response): void => {
-  res.clearCookie("jwt", {
-    path: "/",
-    domain: env.cookieDomain,
-  });
-  res.clearCookie("refreshToken", {
-    path: "/",
-    domain: env.cookieDomain,
-  });
+  res.clearCookie("jwt", config.authCookie);
+  res.clearCookie("refreshToken", config.authCookie);
 };

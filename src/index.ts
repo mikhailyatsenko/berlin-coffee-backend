@@ -1,4 +1,4 @@
-import "./config/env.js";
+import { config } from "./config/config.js";
 import express from "express";
 import { ApolloServer } from "@apollo/server";
 import { expressMiddleware } from "@apollo/server/express4";
@@ -12,11 +12,6 @@ import { updateLastActive } from "./utils/updateLastActive.js";
 import http from "http";
 import { ApolloServerPluginDrainHttpServer } from "@apollo/server/plugin/drainHttpServer";
 import ImageKit from "imagekit";
-import {
-  IMAGEKIT_PUBLIC_KEY,
-  IMAGEKIT_PRIVATE_KEY,
-  IMAGEKIT_URL_ENDPOINT,
-} from "./config/env.js";
 import {
   getUserFromAccessToken,
   refreshAccessToken,
@@ -56,7 +51,7 @@ const bootstrapServer = async () => {
   const server = new ApolloServer<Context>({
     typeDefs,
     resolvers,
-    introspection: process.env.NODE_ENV !== "production",
+    introspection: !config.isProduction,
     plugins: [ApolloServerPluginDrainHttpServer({ httpServer })],
     formatError,
   });
@@ -75,10 +70,7 @@ const bootstrapServer = async () => {
   app.use(
     "/coffee",
     cors<cors.CorsRequest>({
-      origin:
-        process.env.NODE_ENV === "production"
-          ? ["https://3welle.com", "https://dev.3welle.com"]
-          : "http://localhost:5173",
+      origin: config.frontendUrl,
       credentials: true,
       allowedHeaders: [
         "Content-Type",
@@ -124,21 +116,12 @@ const bootstrapServer = async () => {
 
   await connectDatabase();
 
-  const imagekit = new ImageKit({
-    publicKey: IMAGEKIT_PUBLIC_KEY!,
-    privateKey: IMAGEKIT_PRIVATE_KEY!,
-    urlEndpoint: IMAGEKIT_URL_ENDPOINT!,
-  });
+  const imagekit = new ImageKit(config.imagekit);
 
   app.get("/imagekit/auth", async (req, res) => {
     // CORS headers
     const origin = req.headers.origin;
-    const allowedOrigins =
-      process.env.NODE_ENV === "production"
-        ? ["https://dev.3welle.com", "https://3welle.com"]
-        : ["http://localhost:5173"];
-
-    if (allowedOrigins.includes(origin || "")) {
+    if (origin === config.frontendUrl) {
       res.header("Access-Control-Allow-Origin", origin);
     }
     res.header("Access-Control-Allow-Credentials", "true");
@@ -178,7 +161,7 @@ const bootstrapServer = async () => {
         token: imageKitToken,
         expire,
         signature,
-        publicKey: IMAGEKIT_PUBLIC_KEY!,
+        publicKey: config.imagekit.publicKey,
       });
     } catch (error) {
       console.error("Error verifying token for imagekit auth:", error);

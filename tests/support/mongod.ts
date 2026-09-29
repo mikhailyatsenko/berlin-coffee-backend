@@ -1,7 +1,7 @@
 /**
  * A throwaway mongod for resolver tests.
  *
- * Call setTestEnv() before importing any app module: env.ts throws on missing
+ * Call setTestEnv() before importing any app module: config.ts throws on missing
  * variables and dotenv never overrides what is already set, so a real .env
  * cannot leak in. Then call useThrowawayMongod() at the top level of the test
  * file; it starts mongod before the tests and removes it afterwards.

@@ -7,7 +7,7 @@ import {
   FROM_NAME,
 } from "../contactFormResolver/constants/index.js";
 import { addHours } from "date-fns";
-import { env } from "../../../utils/env.utils.js";
+import { config } from "../../../config/config.js";
 import type { MutationResolvers } from "../../generated/types.js";
 
 export const resendConfirmationEmailResolver: MutationResolvers["resendConfirmationEmail"] =
@@ -38,13 +38,10 @@ export const resendConfirmationEmailResolver: MutationResolvers["resendConfirmat
     user.emailConfirmationTokenExpires = tokenExpires;
     await user.save();
 
-    const confirmationUrl = `${env.frontendUrl}/confirm-email?token=${rawToken}&email=${encodeURIComponent(email)}`;
+    const confirmationUrl = `${config.frontendUrl}/confirm-email?token=${rawToken}&email=${encodeURIComponent(email)}`;
 
-    if (!process.env.MAILERSEND_API_KEY) {
-      throw new Error("MAILERSEND_API_KEY is not defined");
-    }
     const mailerSend = new MailerSend({
-      apiKey: process.env.MAILERSEND_API_KEY,
+      apiKey: config.mailerSendApiKey,
     });
 
     await mailerSend.email.send(

@@ -1,7 +1,7 @@
 import { Response } from "express";
 import { IUser } from "../models/User.js";
 import { createAccessToken, createRefreshToken } from "./jwt.js";
-import { env } from "./env.utils.js";
+import { config } from "../config/config.js";
 
 /**
  * Set both access and refresh token cookies
@@ -10,8 +10,8 @@ export const setAuthCookies = (userId: string, res: Response): void => {
   const accessToken = createAccessToken(userId);
   const refreshToken = createRefreshToken(userId);
 
-  res.cookie("jwt", accessToken, env.accessTokenCookieSettings);
-  res.cookie("refreshToken", refreshToken, env.refreshTokenCookieSettings);
+  res.cookie("jwt", accessToken, config.accessTokenCookie);
+  res.cookie("refreshToken", refreshToken, config.refreshTokenCookie);
 };
 
 /**

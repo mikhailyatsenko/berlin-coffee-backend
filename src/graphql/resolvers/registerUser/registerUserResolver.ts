@@ -9,7 +9,7 @@ import {
 } from "../contactFormResolver/constants/index.js";
 import crypto from "crypto";
 import { addHours } from "date-fns";
-import { env } from "../../../utils/env.utils.js";
+import { config } from "../../../config/config.js";
 import { clientIp } from "../../../utils/rateLimit.js";
 import { verifyRecaptcha } from "../../../utils/verifyRecaptcha.js";
 import type { MutationResolvers } from "../../generated/types.js";
@@ -54,13 +54,10 @@ export const registerUserResolver: MutationResolvers["registerUser"] = async (
 
   await newUser.save();
 
-  const confirmationUrl = `${env.frontendUrl}/confirm-email?token=${rawToken}&email=${encodeURIComponent(email)}`;
+  const confirmationUrl = `${config.frontendUrl}/confirm-email?token=${rawToken}&email=${encodeURIComponent(email)}`;
 
-  if (!process.env.MAILERSEND_API_KEY) {
-    throw new Error("MAILERSEND_API_KEY is not defined");
-  }
   const mailerSend = new MailerSend({
-    apiKey: process.env.MAILERSEND_API_KEY,
+    apiKey: config.mailerSendApiKey,
   });
 
   try {

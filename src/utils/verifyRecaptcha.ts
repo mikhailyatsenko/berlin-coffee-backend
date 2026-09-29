@@ -1,5 +1,5 @@
 import { appError } from "../graphql/errors.js";
-import { RECAPTCHA_V3_SECRET } from "../config/env.js";
+import { config } from "../config/config.js";
 
 const VERIFY_URL = "https://www.google.com/recaptcha/api/siteverify";
 const REQUEST_TIMEOUT_MS = 3000;
@@ -40,19 +40,12 @@ export async function verifyRecaptcha(
   action: RecaptchaAction,
   remoteIp?: string,
 ): Promise<void> {
-  if (!RECAPTCHA_V3_SECRET) {
-    throw captchaError(
-      "Captcha verification is unavailable",
-      "secret_not_configured",
-    );
-  }
-
   if (!token) {
     throw captchaError("Captcha token is missing", "missing_token");
   }
 
   const params = new URLSearchParams({
-    secret: RECAPTCHA_V3_SECRET,
+    secret: config.recaptchaV3Secret,
     response: token,
   });
   if (remoteIp) {
