@@ -4,13 +4,14 @@ import { updateLastActive } from "../../../utils/updateLastActive.js";
 import { setAuthCookies, formatUserResponse } from "../../../utils/authHelpers.js";
 import { badInput } from "../../errors.js";
 import type { MutationResolvers } from "../../generated/types.js";
+import { normalizeEmail } from "../../../utils/normalizeEmail.js";
 
 export const signInWithEmailResolver: MutationResolvers["signInWithEmail"] = async (
   _parent,
   { email, password },
   { res },
 ) => {
-  const user = await User.findOne({ email });
+  const user = await User.findOne({ email: normalizeEmail(email) });
   if (!user) {
     throw badInput("Invalid e-mail or password");
   }

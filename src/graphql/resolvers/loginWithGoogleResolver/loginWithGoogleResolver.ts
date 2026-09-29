@@ -5,6 +5,7 @@ import { updateLastActive } from "../../../utils/updateLastActive.js";
 import { setAuthCookies, formatUserResponse } from "../../../utils/authHelpers.js";
 import type { MutationResolvers } from "../../generated/types.js";
 import { config } from "../../../config/config.js";
+import { normalizeEmail } from "../../../utils/normalizeEmail.js";
 
 const client = new OAuth2Client(
   config.googleClientId,
@@ -44,7 +45,7 @@ export const loginWithGoogleResolver: MutationResolvers["loginWithGoogle"] = asy
   if (!user) {
     user = new User({
       googleId: payload.sub,
-      email: payload.email,
+      email: payload.email && normalizeEmail(payload.email),
       isEmailConfirmed: true,
       displayName: payload.name,
       avatar: payload.picture,

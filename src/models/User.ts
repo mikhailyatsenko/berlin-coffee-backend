@@ -1,4 +1,5 @@
 import mongoose, { Document } from "mongoose";
+import { normalizeEmail } from "../utils/normalizeEmail.js";
 
 export interface IUser extends Document {
   _id: mongoose.Types.ObjectId;
@@ -16,10 +17,14 @@ export interface IUser extends Document {
   passwordResetToken?: string | null;
   passwordResetTokenExpires?: Date | null;
 }
+const canonicalEmail = (email: string | null) =>
+  email == null ? email : normalizeEmail(email);
+
 const UserSchema = new mongoose.Schema({
   googleId: { type: String, unique: true, sparse: true },
-  email: { type: String, required: true, unique: true },
-  pendingEmail: { type: String, default: null },
+  // A safety net: resolvers still pass every address through normalizeEmail.
+  email: { type: String, required: true, unique: true, set: canonicalEmail },
+  pendingEmail: { type: String, default: null, set: canonicalEmail },
   password: { type: String },
   displayName: { type: String, required: true },
   avatar: { type: String },
