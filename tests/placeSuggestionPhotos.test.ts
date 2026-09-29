@@ -50,6 +50,7 @@ const { publishPlaceSuggestionResolver } = await import(
 const { rejectPlaceSuggestionResolver } = await import(
   "../src/graphql/resolvers/placeSuggestionResolver/rejectPlaceSuggestionResolver.js"
 );
+import { callResolver } from "./support/callResolver.js";
 
 // --- fake MailerSend: submit fires an admin email; the send itself does not
 // matter to these tests, only that it never reaches the network. -----------
@@ -182,9 +183,7 @@ async function aGuest() {
 }
 
 const submit = (context: { user?: IUser | null; guest?: GuestContext }) =>
-  submitPlaceSuggestionResolver(
-    undefined as never,
-    { input: { name: "Bonanza Coffee", address: "Oderberger Str. 35" } },
+  callResolver(submitPlaceSuggestionResolver, { input: { name: "Bonanza Coffee", address: "Oderberger Str. 35" } },
     { req: freshReq(), ...context } as never,
   );
 
@@ -208,24 +207,22 @@ const uploadPhoto = (
   suggestionId: string,
   context: { user?: IUser | null; guest?: GuestContext; req?: Request } = {},
 ) =>
-  uploadPlaceSuggestionPhotoResolver(
-    undefined as never,
-    { suggestionId, fileBuffer: png },
+  callResolver(uploadPlaceSuggestionPhotoResolver, { suggestionId, fileBuffer: png },
     { req: freshReq(), ...context } as never,
   );
 
 const review = (id: string, token: string) =>
-  placeSuggestionForReviewResolver(undefined as never, { id, token });
+  callResolver(placeSuggestionForReviewResolver, { id, token });
 
 const uploadPhotoAsAdmin = (id: string, token: string) =>
-  uploadPlaceSuggestionPhotoAsAdminResolver(undefined as never, {
+  callResolver(uploadPlaceSuggestionPhotoAsAdminResolver, {
     id,
     token,
     fileBuffer: png,
   });
 
 const deletePhoto = (id: string, token: string, path: string) =>
-  deletePlaceSuggestionPhotoResolver(undefined as never, { id, token, path });
+  callResolver(deletePlaceSuggestionPhotoResolver, { id, token, path });
 
 const publishInput = (over: Record<string, unknown> = {}) => ({
   name: "Bonanza Coffee",
@@ -240,10 +237,10 @@ const publish = (
   token: string,
   input: ReturnType<typeof publishInput>,
 ) =>
-  publishPlaceSuggestionResolver(undefined as never, { id, token, input });
+  callResolver(publishPlaceSuggestionResolver, { id, token, input });
 
 const reject = (id: string, token: string) =>
-  rejectPlaceSuggestionResolver(undefined as never, { id, token });
+  callResolver(rejectPlaceSuggestionResolver, { id, token });
 
 /** The code the client sees for the rejection, after formatError. */
 const codeOf = async (p: Promise<unknown>) => {

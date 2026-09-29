@@ -31,10 +31,6 @@ import {
 import type { Context } from "./graphql/context.js";
 import { formatError } from "./graphql/formatError.js";
 
-// Generated resolver types still import Context from here (ticket 04 points
-// codegen at graphql/context.ts).
-export type { Context };
-
 const app = express();
 app.set("trust proxy", 1);
 const httpServer = http.createServer(app);

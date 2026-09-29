@@ -1,13 +1,14 @@
 import { IMAGEKIT_URL_ENDPOINT } from "../../../config/env.js";
 import { uploadAvatar, deleteAvatar } from "../../../utils/imagekit.js";
-import { type Context, requireUser } from "../../context.js";
+import { requireUser } from "../../context.js";
 import { badInput, forbidden } from "../../errors.js";
+import type { MutationResolvers } from "../../generated/types.js";
 
-export async function uploadAvatarResolver(
-  _: never,
-  { userId, fileBuffer, fileName }: { userId: string; fileBuffer: string; fileName: string },
-  context: Context,
-) {
+export const uploadAvatarResolver: MutationResolvers["uploadAvatar"] = async (
+  _parent,
+  { userId, fileBuffer, fileName },
+  context,
+) => {
   const user = requireUser(context);
   if (user.id !== userId) {
     throw forbidden("You can only change your own avatar");
@@ -43,4 +44,4 @@ export async function uploadAvatarResolver(
     fileId,
     avatarUrl,
   };
-}
+};

@@ -1,6 +1,7 @@
 import PlaceSuggestion, {
   IPlaceSuggestion,
 } from "../../../models/PlaceSuggestion.js";
+import type { QueryResolvers } from "../../generated/types.js";
 import { requireSuggestionForReview } from "../../../utils/placeSuggestionToken.js";
 
 /** Enough to spot duplicates; the admin is not paging through them. */
@@ -32,23 +33,21 @@ async function similarPending(suggestion: IPlaceSuggestion) {
     }));
 }
 
-export async function placeSuggestionForReviewResolver(
-  _: never,
-  { id, token }: { id: string; token: string },
-) {
-  const suggestion = await requireSuggestionForReview(id, token);
+export const placeSuggestionForReviewResolver: QueryResolvers["placeSuggestionForReview"] =
+  async (_parent, { id, token }) => {
+    const suggestion = await requireSuggestionForReview(id, token);
 
-  // Written field by field: the Guest's email must never reach this response.
-  return {
-    id: suggestion.id,
-    name: suggestion.name,
-    address: suggestion.address,
-    description: suggestion.description ?? null,
-    instagram: suggestion.instagram ?? null,
-    suggestedBy: suggestion.userId ? ("user" as const) : ("guest" as const),
-    status: suggestion.status,
-    publishedPlaceId: suggestion.publishedPlaceId?.toString() ?? null,
-    photos: suggestion.photos,
-    similarPending: await similarPending(suggestion),
+    // Written field by field: the Guest's email must never reach this response.
+    return {
+      id: suggestion.id,
+      name: suggestion.name,
+      address: suggestion.address,
+      description: suggestion.description ?? null,
+      instagram: suggestion.instagram ?? null,
+      suggestedBy: suggestion.userId ? ("user" as const) : ("guest" as const),
+      status: suggestion.status,
+      publishedPlaceId: suggestion.publishedPlaceId?.toString() ?? null,
+      photos: suggestion.photos,
+      similarPending: await similarPending(suggestion),
+    };
   };
-}

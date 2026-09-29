@@ -18,20 +18,7 @@ import {
 } from "../../../utils/imagekit.js";
 import { REVIEW_IMAGE_UPLOAD_TIMEOUT_MS } from "../../../config/env.js";
 import { appError, badInput } from "../../errors.js";
-
-interface PublishPlaceSuggestionInput {
-  name: string;
-  address: string;
-  coordinates?: { lat: number; lng: number } | null;
-  neighborhood: string;
-  description?: string | null;
-  instagram?: string | null;
-  website?: string | null;
-  phone?: string | null;
-  googlePlaceId?: string | null;
-  /** The suggestion's own photo paths to keep, in upload order. Must belong to this suggestion. */
-  photoPaths?: string[] | null;
-}
+import type { MutationResolvers } from "../../generated/types.js";
 
 /**
  * `existingPlaceId` lets the review page link to the Place. The message keeps
@@ -59,10 +46,10 @@ function requiredField(value: string | null | undefined, field: string): string 
   return text;
 }
 
-export async function publishPlaceSuggestionResolver(
-  _: never,
-  { id, token, input }: { id: string; token: string; input: PublishPlaceSuggestionInput },
-) {
+export const publishPlaceSuggestionResolver: MutationResolvers["publishPlaceSuggestion"] = async (
+  _parent,
+  { id, token, input },
+) => {
   const suggestion = await requireSuggestionForReview(id, token);
 
   // A repeat changes nothing: the input isn't even looked at.
@@ -195,4 +182,4 @@ export async function publishPlaceSuggestionResolver(
   }
 
   return suggestionOutcome({ status: "published", publishedPlaceId: place._id });
-}
+};

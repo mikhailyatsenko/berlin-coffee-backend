@@ -4,11 +4,12 @@ import { addHours } from "date-fns";
 import { env } from "../../../utils/env.utils.js";
 import { MailerSend, EmailParams, Sender, Recipient } from "mailersend";
 import { FROM_EMAIL, FROM_NAME } from "../contactFormResolver/constants/index.js";
+import type { MutationResolvers } from "../../generated/types.js";
 
-export async function requestPasswordResetResolver(
-  _: never,
-  { email }: { email: string },
-) {
+export const requestPasswordResetResolver: MutationResolvers["requestPasswordReset"] = async (
+  _parent,
+  { email },
+) => {
   const normalizedEmail = email.trim().toLowerCase();
   const user = await User.findOne({ email: normalizedEmail });
 
@@ -51,4 +52,4 @@ export async function requestPasswordResetResolver(
 
   // Always return success to prevent email enumeration
   return { success: true };
-}
+};

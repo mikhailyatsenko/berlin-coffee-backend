@@ -1,7 +1,9 @@
+import type { Place } from "../../../generated/types.js";
+import { markedCharacteristics } from "../../../../utils/markedCharacteristics.js";
 import { PlaceWithStats } from "./filteredPlacesAggregationService.js";
 
 /** A Place from the filteredPlaces aggregation, in the shape of the GraphQL `Place`. */
-export function formatFilteredPlace(place: PlaceWithStats) {
+export function formatFilteredPlace(place: PlaceWithStats): Place {
     return {
         id: place._id.toString(),
         type: place.type || "Feature",
@@ -9,6 +11,7 @@ export function formatFilteredPlace(place: PlaceWithStats) {
             type: place.geometry.type || "Point",
             coordinates: place.geometry.coordinates,
         },
+        // @ts-expect-error Ticket 09: the schema promises `characteristicCounts` and `reviews`, which list queries never return.
         properties: {
             id: place._id.toString(),
             // slug: place.properties.slug || "",
@@ -23,9 +26,7 @@ export function formatFilteredPlace(place: PlaceWithStats) {
             isFavorite: place.isFavorite,
             ownRating: place.ownReview?.rating ?? null,
             ownCharacteristics: place.ownReview
-                ? Object.entries(place.ownReview.characteristics ?? {})
-                      .filter(([, marked]) => marked)
-                      .map(([characteristic]) => characteristic)
+                ? markedCharacteristics(place.ownReview.characteristics)
                 : null,
             googleId: place.properties.googleId || null,
             neighborhood: place.properties.neighborhood || null,

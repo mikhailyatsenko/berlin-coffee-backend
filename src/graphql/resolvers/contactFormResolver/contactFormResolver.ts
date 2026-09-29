@@ -10,25 +10,15 @@ import {
   FROM_EMAIL,
   FROM_NAME,
 } from "./constants/index.js";
-import { Request } from "express";
 import { clientIp } from "../../../utils/rateLimit.js";
 import { verifyRecaptcha } from "../../../utils/verifyRecaptcha.js";
+import type { MutationResolvers } from "../../generated/types.js";
 
-export async function contactFormResolver(
-  _: never,
-  {
-    name,
-    email,
-    message,
-    captchaToken,
-  }: {
-    name: string;
-    email: string;
-    message: string;
-    captchaToken?: string | null;
-  },
-  { req }: { req?: Request },
-) {
+export const contactFormResolver: MutationResolvers["contactForm"] = async (
+  _parent,
+  { name, email, message, captchaToken },
+  { req },
+) => {
   await verifyRecaptcha(captchaToken ?? "", "contact_form", clientIp(req));
 
   if (!process.env.MAILERSEND_API_KEY) {
@@ -66,4 +56,4 @@ export async function contactFormResolver(
     success: true,
     name,
   };
-}
+};

@@ -1,11 +1,12 @@
 import { getFavoritePlacesWithStats } from "./services/favoritePlacesService.js";
-import { type Context, requireUser } from "../../context.js";
+import { requireUser } from "../../context.js";
+import type { QueryResolvers } from "../../generated/types.js";
 
-export async function favoritePlacesResolver(
-  _: never,
-  __: never,
-  context: Context,
-) {
+export const favoritePlacesResolver: QueryResolvers["favoritePlaces"] = async (
+  _parent,
+  _args,
+  context,
+) => {
   const user = requireUser(context);
 
   const { places, total } = await getFavoritePlacesWithStats(user.id);
@@ -27,4 +28,4 @@ export async function favoritePlacesResolver(
   });
 
   return formattedPlaces;
-}
+};

@@ -1,4 +1,5 @@
 import Place from "../../../models/Place.js";
+import type { QueryResolvers } from "../../generated/types.js";
 import { requireSuggestionForReview } from "../../../utils/placeSuggestionToken.js";
 import { GOOGLE_PLACES_API_KEY } from "../../../config/env.js";
 
@@ -39,10 +40,10 @@ async function searchGooglePlaceIds(query: string): Promise<string[]> {
   return (data.places ?? []).map((place) => place.id);
 }
 
-export async function findGoogleIdsForSuggestionResolver(
-  _: never,
-  { id, token }: { id: string; token: string },
-) {
+export const findGoogleIdsForSuggestionResolver: QueryResolvers["findGoogleIdsForSuggestion"] = async (
+  _parent,
+  { id, token },
+) => {
   // Token checked before any Google request, same as every other admin operation.
   const suggestion = await requireSuggestionForReview(id, token);
 
@@ -67,4 +68,4 @@ export async function findGoogleIdsForSuggestionResolver(
     googleId,
     existingPlaceId: existingPlaceIdByGoogleId.get(googleId) ?? null,
   }));
-}
+};

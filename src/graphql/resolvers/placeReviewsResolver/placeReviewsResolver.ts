@@ -1,7 +1,8 @@
 import Interaction from "../../../models/Interaction.js";
 import User from "../../../models/User.js";
 import Place from "../../../models/Place.js";
-import { GuestContext } from "../../../utils/guestAuth.js";
+import type { QueryResolvers, Review } from "../../generated/types.js";
+import { markedCharacteristics } from "../../../utils/markedCharacteristics.js";
 
 interface UserMap {
   [key: string]: {
@@ -10,11 +11,11 @@ interface UserMap {
   };
 }
 
-export async function placeReviewsResolver(
-  _: never,
-  { placeId }: { placeId: string },
-  context: { user?: { id: string }; guest?: GuestContext },
-) {
+export const placeReviewsResolver: QueryResolvers["placeReviews"] = async (
+  _parent,
+  { placeId },
+  context,
+) => {
   // A guest owns a review through the secret it proved on the way in, exactly
   // as an account owns one through its cookie.
   const ownGuestId =
@@ -38,10 +39,11 @@ export async function placeReviewsResolver(
   }, {});
   const reviews = interactions
     .filter((interaction) => interaction.reviewText || interaction.rating)
-    .map((interaction) => {
+    .map((interaction): Review => {
       // Guest reviews carry no userId and have no User document behind them.
       const userId = interaction.userId?.toString() ?? null;
 
+      // @ts-expect-error Ticket 09: the schema promises `placeId`, which `placeReviews` never returns.
       return {
         id: interaction._id.toString(),
         text: interaction.reviewText || null,
@@ -59,9 +61,7 @@ export async function placeReviewsResolver(
         userRating: interaction.rating || null,
         reviewImages: interaction.reviewImages || 0,
         isGoogleReview: interaction.isGoogleReview || false,
-        characteristics: Object.entries(interaction.characteristics || {})
-          .filter(([, pressed]) => !!pressed)
-          .map(([key]) => key),
+        characteristics: markedCharacteristics(interaction.characteristics),
       };
     });
 
@@ -69,4 +69,4 @@ export async function placeReviewsResolver(
     id: placeId,
     reviews,
   };
-}
+};

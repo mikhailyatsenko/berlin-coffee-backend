@@ -1,8 +1,6 @@
 import { randomUUID } from "node:crypto";
-import { Request } from "express";
 import { appError, badInput, forbidden } from "../../errors.js";
 import Interaction from "../../../models/Interaction.js";
-import { IUser } from "../../../models/User.js";
 import {
   REVIEW_IMAGE_ABANDONED_LEASE_MS,
   REVIEW_IMAGE_UPLOAD_TIMEOUT_MS,
@@ -12,8 +10,8 @@ import {
   UploadTimeoutError,
 } from "../../../utils/imagekit.js";
 import { clientIp, consumeRateLimit } from "../../../utils/rateLimit.js";
-import { GuestContext } from "../../../utils/guestAuth.js";
-import { GuestArgs, resolveReviewActor } from "../../../utils/reviewActor.js";
+import { resolveReviewActor } from "../../../utils/reviewActor.js";
+import type { MutationResolvers } from "../../generated/types.js";
 
 /** Matches the cap the picker enforces client-side. */
 const MAX_IMAGES_PER_REVIEW = 10;
@@ -61,11 +59,6 @@ function reviewImagesEquals(value: number) {
     : { reviewImages: value };
 }
 
-interface UploadReviewImageArgs extends GuestArgs {
-  reviewId: string;
-  fileBuffer: string;
-}
-
 /**
  * Uploads one Photo of a Review through the server, the way avatars already work.
  *
@@ -90,15 +83,11 @@ interface UploadReviewImageArgs extends GuestArgs {
  * deleteReview takes the same lease as a fence while it clears Photos, so an
  * upload arriving meanwhile gets UPLOAD_IN_PROGRESS like any other.
  */
-export async function uploadReviewImageResolver(
-  _: never,
-  { reviewId, fileBuffer, guestId, guestSecret }: UploadReviewImageArgs,
-  {
-    user,
-    guest,
-    req,
-  }: { user?: IUser | null; guest?: GuestContext; req?: Request },
-) {
+export const uploadReviewImageResolver: MutationResolvers["uploadReviewImage"] = async (
+  _parent,
+  { reviewId, fileBuffer, guestId, guestSecret },
+  { user, guest, req },
+) => {
   const actor = await resolveReviewActor(user, guest, { guestId, guestSecret });
 
   if (!fileBuffer) {
@@ -233,4 +222,4 @@ export async function uploadReviewImageResolver(
   }
 
   return { reviewImages: index };
-}
+};

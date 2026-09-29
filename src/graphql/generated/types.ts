@@ -1,8 +1,5 @@
-import { GraphQLResolveInfo, GraphQLScalarType, GraphQLScalarTypeConfig } from 'graphql';
-import { IUser } from '../../models/User';
-import { IPlace } from '../../models/Place';
-import { IInteraction } from '../../models/Interaction';
-import { Context } from '../../';
+import type { GraphQLResolveInfo, GraphQLScalarType, GraphQLScalarTypeConfig } from 'graphql';
+import type { Context } from '../context.js';
 export type Maybe<T> = T | null;
 export type InputMaybe<T> = Maybe<T>;
 export type Exact<T extends { [key: string]: unknown }> = { [K in keyof T]: T[K] };
@@ -10,7 +7,6 @@ export type MakeOptional<T, K extends keyof T> = Omit<T, K> & { [SubKey in K]?: 
 export type MakeMaybe<T, K extends keyof T> = Omit<T, K> & { [SubKey in K]: Maybe<T[SubKey]> };
 export type MakeEmpty<T extends { [key: string]: unknown }, K extends keyof T> = { [_ in K]?: never };
 export type Incremental<T> = T | { [P in keyof T]?: P extends ' $fragmentName' | '__typename' ? T[P] : never };
-export type Omit<T, K extends keyof T> = Pick<T, Exclude<keyof T, K>>;
 export type RequireFields<T, K extends keyof T> = Omit<T, K> & { [P in K]-?: NonNullable<T[P]> };
 /** All built-in and custom scalars, mapped to their actual values */
 export type Scalars = {
@@ -54,16 +50,15 @@ export type AvailableNeighborhoodsResponse = {
   total: Scalars['Int']['output'];
 };
 
-export enum Characteristic {
-  AffordablePrices = 'affordablePrices',
-  DeliciousFilterCoffee = 'deliciousFilterCoffee',
-  FreeWifi = 'freeWifi',
-  FriendlyStaff = 'friendlyStaff',
-  OutdoorSeating = 'outdoorSeating',
-  PetFriendly = 'petFriendly',
-  PleasantAtmosphere = 'pleasantAtmosphere',
-  YummyEats = 'yummyEats'
-}
+export type Characteristic =
+  | 'affordablePrices'
+  | 'deliciousFilterCoffee'
+  | 'freeWifi'
+  | 'friendlyStaff'
+  | 'outdoorSeating'
+  | 'petFriendly'
+  | 'pleasantAtmosphere'
+  | 'yummyEats';
 
 export type CharacteristicCounts = {
   __typename?: 'CharacteristicCounts';
@@ -460,10 +455,9 @@ export type PlaceReviews = {
   reviews: Array<Review>;
 };
 
-export enum PlaceSuggester {
-  Guest = 'guest',
-  User = 'user'
-}
+export type PlaceSuggester =
+  | 'guest'
+  | 'user';
 
 /** What the admin sees on the review page. Never carries the Guest's email. */
 export type PlaceSuggestionForReview = {
@@ -512,11 +506,10 @@ export type PlaceSuggestionOutcome = {
   status: PlaceSuggestionStatus;
 };
 
-export enum PlaceSuggestionStatus {
-  Pending = 'pending',
-  Published = 'published',
-  Rejected = 'rejected'
-}
+export type PlaceSuggestionStatus =
+  | 'pending'
+  | 'published'
+  | 'rejected';
 
 export type PlacesResponse = {
   __typename?: 'PlacesResponse';
@@ -658,12 +651,11 @@ export type Shortlist = {
   total: Scalars['Int']['output'];
 };
 
-export enum ShortlistId {
-  BreakfastBrunch = 'breakfastBrunch',
-  DogFriendly = 'dogFriendly',
-  OutdoorSeating = 'outdoorSeating',
-  Work = 'work'
-}
+export type ShortlistId =
+  | 'breakfastBrunch'
+  | 'dogFriendly'
+  | 'outdoorSeating'
+  | 'work';
 
 export type SimilarPlaceSuggestion = {
   __typename?: 'SimilarPlaceSuggestion';
@@ -792,7 +784,7 @@ export type ResolversTypes = {
   AddRatingResponse: ResolverTypeWrapper<AddRatingResponse>;
   AddTextReviewResponse: ResolverTypeWrapper<AddTextReviewResponse>;
   AdditionalInfoTagsResponse: ResolverTypeWrapper<AdditionalInfoTagsResponse>;
-  AuthPayload: ResolverTypeWrapper<Omit<AuthPayload, 'user'> & { user: ResolversTypes['User'] }>;
+  AuthPayload: ResolverTypeWrapper<AuthPayload>;
   AvailableNeighborhoodsResponse: ResolverTypeWrapper<AvailableNeighborhoodsResponse>;
   Boolean: ResolverTypeWrapper<Scalars['Boolean']['output']>;
   Characteristic: Characteristic;
@@ -815,21 +807,21 @@ export type ResolversTypes = {
   LogoutResponse: ResolverTypeWrapper<LogoutResponse>;
   Mutation: ResolverTypeWrapper<{}>;
   OpeningHour: ResolverTypeWrapper<OpeningHour>;
-  Place: ResolverTypeWrapper<IPlace>;
-  PlaceProperties: ResolverTypeWrapper<Omit<PlaceProperties, 'reviews'> & { reviews: Array<ResolversTypes['Review']> }>;
-  PlaceReviews: ResolverTypeWrapper<Omit<PlaceReviews, 'reviews'> & { reviews: Array<ResolversTypes['Review']> }>;
+  Place: ResolverTypeWrapper<Place>;
+  PlaceProperties: ResolverTypeWrapper<PlaceProperties>;
+  PlaceReviews: ResolverTypeWrapper<PlaceReviews>;
   PlaceSuggester: PlaceSuggester;
   PlaceSuggestionForReview: ResolverTypeWrapper<PlaceSuggestionForReview>;
   PlaceSuggestionInput: PlaceSuggestionInput;
   PlaceSuggestionOutcome: ResolverTypeWrapper<PlaceSuggestionOutcome>;
   PlaceSuggestionStatus: PlaceSuggestionStatus;
-  PlacesResponse: ResolverTypeWrapper<Omit<PlacesResponse, 'places'> & { places: Array<ResolversTypes['Place']> }>;
+  PlacesResponse: ResolverTypeWrapper<PlacesResponse>;
   PublishPlaceSuggestionInput: PublishPlaceSuggestionInput;
   Query: ResolverTypeWrapper<{}>;
-  RefreshTokenResponse: ResolverTypeWrapper<Omit<RefreshTokenResponse, 'user'> & { user: ResolversTypes['User'] }>;
+  RefreshTokenResponse: ResolverTypeWrapper<RefreshTokenResponse>;
   ReportInaccuracyResponse: ResolverTypeWrapper<ReportInaccuracyResponse>;
-  Review: ResolverTypeWrapper<IInteraction>;
-  Shortlist: ResolverTypeWrapper<Omit<Shortlist, 'places'> & { places: Array<ResolversTypes['Place']> }>;
+  Review: ResolverTypeWrapper<Review>;
+  Shortlist: ResolverTypeWrapper<Shortlist>;
   ShortlistId: ShortlistId;
   SimilarPlaceSuggestion: ResolverTypeWrapper<SimilarPlaceSuggestion>;
   String: ResolverTypeWrapper<Scalars['String']['output']>;
@@ -837,7 +829,7 @@ export type ResolversTypes = {
   UploadAvatarResponse: ResolverTypeWrapper<UploadAvatarResponse>;
   UploadPlaceSuggestionPhotoResponse: ResolverTypeWrapper<UploadPlaceSuggestionPhotoResponse>;
   UploadReviewImageResponse: ResolverTypeWrapper<UploadReviewImageResponse>;
-  User: ResolverTypeWrapper<IUser>;
+  User: ResolverTypeWrapper<User>;
   UserReviewActivity: ResolverTypeWrapper<UserReviewActivity>;
 };
 
@@ -846,7 +838,7 @@ export type ResolversParentTypes = {
   AddRatingResponse: AddRatingResponse;
   AddTextReviewResponse: AddTextReviewResponse;
   AdditionalInfoTagsResponse: AdditionalInfoTagsResponse;
-  AuthPayload: Omit<AuthPayload, 'user'> & { user: ResolversParentTypes['User'] };
+  AuthPayload: AuthPayload;
   AvailableNeighborhoodsResponse: AvailableNeighborhoodsResponse;
   Boolean: Scalars['Boolean']['output'];
   CharacteristicCounts: CharacteristicCounts;
@@ -868,26 +860,26 @@ export type ResolversParentTypes = {
   LogoutResponse: LogoutResponse;
   Mutation: {};
   OpeningHour: OpeningHour;
-  Place: IPlace;
-  PlaceProperties: Omit<PlaceProperties, 'reviews'> & { reviews: Array<ResolversParentTypes['Review']> };
-  PlaceReviews: Omit<PlaceReviews, 'reviews'> & { reviews: Array<ResolversParentTypes['Review']> };
+  Place: Place;
+  PlaceProperties: PlaceProperties;
+  PlaceReviews: PlaceReviews;
   PlaceSuggestionForReview: PlaceSuggestionForReview;
   PlaceSuggestionInput: PlaceSuggestionInput;
   PlaceSuggestionOutcome: PlaceSuggestionOutcome;
-  PlacesResponse: Omit<PlacesResponse, 'places'> & { places: Array<ResolversParentTypes['Place']> };
+  PlacesResponse: PlacesResponse;
   PublishPlaceSuggestionInput: PublishPlaceSuggestionInput;
   Query: {};
-  RefreshTokenResponse: Omit<RefreshTokenResponse, 'user'> & { user: ResolversParentTypes['User'] };
+  RefreshTokenResponse: RefreshTokenResponse;
   ReportInaccuracyResponse: ReportInaccuracyResponse;
-  Review: IInteraction;
-  Shortlist: Omit<Shortlist, 'places'> & { places: Array<ResolversParentTypes['Place']> };
+  Review: Review;
+  Shortlist: Shortlist;
   SimilarPlaceSuggestion: SimilarPlaceSuggestion;
   String: Scalars['String']['output'];
   SuccessResponse: SuccessResponse;
   UploadAvatarResponse: UploadAvatarResponse;
   UploadPlaceSuggestionPhotoResponse: UploadPlaceSuggestionPhotoResponse;
   UploadReviewImageResponse: UploadReviewImageResponse;
-  User: IUser;
+  User: User;
   UserReviewActivity: UserReviewActivity;
 };
 

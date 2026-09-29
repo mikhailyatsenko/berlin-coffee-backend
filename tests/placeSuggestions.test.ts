@@ -41,6 +41,7 @@ const { findGoogleIdsForSuggestionResolver } = await import(
 const { ADMIN_EMAIL, FROM_EMAIL } = await import(
   "../src/graphql/resolvers/contactFormResolver/constants/index.js"
 );
+import { callResolver } from "./support/callResolver.js";
 
 // --- fake MailerSend -------------------------------------------------------
 
@@ -173,13 +174,13 @@ const submit = (
     req?: Request;
   },
 ) =>
-  submitPlaceSuggestionResolver(undefined as never, args, {
+  callResolver(submitPlaceSuggestionResolver, args, {
     req: freshReq(),
     ...context,
   } as never);
 
 const review = (id: string, token: string) =>
-  placeSuggestionForReviewResolver(undefined as never, { id, token });
+  callResolver(placeSuggestionForReviewResolver, { id, token });
 
 /** Coordinates and Neighborhood are inside Berlin and one of the twelve by default. */
 const publishInput = (over: Record<string, unknown> = {}) => ({
@@ -195,13 +196,13 @@ const publish = (
   token: string,
   input: ReturnType<typeof publishInput>,
 ) =>
-  publishPlaceSuggestionResolver(undefined as never, { id, token, input });
+  callResolver(publishPlaceSuggestionResolver, { id, token, input });
 
 const reject = (id: string, token: string) =>
-  rejectPlaceSuggestionResolver(undefined as never, { id, token });
+  callResolver(rejectPlaceSuggestionResolver, { id, token });
 
 const findGoogleIds = (id: string, token: string) =>
-  findGoogleIdsForSuggestionResolver(undefined as never, { id, token });
+  callResolver(findGoogleIdsForSuggestionResolver, { id, token });
 
 /** The code the client sees for the rejection, after formatError. */
 const codeOf = async (p: Promise<unknown>) => {

@@ -1,24 +1,13 @@
-import { Request } from "express";
 import Interaction from "../../../models/Interaction.js";
-import { IUser } from "../../../models/User.js";
 import { clientIp, consumeRateLimit } from "../../../utils/rateLimit.js";
-import { GuestContext } from "../../../utils/guestAuth.js";
-import { GuestArgs, resolveReviewActor } from "../../../utils/reviewActor.js";
+import { resolveReviewActor } from "../../../utils/reviewActor.js";
+import type { MutationResolvers } from "../../generated/types.js";
 
-interface AddTextReviewArgs extends GuestArgs {
-  placeId: string;
-  text: string;
-}
-
-export async function addTextReviewResolver(
-  _: never,
-  { text, placeId, guestId, guestSecret }: AddTextReviewArgs,
-  {
-    user,
-    guest,
-    req,
-  }: { user?: IUser | null; guest?: GuestContext; req?: Request },
-) {
+export const addTextReviewResolver: MutationResolvers["addTextReview"] = async (
+  _parent,
+  { text, placeId, guestId, guestSecret },
+  { user, guest, req },
+) => {
   const actor = await resolveReviewActor(user, guest, { guestId, guestSecret });
 
   const interaction = await Interaction.findOne({
@@ -60,4 +49,4 @@ export async function addTextReviewResolver(
     reviewId,
     text,
   };
-}
+};

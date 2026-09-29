@@ -23,6 +23,7 @@ const { neighborhoodShortlistsResolver } = await import(
 const { filteredPlacesResolver } = await import(
   "../src/graphql/resolvers/filteredPlacesResolver/filteredPlacesResolver.js"
 );
+import { callResolver, type TestContext } from "./support/callResolver.js";
 
 useThrowawayMongod();
 
@@ -63,11 +64,9 @@ async function seedPlace(
   return place._id.toString();
 }
 
-type Ctx = Parameters<typeof neighborhoodShortlistsResolver>[2];
-
-async function shortlists(neighborhood = "Mitte", context: Ctx = {}) {
-  return neighborhoodShortlistsResolver(
-    undefined as never,
+async function shortlists(neighborhood = "Mitte", context: TestContext = {}) {
+  return callResolver(
+    neighborhoodShortlistsResolver,
     { neighborhood },
     context,
   );
@@ -76,7 +75,7 @@ async function shortlists(neighborhood = "Mitte", context: Ctx = {}) {
 async function shortlist(
   id: string,
   neighborhood = "Mitte",
-  context: Ctx = {},
+  context: TestContext = {},
 ) {
   const found = (await shortlists(neighborhood, context)).find(
     (s) => s.id === id,
@@ -221,8 +220,8 @@ test("places have the shape filteredPlaces gives them, and isFavorite is the cal
   const anonymous = (await shortlist("outdoorSeating")).places[0];
   const {
     places: [fromFilter],
-  } = await filteredPlacesResolver(
-    undefined as never,
+  } = await callResolver(
+    filteredPlacesResolver,
     { neighborhood: ["Mitte"], additionalInfo: ["Outdoor seating"] },
     { user: { id: userId.toString() } },
   );
@@ -256,8 +255,8 @@ test("filteredPlaces with a Shortlist's Amenities and minRating 4 agrees on the 
   await seedPlace("Breakfast", ["Breakfast"], [4]);
 
   for (const { id, amenities, total } of await shortlists()) {
-    const filtered = await filteredPlacesResolver(
-      undefined as never,
+    const filtered = await callResolver(
+      filteredPlacesResolver,
       { neighborhood: ["Mitte"], additionalInfo: amenities, minRating: 4 },
       {},
     );
@@ -279,21 +278,21 @@ test("ownRating and ownCharacteristics come from the caller's own Review, User o
     characteristics: { outdoorSeating: true, freeWifi: true },
   });
   await Interaction.create({ placeId, guestId: "own-guest", rating: 4 });
-  const asGuest: Ctx = {
+  const asGuest: TestContext = {
     guest: {
       status: "valid",
       identity: { guestId: "own-guest" },
-    } as Ctx["guest"],
+    } as TestContext["guest"],
   };
 
-  const own = async (context: Ctx) => {
+  const own = async (context: TestContext) => {
     const [fromShortlist] = (
       await shortlist("outdoorSeating", "Mitte", context)
     ).places;
     const {
       places: [fromFilter],
-    } = await filteredPlacesResolver(
-      undefined as never,
+    } = await callResolver(
+      filteredPlacesResolver,
       { neighborhood: ["Mitte"] },
       context,
     );

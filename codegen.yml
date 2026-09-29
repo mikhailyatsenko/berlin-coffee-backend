@@ -5,12 +5,10 @@ generates:
       - typescript
       - typescript-resolvers
     config:
-      contextType: ../../#Context
-      mappers:
-        User: ../../models/User#IUser
-        Place: ../../models/Place#IPlace
-        Review: ../../models/Interaction#IInteraction
+      contextType: ../context.js#Context
+      enumsAsTypes: true
+      useTypeImports: true
       scalars:
         Date: string
-        ObjectId: string 
+        ObjectId: string
         Float: number

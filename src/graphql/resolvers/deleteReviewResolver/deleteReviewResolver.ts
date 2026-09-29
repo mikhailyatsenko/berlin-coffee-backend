@@ -3,8 +3,12 @@ import mongoose from "mongoose";
 import Interaction from "../../../models/Interaction.js";
 import { deleteImageKitFolder } from "../../../utils/imagekit.js";
 import { uploadLeaseUntil } from "../uploadReviewImageResolver/uploadReviewImageResolver.js";
-import { type Context, requireUser } from "../../context.js";
+import { requireUser } from "../../context.js";
 import { notFound } from "../../errors.js";
+import type {
+  DeleteReviewResult,
+  MutationResolvers,
+} from "../../generated/types.js";
 
 /**
  * Clears the review's Photos (and the given text/rating fields) while holding
@@ -67,17 +71,11 @@ async function clearPhotosBehindFence(
   }
 }
 
-export async function deleteReviewResolver(
-  _: never,
-  {
-    reviewId,
-    deleteOptions,
-  }: {
-    reviewId: string;
-    deleteOptions: "deleteReviewText" | "deleteRating" | "deleteAll";
-  },
-  context: Context,
-) {
+export const deleteReviewResolver: MutationResolvers["deleteReview"] = async (
+  _parent,
+  { reviewId, deleteOptions },
+  context,
+): Promise<DeleteReviewResult> => {
   const user = requireUser(context);
 
   const interaction = await Interaction.findById(reviewId);
@@ -113,7 +111,10 @@ export async function deleteReviewResolver(
     );
   }
 
-  const aggregationResult = await Interaction.aggregate([
+  const aggregationResult = await Interaction.aggregate<{
+    averageRating: number;
+    ratingCount: number;
+  }>([
     {
       $match: {
         placeId: new mongoose.Types.ObjectId(interaction.placeId),
@@ -133,7 +134,8 @@ export async function deleteReviewResolver(
 
   return {
     reviewId: reviewId,
+    // @ts-expect-error Ticket 21: `averageRating` is a Float; the string only works because the serializer coerces it.
     averageRating: stats.averageRating.toFixed(1),
     ratingCount: stats.ratingCount,
   };
-}
+};

@@ -1,10 +1,10 @@
-import { Response } from "express";
+import type { MutationResolvers } from "../../generated/types.js";
 
-export async function logoutResolver(
-  _: never,
-  __: never,
-  { res }: { res: Response },
-) {
+export const logoutResolver: MutationResolvers["logout"] = async (
+  _parent,
+  _args,
+  { res },
+) => {
   const cookieOptions = {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
@@ -20,4 +20,4 @@ export async function logoutResolver(
   res.clearCookie("refreshToken", cookieOptions);
 
   return { message: "Logged out successfully" };
-}
+};

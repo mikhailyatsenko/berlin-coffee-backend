@@ -38,6 +38,7 @@ const { toggleCharacteristicResolver } = await import(
 const { toggleFavoriteResolver } = await import(
   "../src/graphql/resolvers/toggleFavoriteResolver/toggleFavoriteResolver.js"
 );
+import { callResolver } from "./support/callResolver.js";
 
 /** An assert.rejects validator for a GraphQLError with this code (and message). */
 const withCode = (code: string, message?: string) => (error: unknown) => {
@@ -71,9 +72,7 @@ const unknownId = () => new mongoose.Types.ObjectId().toString();
 test("setNewPassword with a wrong old password: BAD_USER_INPUT", async () => {
   const user = await createUser("ada@example.com");
   await assert.rejects(
-    setNewPasswordResolver(
-      undefined as never,
-      { userId: user.id, oldPassword: "wrong", newPassword: "long-enough" },
+    callResolver(setNewPasswordResolver, { userId: user.id, oldPassword: "wrong", newPassword: "long-enough" },
       { user, res },
     ),
     withCode("BAD_USER_INPUT", "Old password is incorrect"),
@@ -83,9 +82,7 @@ test("setNewPassword with a wrong old password: BAD_USER_INPUT", async () => {
 test("setNewPassword for another user's id: FORBIDDEN", async () => {
   const user = await createUser("ada@example.com");
   await assert.rejects(
-    setNewPasswordResolver(
-      undefined as never,
-      { userId: unknownId(), oldPassword: PASSWORD, newPassword: "long-enough" },
+    callResolver(setNewPasswordResolver, { userId: unknownId(), oldPassword: PASSWORD, newPassword: "long-enough" },
       { user, res },
     ),
     withCode("FORBIDDEN"),
@@ -94,9 +91,7 @@ test("setNewPassword for another user's id: FORBIDDEN", async () => {
 
 test("setNewPassword anonymous: UNAUTHENTICATED", async () => {
   await assert.rejects(
-    setNewPasswordResolver(
-      undefined as never,
-      { userId: unknownId(), oldPassword: PASSWORD, newPassword: "long-enough" },
+    callResolver(setNewPasswordResolver, { userId: unknownId(), oldPassword: PASSWORD, newPassword: "long-enough" },
       { res },
     ),
     withCode("UNAUTHENTICATED"),
@@ -107,9 +102,7 @@ test("updatePersonalData with a taken email: the 'already exists' message", asyn
   const user = await createUser("ada@example.com");
   await createUser("grace@example.com");
   await assert.rejects(
-    updatePersonalDataResolver(
-      undefined as never,
-      { userId: user.id, email: "grace@example.com" },
+    callResolver(updatePersonalDataResolver, { userId: user.id, email: "grace@example.com" },
       { user, res },
     ),
     withCode("BAD_USER_INPUT", "User already exists with this email."),
@@ -118,7 +111,7 @@ test("updatePersonalData with a taken email: the 'already exists' message", asyn
 
 test("place with an unknown id: NOT_FOUND", async () => {
   await assert.rejects(
-    placeResolver(undefined as never, { placeId: unknownId() }, {}),
+    callResolver(placeResolver, { placeId: unknownId() }, {}),
     withCode("NOT_FOUND"),
   );
 });
@@ -126,9 +119,7 @@ test("place with an unknown id: NOT_FOUND", async () => {
 test("signInWithEmail with a wrong password: BAD_USER_INPUT", async () => {
   await createUser("ada@example.com");
   await assert.rejects(
-    signInWithEmailResolver(
-      undefined as never,
-      { email: "ada@example.com", password: "wrong" },
+    callResolver(signInWithEmailResolver, { email: "ada@example.com", password: "wrong" },
       { res },
     ),
     withCode("BAD_USER_INPUT", "Invalid e-mail or password"),
@@ -137,9 +128,7 @@ test("signInWithEmail with a wrong password: BAD_USER_INPUT", async () => {
 
 test("deleteReview anonymous: UNAUTHENTICATED", async () => {
   await assert.rejects(
-    deleteReviewResolver(
-      undefined as never,
-      { reviewId: unknownId(), deleteOptions: "deleteAll" },
+    callResolver(deleteReviewResolver, { reviewId: unknownId(), deleteOptions: "deleteAll" },
       { res },
     ),
     withCode("UNAUTHENTICATED"),
@@ -157,9 +146,7 @@ test("deleteReview on someone else's Review or a missing one: NOT_FOUND", async 
 
   for (const reviewId of [review.id, unknownId()]) {
     await assert.rejects(
-      deleteReviewResolver(
-        undefined as never,
-        { reviewId, deleteOptions: "deleteAll" },
+      callResolver(deleteReviewResolver, { reviewId, deleteOptions: "deleteAll" },
         { user: caller, res },
       ),
       withCode("NOT_FOUND"),
@@ -171,9 +158,7 @@ test("deleteReview on someone else's Review or a missing one: NOT_FOUND", async 
 test("toggleCharacteristic on an unknown Place: thrown NOT_FOUND, not false", async () => {
   const user = await createUser("ada@example.com");
   await assert.rejects(
-    toggleCharacteristicResolver(
-      undefined as never,
-      { placeId: unknownId(), characteristic: "freeWifi" },
+    callResolver(toggleCharacteristicResolver, { placeId: unknownId(), characteristic: "freeWifi" },
       { user },
     ),
     withCode("NOT_FOUND"),
@@ -183,13 +168,11 @@ test("toggleCharacteristic on an unknown Place: thrown NOT_FOUND, not false", as
 test("toggleFavorite anonymous: UNAUTHENTICATED; on an unknown Place: thrown NOT_FOUND", async () => {
   const user = await createUser("ada@example.com");
   await assert.rejects(
-    toggleFavoriteResolver(undefined as never, { placeId: unknownId() }, { res }),
+    callResolver(toggleFavoriteResolver, { placeId: unknownId() }, { res }),
     withCode("UNAUTHENTICATED"),
   );
   await assert.rejects(
-    toggleFavoriteResolver(
-      undefined as never,
-      { placeId: unknownId() },
+    callResolver(toggleFavoriteResolver, { placeId: unknownId() },
       { user, res },
     ),
     withCode("NOT_FOUND"),
@@ -199,9 +182,7 @@ test("toggleFavorite anonymous: UNAUTHENTICATED; on an unknown Place: thrown NOT
 test("toggleFavorite: a database failure is thrown, not returned as false", async () => {
   const user = await createUser("ada@example.com");
   await assert.rejects(
-    toggleFavoriteResolver(
-      undefined as never,
-      { placeId: "not-an-object-id" },
+    callResolver(toggleFavoriteResolver, { placeId: "not-an-object-id" },
       { user, res },
     ),
     (error: unknown) => !(error instanceof GraphQLError) || !error.extensions.code,

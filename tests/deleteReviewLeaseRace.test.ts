@@ -30,6 +30,7 @@ const { uploadReviewImageResolver } = await import(
 const { deleteReviewResolver } = await import(
   "../src/graphql/resolvers/deleteReviewResolver/deleteReviewResolver.js"
 );
+import { callResolver } from "./support/callResolver.js";
 
 // --- fake ImageKit ---------------------------------------------------------
 
@@ -121,8 +122,8 @@ async function createReview(reviewImages: number) {
 type Review = Awaited<ReturnType<typeof createReview>>;
 
 const upload = (r: Review) =>
-  uploadReviewImageResolver(
-    undefined as never,
+  callResolver(
+    uploadReviewImageResolver,
     { reviewId: r.reviewId, fileBuffer: png },
     { user: { id: r.userId.toString() } as Pick<IUser, "id"> as IUser },
   );
@@ -133,8 +134,8 @@ const deleteReview = (
   r: Review,
   deleteOptions: "deleteReviewText" | "deleteRating" | "deleteAll",
 ) =>
-  deleteReviewResolver(
-    undefined as never,
+  callResolver(
+    deleteReviewResolver,
     { reviewId: r.reviewId, deleteOptions },
     { user: { id: r.userId.toString() } as Pick<IUser, "id"> as IUser, res },
   );

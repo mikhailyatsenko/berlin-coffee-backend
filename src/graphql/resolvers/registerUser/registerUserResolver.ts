@@ -10,22 +10,15 @@ import {
 import crypto from "crypto";
 import { addHours } from "date-fns";
 import { env } from "../../../utils/env.utils.js";
-import { Request } from "express";
 import { clientIp } from "../../../utils/rateLimit.js";
 import { verifyRecaptcha } from "../../../utils/verifyRecaptcha.js";
+import type { MutationResolvers } from "../../generated/types.js";
 
-interface RegisterUserArgs {
-  email: string;
-  displayName: string;
-  password: string;
-  captchaToken?: string | null;
-}
-
-export async function registerUserResolver(
-  _: never,
-  { email, displayName, password, captchaToken }: RegisterUserArgs,
-  { req }: { req?: Request },
-) {
+export const registerUserResolver: MutationResolvers["registerUser"] = async (
+  _parent,
+  { email, displayName, password, captchaToken },
+  { req },
+) => {
   await verifyRecaptcha(captchaToken ?? "", "register_user", clientIp(req));
 
   if (!isEmail(email)) {
@@ -100,4 +93,4 @@ The 3.Welle Team`),
   return {
     success: true,
   };
-}
+};

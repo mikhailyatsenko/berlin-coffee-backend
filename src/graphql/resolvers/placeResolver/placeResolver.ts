@@ -1,15 +1,15 @@
 import { badInput, notFound } from "../../errors.js";
-import { GuestContext } from "../../../utils/guestAuth.js";
+import type { Place, QueryResolvers } from "../../generated/types.js";
 import { resolveActorRef } from "../../../utils/reviewActor.js";
 import { getPlaceWithStatsById } from "./services/placeAggregationService.js";
 import { getPlaceImages } from "../../../utils/imagekit.js";
 import { cache } from "../../../utils/cache.js";
 
-export async function placeResolver(
-  _: never,
-  { placeId }: { placeId: string },
-  { user, guest }: { user?: { id: string }; guest?: GuestContext },
-) {
+export const placeResolver: QueryResolvers["place"] = async (
+  _parent,
+  { placeId },
+  { user, guest },
+): Promise<Place> => {
   // Validate placeId presence and format (Mongo ObjectId 24-hex)
   if (!placeId || typeof placeId !== "string") {
     throw badInput("Invalid placeId");
@@ -46,6 +46,7 @@ export async function placeResolver(
       type: place.geometry.type || "Point",
       coordinates: place.geometry.coordinates,
     },
+    // @ts-expect-error Ticket 09: the schema promises `reviews`, which `place` never returns.
     properties: {
       id: place._id.toString(),
       name: place.properties.name || "",
@@ -67,4 +68,4 @@ export async function placeResolver(
       website: place.properties.website || null,
     },
   };
-}
+};

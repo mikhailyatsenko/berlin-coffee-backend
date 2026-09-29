@@ -25,6 +25,7 @@ const { default: Interaction } = await import("../src/models/Interaction.js");
 const { uploadReviewImageResolver } = await import(
   "../src/graphql/resolvers/uploadReviewImageResolver/uploadReviewImageResolver.js"
 );
+import { callResolver } from "./support/callResolver.js";
 
 // --- fake ImageKit ---------------------------------------------------------
 
@@ -122,8 +123,8 @@ const filePathOf = (r: Review, i: number) =>
   `/3welle/review-images/${r.placeId}/${r.reviewId}/image_${i}.jpg`;
 
 const upload = (r: Review) =>
-  uploadReviewImageResolver(
-    undefined as never,
+  callResolver(
+    uploadReviewImageResolver,
     { reviewId: r.reviewId, fileBuffer: png },
     { user: { id: r.userId.toString() } as Pick<IUser, "id"> as IUser },
   );

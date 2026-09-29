@@ -25,6 +25,7 @@ import { resendConfirmationEmailResolver } from "./registerUser/resendConfirmati
 import { confirmEmailResolver } from "./registerUser/confirmEmailResolver.js";
 import { placeResolver } from "./placeResolver/placeResolver.js";
 import GraphQLJSON from "graphql-type-json";
+import type { Resolvers } from "../generated/types.js";
 import { requestPasswordResetResolver } from "./passwordReset/requestPasswordResetResolver.js";
 import { validatePasswordResetTokenResolver } from "./passwordReset/validatePasswordResetTokenResolver.js";
 import { resetPasswordResolver } from "./passwordReset/resetPasswordResolver.js";
@@ -43,7 +44,7 @@ import { uploadPlaceSuggestionPhotoAsAdminResolver } from "./placeSuggestionReso
 import { deletePlaceSuggestionPhotoResolver } from "./placeSuggestionResolver/deletePlaceSuggestionPhotoResolver.js";
 import { findGoogleIdsForSuggestionResolver } from "./placeSuggestionResolver/findGoogleIdsForSuggestionResolver.js";
 
-export const resolvers = {
+export const resolvers: Resolvers = {
   JSON: GraphQLJSON,
   Query: {
     places: placesResolver,
