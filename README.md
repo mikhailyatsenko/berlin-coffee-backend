@@ -78,10 +78,8 @@ starting without a secret would only reject every submission at runtime.
    currently deployed frontend keeps validating; the resolvers reject requests
    without a token).
 3. Deploy the frontend.
-4. Make `captchaToken` non-null in `root.graphql`, drop the deprecated
-   `reviewImages` argument of `addTextReview`, and delete the `/imagekit/auth`
-   endpoint in `index.ts` — all three exist only for the previous frontend
-   build.
+4. Make `captchaToken` non-null in `root.graphql`: it is nullable only for the
+   previous frontend build.
 
 ### Frontend:
 [![coffeemapberlin](https://github-readme-stats.vercel.app/api/pin/?username=mikhailyatsenko&repo=coffeemapberlin&theme=transparent&show_icons=true)](https://github.com/mikhailyatsenko/coffeemapberlin)
