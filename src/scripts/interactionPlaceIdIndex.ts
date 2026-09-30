@@ -10,7 +10,9 @@ export const PLACE_ID_INDEX = { key: { placeId: 1 }, name: "placeId_1" } as cons
 /**
  * Creates the placeId index on `interactions`. createIndex is a no-op when an
  * identical index exists and creates the collection when it doesn't, so this
- * is safe to run any number of times.
+ * is safe to run any number of times. An index on `{ placeId: 1 }` under
+ * another name makes it throw (IndexOptionsConflict) without changing
+ * anything; none exists on production (2026-09-27).
  */
 export async function ensurePlaceIdIndex(connection: mongoose.Connection) {
   await connection

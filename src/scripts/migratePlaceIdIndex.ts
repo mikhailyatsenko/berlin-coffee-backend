@@ -1,6 +1,9 @@
 import { config } from "../config/config.js";
 import mongoose from "mongoose";
-import { ensurePlaceIdIndex } from "./interactionPlaceIdIndex.js";
+import {
+  ensurePlaceIdIndex,
+  PLACE_ID_INDEX,
+} from "./interactionPlaceIdIndex.js";
 
 /**
  * One-off migration: index `interactions.placeId`, which autoIndex doesn't
@@ -16,7 +19,7 @@ const migrate = async () => {
   await mongoose.connect(config.mongoUri);
   console.log("Connected to MongoDB");
 
-  console.log("Ensuring index placeId_1 on interactions");
+  console.log(`Ensuring index ${PLACE_ID_INDEX.name} on interactions`);
   await ensurePlaceIdIndex(mongoose.connection);
 
   console.log("Resulting interaction indexes:");
