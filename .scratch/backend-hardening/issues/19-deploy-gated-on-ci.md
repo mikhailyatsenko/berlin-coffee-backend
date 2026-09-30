@@ -1,6 +1,6 @@
 # 19: Deploy runs only after CI passes
 
-Status: ready-for-agent
+Status: done
 Blocked by: None (can start immediately)
 Source: [Single config module and a deploy gated on tests](../../backend-audit/issues/03-config-and-deploy-pipeline.md), Deploy (gate)
 
@@ -23,7 +23,7 @@ Branches are merged locally and pushed to `main`, and every push to `main` deplo
 
 - [x] `deploy.yml` has a CI job that the deploy job depends on; `ci.yml` accepts `workflow_call`.
 - [x] Both workflow files pass `actionlint` (or an equivalent syntax check run locally), recorded in Comments.
-- [ ] Verified on a real push after merge: the Actions run shows CI before deploy (recorded in Comments; a human may need to confirm if the agent can't read Actions runs via `gh`).
+- [x] Verified on a real push after merge: the Actions run shows CI before deploy (recorded in Comments; a human may need to confirm if the agent can't read Actions runs via `gh`).
 
 ## Comments
 
@@ -35,3 +35,5 @@ Branches are merged locally and pushed to `main`, and every push to `main` deplo
 - `tsc --noEmit` clean, `npm test` 301/301 (no TS changes).
 - Code review: comments reworded (a deploy already past CI is not cancelled; the deploy.yml comment no longer lists CI's steps). Not applied: a deploy concurrency group (two deploys can still overlap if a newer push finishes CI while an older deploy runs; pre-existing, noted on ticket 20); aligning the deploy runner (`ubuntu-latest`) with CI's `ubuntu-24.04`.
 - **Open:** the last criterion needs a real push to `main` after merge; check that the Actions run shows `ci` before `deploy` (`gh run list --workflow deploy.yml`, `gh run view <id>`).
+
+2026-09-30: Merged to `main` (e4ec9ed) and pushed. Actions run 36698954507 (Deploy Coffemap Server, head e4ec9ed): `ci / test` 09:53:15–09:54:28 success, then `deploy` 09:54:30–09:55:21 success; the `deploy` job did not exist until CI finished.
