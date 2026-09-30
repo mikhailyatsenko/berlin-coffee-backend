@@ -131,3 +131,5 @@ Run as `SERVER_USER` on the server. Nothing is deleted until the first new deplo
 - Step 5 done (agent, with the owner's go-ahead): removed the old top-level `dist/`, `node_modules/`, `package.json`, `package-lock.json`. `/var/www/coffee-server` now holds `.env`, `current`, `incoming/`, `releases/`, `uploads/`; the app still answers.
 - Noticed, not fixed: the `sharp` check in `release.sh` (carried over from the old deploy) prints `sharp version: undefined`, because sharp 0.33 has no `.version` (it's `versions.sharp`). The `require('sharp')` itself succeeds, which is the real check.
 
+2026-09-30: Fixed the `sharp` check noted above: `release.sh` prints `require('sharp').versions.sharp` (0.33.5 locally; `.version` is undefined in sharp 0.33). The test's sharp stub now has sharp's real shape, and the deploy test asserts the printed version (red before the fix).
+

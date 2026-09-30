@@ -87,7 +87,7 @@ ln -s "$APP_ROOT/.env" "$release/.env"
   npm ci --omit=dev
   # Fetch the sharp binary for this server's platform (linux, glibc).
   npm rebuild sharp --update-binary
-  node -e "console.log('sharp version:', require('sharp').version)"
+  node -e "console.log('sharp version:', require('sharp').versions.sharp)"
 )
 trap - EXIT
 # Pruning goes by mtime, so mark this as the newest deploy.
