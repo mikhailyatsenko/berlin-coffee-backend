@@ -11,10 +11,6 @@ const imagekit = new ImageKit(config.imagekit);
 const isFile = (item: FileObject | FolderObject): item is FileObject =>
   item.type === "file";
 
-// Rate limiting
-let lastRequestTime = 0;
-const MIN_REQUEST_INTERVAL = 50; // 50ms between requests (20 requests per second)
-
 /**
  * An upload we stopped waiting for. It may still land later: `settled`
  * resolves once the abandoned request has actually finished, either way.
@@ -58,9 +54,11 @@ function withTimeout<T>(
   return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
 }
 
-/**
- * Function for delay between requests
- */
+// Rate limiting, shared by every ImageKit call in this module: each one waits
+// through awaitRateLimit, the only reader and writer of lastRequestTime.
+let lastRequestTime = 0;
+const MIN_REQUEST_INTERVAL = 50; // 50ms between requests (20 requests per second)
+
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -102,13 +100,7 @@ export function placePhotoFolder(placeId: string): string {
  */
 export async function getPlaceImages(placeId: string): Promise<string[]> {
   try {
-    // Rate limiting
-    const now = Date.now();
-    const timeSinceLastRequest = now - lastRequestTime;
-    if (timeSinceLastRequest < MIN_REQUEST_INTERVAL) {
-      await delay(MIN_REQUEST_INTERVAL - timeSinceLastRequest);
-    }
-    lastRequestTime = Date.now();
+    await awaitRateLimit();
 
     const folderPath = placePhotoFolder(placeId);
 
@@ -144,13 +136,7 @@ export async function listReviewPhotoNames(
   placeId: string,
   reviewId: string,
 ): Promise<string[]> {
-  // Rate limiting
-  const now = Date.now();
-  const timeSinceLastRequest = now - lastRequestTime;
-  if (timeSinceLastRequest < MIN_REQUEST_INTERVAL) {
-    await delay(MIN_REQUEST_INTERVAL - timeSinceLastRequest);
-  }
-  lastRequestTime = Date.now();
+  await awaitRateLimit();
 
   const result = await imagekit.listFiles({
     path: reviewPhotoFolder(placeId, reviewId),
@@ -175,13 +161,7 @@ export async function uploadAvatar(
   userId: string,
 ): Promise<string> {
   try {
-    // Rate limiting
-    const now = Date.now();
-    const timeSinceLastRequest = now - lastRequestTime;
-    if (timeSinceLastRequest < MIN_REQUEST_INTERVAL) {
-      await delay(MIN_REQUEST_INTERVAL - timeSinceLastRequest);
-    }
-    lastRequestTime = Date.now();
+    await awaitRateLimit();
 
     // Process image with Sharp: resize to 640px max dimension and convert to JPEG
     const processedBuffer = await sharp(fileBuffer)
@@ -240,13 +220,7 @@ export async function uploadReviewImage(
   deadline: Date,
 ): Promise<string> {
   try {
-    // Rate limiting
-    const now = Date.now();
-    const timeSinceLastRequest = now - lastRequestTime;
-    if (timeSinceLastRequest < MIN_REQUEST_INTERVAL) {
-      await delay(MIN_REQUEST_INTERVAL - timeSinceLastRequest);
-    }
-    lastRequestTime = Date.now();
+    await awaitRateLimit();
 
     const processedBuffer = await sharp(fileBuffer)
       .resize(1440, 1440, {
