@@ -1,6 +1,6 @@
 # 20: Deploy into release directories with a health check and rollback
 
-Status: ready-for-human
+Status: done
 Blocked by: 19 (Deploy gated on CI)
 Source: [Single config module and a deploy gated on tests](../../backend-audit/issues/03-config-and-deploy-pipeline.md), Deploy (server)
 
@@ -125,4 +125,9 @@ Run as `SERVER_USER` on the server. Nothing is deleted until the first new deplo
 - Step 3: the health POST answered `{"data":{"__typename":"Query"}}` about 6 s after start. `pm2 describe`: `online`, script path `/var/www/coffee-server/current/dist/index.js`, exec cwd `/var/www/coffee-server/current`. The process cwd resolves to `releases/eeca79f…`. The out log shows "MongoDB connected successfully", and nothing new in the error log.
 - Left in place, as planned: the old top-level `dist/`, `node_modules/` and `package*.json` (remove after the first new deploy, step 5), and `uploads/`.
 - Next: step 4, merge and push.
+
+2026-09-30: Merged to `main` (f848fb7) and pushed by the owner. Actions run 36715228689: `ci / test` 12:31:02–12:32:21 UTC success, then `deploy` 12:32:23–12:33:15 UTC success; the log ends with `✅ releases/f848fb71c5fe0ec09daeb4ef9e491e206fa69a17 is live` (`npm ci` 292 packages in 8 s).
+- Server after the deploy: `current -> releases/f848fb71…`; `releases/` holds `eeca79f…` (rollback target) and `f848fb71…`, 136M each; PM2 `online`, script path and exec cwd under `current`; the health POST answers.
+- Step 5 done (agent, with the owner's go-ahead): removed the old top-level `dist/`, `node_modules/`, `package.json`, `package-lock.json`. `/var/www/coffee-server` now holds `.env`, `current`, `incoming/`, `releases/`, `uploads/`; the app still answers.
+- Noticed, not fixed: the `sharp` check in `release.sh` (carried over from the old deploy) prints `sharp version: undefined`, because sharp 0.33 has no `.version` (it's `versions.sharp`). The `require('sharp')` itself succeeds, which is the real check.
 
