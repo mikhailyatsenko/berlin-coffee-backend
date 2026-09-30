@@ -87,6 +87,33 @@ Required as well: the server refuses to boot without it.
 4. Make `captchaToken` non-null in `root.graphql`: it is nullable only for the
    previous frontend build.
 
+## Deploy
+
+A push to `main` runs CI, then `.github/workflows/deploy.yml`, which builds
+`dist/`, uploads it with `deploy/release.sh` and runs that script on the server.
+Layout in `/var/www/coffee-server`:
+
+    releases/<sha>/   one directory per deploy (the last 5 are kept)
+    current           symlink to the live release; PM2 runs current/dist/index.js
+    .env              the production env file, symlinked into every release
+    incoming/         upload target of the workflow
+
+The script installs into `releases/<sha>`, switches `current`, restarts PM2 and
+POSTs `{ __typename }` to `http://127.0.0.1:3000/coffee`. If the app does not
+answer, `current` goes back to the previous release and the workflow fails.
+
+Manual commands (index migrations and the like) run from `current`, so dotenv
+finds the production `.env`:
+
+    cd /var/www/coffee-server/current
+    npm run migrate:placeid-index
+
+Rolling back by hand to an older release:
+
+    cd /var/www/coffee-server
+    ls -t releases
+    ln -sfn releases/<sha> current && pm2 restart coffe-server
+
 ### Frontend:
 [![coffeemapberlin](https://github-readme-stats.vercel.app/api/pin/?username=mikhailyatsenko&repo=coffeemapberlin&theme=transparent&show_icons=true)](https://github.com/mikhailyatsenko/coffeemapberlin)
 
