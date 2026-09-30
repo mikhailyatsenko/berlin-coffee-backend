@@ -32,9 +32,10 @@ Every lookup of a Place's Interactions scans the whole collection. On production
 
 - `InteractionSchema.index({ placeId: 1 })` in `src/models/Interaction.ts` (dev and tests get it through autoIndex).
 - `src/scripts/interactionPlaceIdIndex.ts`: `ensurePlaceIdIndex(connection)` and `PLACE_ID_INDEX` (`placeId_1`), the logic the test calls; `src/scripts/migratePlaceIdIndex.ts` is the runner (connects with `config.mongoUri`, prints the resulting indexes). `createIndex` with a fixed name is a no-op on a second run and creates the collection if missing.
-- **Run on production after deploying** (human step; read `src/scripts/migratePlaceIdIndex.ts` first, it only creates an index), from the repo root on the server so dotenv reads the production `.env`:
+- **Run on production after deploying** (human step; read `src/scripts/migratePlaceIdIndex.ts` first, it only creates an index). The deploy (`.github/workflows/deploy.yml`) ships the built `dist/` with `package.json` to `/var/www/coffee-server`, so no build on the server; run it from there so dotenv reads the production `.env`:
   ```
-  npm run build   # only if the deploy didn't rebuild dist/
+  ssh <SERVER_USER>@<SERVER_HOST>
+  cd /var/www/coffee-server
   npm run migrate:placeid-index
   ```
   Equivalent: `node dist/scripts/migratePlaceIdIndex.js`. Check that the printed list contains `placeId_1`. An index on `{ placeId: 1 }` under another name would make it fail with IndexOptionsConflict and change nothing; none existed on 2026-09-27.
