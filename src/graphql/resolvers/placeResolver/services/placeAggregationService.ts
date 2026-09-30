@@ -1,8 +1,9 @@
 import Place from "../../../../models/Place.js";
 import mongoose from "mongoose";
+import { placeStatsStages, type PlaceStats } from "../../../../utils/placeStats.js";
 import { ActorRef, ownInteractionCond } from "../../../../utils/reviewActor.js";
 
-export interface PlaceWithStats {
+export interface PlaceWithStats extends PlaceStats {
   _id: mongoose.Types.ObjectId;
   type: string;
   geometry: {
@@ -33,8 +34,6 @@ export interface PlaceWithStats {
     outdoorSeating: { pressed: boolean; count: number };
   };
   favoriteCount: number;
-  averageRating: number;
-  ratingCount: number;
   isFavorite: boolean;
 }
 
@@ -332,32 +331,9 @@ export async function getPlaceWithStatsById(
         },
       },
     },
-    {
-      $lookup: {
-        from: "interactions",
-        localField: "_id",
-        foreignField: "placeId",
-        pipeline: [
-          { $match: { rating: { $exists: true, $ne: null } } },
-          {
-            $group: {
-              _id: null,
-              averageRating: { $avg: "$rating" },
-              ratingCount: { $sum: 1 },
-            },
-          },
-        ],
-        as: "ratingStats",
-      },
-    },
+    ...placeStatsStages(),
     {
       $addFields: {
-        averageRating: {
-          $ifNull: [{ $arrayElemAt: ["$ratingStats.averageRating", 0] }, 0],
-        },
-        ratingCount: {
-          $ifNull: [{ $arrayElemAt: ["$ratingStats.ratingCount", 0] }, 0],
-        },
         isFavorite: {
           $cond: {
             if: {
@@ -383,7 +359,7 @@ export async function getPlaceWithStatsById(
       $project: {
         interactions: 0,
         userInteractions: 0,
-        ratingStats: 0,
+        unroundedAverageRating: 0,
       },
     },
   ]);

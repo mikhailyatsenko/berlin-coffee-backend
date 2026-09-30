@@ -1,7 +1,8 @@
 import Place, { VISIBLE_PLACE_MATCH } from "../../../../models/Place.js";
 import mongoose from "mongoose";
+import { placeStatsStages, type PlaceStats } from "../../../../utils/placeStats.js";
 
-export interface FavoritePlaceWithStats {
+export interface FavoritePlaceWithStats extends PlaceStats {
   _id: mongoose.Types.ObjectId;
   type: string;
   geometry: {
@@ -18,8 +19,6 @@ export interface FavoritePlaceWithStats {
     neighborhood?: string;
   };
   favoriteCount: number;
-  averageRating: number;
-  ratingCount: number;
   isFavorite: boolean;
 }
 
@@ -108,32 +107,9 @@ export async function getFavoritePlacesWithStats(
         },
       },
     },
-    {
-      $lookup: {
-        from: "interactions",
-        localField: "_id",
-        foreignField: "placeId",
-        pipeline: [
-          { $match: { rating: { $exists: true, $ne: null } } },
-          {
-            $group: {
-              _id: null,
-              averageRating: { $avg: "$rating" },
-              ratingCount: { $sum: 1 },
-            },
-          },
-        ],
-        as: "ratingStats",
-      },
-    },
+    ...placeStatsStages(),
     {
       $addFields: {
-        averageRating: {
-          $ifNull: [{ $arrayElemAt: ["$ratingStats.averageRating", 0] }, 0],
-        },
-        ratingCount: {
-          $ifNull: [{ $arrayElemAt: ["$ratingStats.ratingCount", 0] }, 0],
-        },
         isFavorite: true, // Все места в этом запросе уже избранные
       },
     },
@@ -141,7 +117,7 @@ export async function getFavoritePlacesWithStats(
       $project: {
         interactions: 0,
         userInteractions: 0,
-        ratingStats: 0,
+        unroundedAverageRating: 0,
         "properties.additionalInfo": 0,
         "properties.openingHours": 0,
         "properties.phone": 0,

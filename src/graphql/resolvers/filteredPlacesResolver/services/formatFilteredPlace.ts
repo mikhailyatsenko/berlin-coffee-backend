@@ -19,7 +19,7 @@ export function formatFilteredPlace(place: PlaceWithStats): Place {
             address: place.properties.address || "",
             image: place.properties.image || "",
             instagram: place.properties.instagram || "",
-            averageRating: Number(place.averageRating.toFixed(1)),
+            averageRating: place.averageRating,
             ratingCount: place.ratingCount,
             favoriteCount: place.favoriteCount,
             isFavorite: place.isFavorite,

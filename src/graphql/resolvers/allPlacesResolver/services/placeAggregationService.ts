@@ -1,8 +1,9 @@
 import Place, { VISIBLE_PLACE_MATCH } from "../../../../models/Place.js";
 import mongoose from "mongoose";
+import { placeStatsStages, type PlaceStats } from "../../../../utils/placeStats.js";
 import { ActorRef, ownInteractionCond } from "../../../../utils/reviewActor.js";
 
-export interface PlaceWithStats {
+export interface PlaceWithStats extends PlaceStats {
   _id: mongoose.Types.ObjectId;
   type: string;
   geometry: {
@@ -19,8 +20,6 @@ export interface PlaceWithStats {
     neighborhood?: string;
   };
   favoriteCount: number;
-  averageRating: number;
-  ratingCount: number;
   isFavorite: boolean;
 }
 
@@ -70,32 +69,9 @@ export async function getPlacesWithStats(
         },
       },
     },
-    {
-      $lookup: {
-        from: "interactions",
-        localField: "_id",
-        foreignField: "placeId",
-        pipeline: [
-          { $match: { rating: { $exists: true, $ne: null } } },
-          {
-            $group: {
-              _id: null,
-              averageRating: { $avg: "$rating" },
-              ratingCount: { $sum: 1 },
-            },
-          },
-        ],
-        as: "ratingStats",
-      },
-    },
+    ...placeStatsStages(),
     {
       $addFields: {
-        averageRating: {
-          $ifNull: [{ $arrayElemAt: ["$ratingStats.averageRating", 0] }, 0],
-        },
-        ratingCount: {
-          $ifNull: [{ $arrayElemAt: ["$ratingStats.ratingCount", 0] }, 0],
-        },
         isFavorite: {
           $cond: {
             if: {
@@ -119,7 +95,7 @@ export async function getPlacesWithStats(
     },
     // Sort by rating from highest to lowest
     {
-      $sort: { averageRating: -1 },
+      $sort: { unroundedAverageRating: -1 },
     },
     // Apply pagination after sorting
     { $skip: offset },
@@ -133,7 +109,7 @@ export async function getPlacesWithStats(
     $project: {
       interactions: 0,
       userInteractions: 0,
-      ratingStats: 0,
+      unroundedAverageRating: 0,
       "properties.additionalInfo": 0,
       "properties.openingHours": 0,
       "properties.phone": 0,
