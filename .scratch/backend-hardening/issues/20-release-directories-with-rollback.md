@@ -95,7 +95,8 @@ Run as `SERVER_USER` on the server. Nothing is deleted until the first new deplo
    ```
    pm2 delete coffe-server
    pm2 start /var/www/coffee-server/current/dist/index.js --name coffe-server \
-     --cwd /var/www/coffee-server/current --interpreter "$(command -v node)"
+     --cwd /var/www/coffee-server/current \
+     --interpreter /root/.nvm/versions/node/v22.20.0/bin/node
    pm2 save
    ```
 3. **Check.**
@@ -105,8 +106,14 @@ Run as `SERVER_USER` on the server. Nothing is deleted until the first new deplo
      --data '{"query":"{ __typename }"}' http://127.0.0.1:3000/coffee; echo
    ```
    - Expected: `online`, script path `/var/www/coffee-server/current/dist/index.js`, exec cwd `/var/www/coffee-server/current`, and `{"data":{"__typename":"Query"}}`.
-   - If it fails, go back to the old layout: `pm2 delete coffe-server && cd /var/www/coffee-server && pm2 start dist/index.js --name coffe-server --interpreter "$(command -v node)" && pm2 save`.
+   - If it fails, go back to the old layout: `pm2 delete coffe-server && cd /var/www/coffee-server && pm2 start dist/index.js --name coffe-server --interpreter /root/.nvm/versions/node/v22.20.0/bin/node && pm2 save`.
 4. **Merge** `ci/release-directories-with-rollback` into `main` and push. In the Actions run, the deploy log should end with `✅ releases/<sha> is live`. On the server, `readlink current` should give `releases/<new sha>` and `ls releases` should show both.
 5. **After that first deploy succeeds**, remove the old top-level copies: `cd /var/www/coffee-server && rm -rf dist node_modules package.json package-lock.json deploy.tar.gz`.
 6. Record the result here and set `Status: done`.
+
+2026-09-30: Ran step 0 on the server (read-only, as root).
+- Layout: `dist/`, `node_modules/` (135M), `package.json`, `package-lock.json`, `.env`, plus `uploads/`. `uploads/` holds old local avatars and a PDF (456K, last write 2025-10-01). The code neither writes nor serves it (ImageKit; no `express.static`/`sendFile`), so it stays where it is and is not copied into releases.
+- PM2: `coffe-server` is `online` as root. Script path `/var/www/coffee-server/dist/index.js`, exec cwd `/var/www/coffee-server`, interpreter `/root/.nvm/versions/node/v22.20.0/bin/node`. Other apps run in the same PM2 (`3welle-strapi`, `berlin-bars-server`, `encryptnotes`); systemd unit `pm2-root`. Daemon 6.0.13, `/usr/bin/pm2` CLI 5.4.1 (as before; don't `pm2 update`, it restarts every app).
+- A non-interactive SSH session (the one the deploy uses) has `/usr/bin/node` v22.22.3, `/usr/bin/npm` and `/usr/bin/pm2`. `npm ci` builds native modules with that node, and they run under nvm's 22.20.0, which has the same ABI; that is how production already runs. Step 2 now names the current interpreter explicitly instead of `$(command -v node)`, which would differ between an interactive and a non-interactive shell.
+- Disk: 6.0G free of 20G; 6 × 135M of `node_modules` fits.
 
