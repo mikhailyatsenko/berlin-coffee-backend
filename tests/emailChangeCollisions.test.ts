@@ -83,7 +83,7 @@ const lastToken = () => {
 };
 
 /** Starts a change of this User's email; returns the token mailed for it. */
-const changeEmail = async (user: InstanceType<typeof User>, email: string) => {
+const requestEmailChange = async (user: InstanceType<typeof User>, email: string) => {
   await callResolver(
     updatePersonalDataResolver,
     { userId: user.id, email },
@@ -124,8 +124,8 @@ beforeEach(async () => {
 test("two Users pending one address: the first to confirm wins, the second gets EMAIL_TAKEN", async () => {
   const anna = await createUser("anna@x.de");
   const bob = await createUser("bob@x.de");
-  const annaToken = await changeEmail(anna, "new@x.de");
-  const bobToken = await changeEmail(bob, "new@x.de");
+  const annaToken = await requestEmailChange(anna, "new@x.de");
+  const bobToken = await requestEmailChange(bob, "new@x.de");
 
   const result = await confirm(annaToken, "new@x.de");
   assert.equal(result.user.id, anna.id);
@@ -139,8 +139,8 @@ test("two Users pending one address: the first to confirm wins, the second gets 
 test("the first link doesn't depend on the order the changes were asked in", async () => {
   const anna = await createUser("anna@x.de");
   const bob = await createUser("bob@x.de");
-  const annaToken = await changeEmail(anna, "new@x.de");
-  const bobToken = await changeEmail(bob, "new@x.de");
+  const annaToken = await requestEmailChange(anna, "new@x.de");
+  const bobToken = await requestEmailChange(bob, "new@x.de");
 
   await confirm(bobToken, "new@x.de");
   await assert.rejects(confirm(annaToken, "new@x.de"), withCode("EMAIL_TAKEN"));
@@ -149,7 +149,7 @@ test("the first link doesn't depend on the order the changes were asked in", asy
 
 test("a change to an address a confirmed User took first: EMAIL_TAKEN, the change cleared, the email kept", async () => {
   const anna = await createUser("anna@x.de");
-  const token = await changeEmail(anna, "new@x.de");
+  const token = await requestEmailChange(anna, "new@x.de");
   await createUser("new@x.de");
 
   await assert.rejects(confirm(token, "new@x.de"), withCode("EMAIL_TAKEN"));
@@ -163,7 +163,7 @@ test("a change to an address a confirmed User took first: EMAIL_TAKEN, the chang
 
 test("a change to an address an unconfirmed User holds: that User is deleted and the change applied", async () => {
   const anna = await createUser("anna@x.de");
-  const token = await changeEmail(anna, "new@x.de");
+  const token = await requestEmailChange(anna, "new@x.de");
   const squatter = await createUser("new@x.de", { isEmailConfirmed: false });
 
   const result = await confirm(token, "new@x.de");
@@ -175,7 +175,7 @@ test("a change to an address an unconfirmed User holds: that User is deleted and
 
 test("the address taken between the check and the save: EMAIL_TAKEN, not a 500", async () => {
   const anna = await createUser("anna@x.de");
-  const token = await changeEmail(anna, "new@x.de");
+  const token = await requestEmailChange(anna, "new@x.de");
   await createUser("new@x.de");
 
   // The owner check misses the owner, as if it registered right after it.
@@ -196,10 +196,62 @@ test("the address taken between the check and the save: EMAIL_TAKEN, not a 500",
   assert.equal(after.emailConfirmationToken, null);
 });
 
+/** Makes this User's pending link expired. */
+const expire = (user: InstanceType<typeof User>) =>
+  User.updateOne({ _id: user._id }, { emailConfirmationTokenExpires: new Date(0) });
+
+test("an expired link to an address a confirmed User took: EMAIL_TAKEN, the change cleared", async () => {
+  const anna = await createUser("anna@x.de");
+  const token = await requestEmailChange(anna, "new@x.de");
+  await expire(anna);
+  await createUser("new@x.de");
+
+  await assert.rejects(confirm(token, "new@x.de"), withCode("EMAIL_TAKEN"));
+  assert.equal((await stored(anna)).pendingEmail, null);
+});
+
+test("an expired link to an address an unconfirmed User holds: TOKEN_EXPIRED, nobody deleted", async () => {
+  const anna = await createUser("anna@x.de");
+  const token = await requestEmailChange(anna, "new@x.de");
+  await expire(anna);
+  const squatter = await createUser("new@x.de", { isEmailConfirmed: false });
+
+  await assert.rejects(confirm(token, "new@x.de"), withCode("TOKEN_EXPIRED"));
+  assert.notEqual(await User.findById(squatter._id), null);
+  assert.equal((await stored(anna)).pendingEmail, "new@x.de");
+});
+
+test("an owner that confirms between the lookup and the delete is kept: EMAIL_TAKEN", async () => {
+  const anna = await createUser("anna@x.de");
+  const token = await requestEmailChange(anna, "new@x.de");
+  const owner = await createUser("new@x.de");
+
+  // The lookup still sees the owner unconfirmed, as just before it confirmed.
+  const findOne = User.findOne;
+  User.findOne = function (this: typeof User, filter?: { email?: unknown }) {
+    if (filter?.email !== undefined) {
+      return Promise.resolve(
+        User.hydrate({ ...owner.toObject(), isEmailConfirmed: false }),
+      );
+    }
+    return findOne.call(this, filter);
+  } as unknown as typeof User.findOne;
+  try {
+    await assert.rejects(confirm(token, "new@x.de"), withCode("EMAIL_TAKEN"));
+  } finally {
+    User.findOne = findOne;
+  }
+
+  assert.notEqual(await User.findById(owner._id), null);
+  const after = await stored(anna);
+  assert.equal(after.email, "anna@x.de");
+  assert.equal(after.pendingEmail, null);
+});
+
 test("one User's token with another User's address: INVALID_TOKEN", async () => {
   const anna = await createUser("anna@x.de");
   await createUser("bob@x.de", { pendingEmail: "bob-new@x.de" });
-  const token = await changeEmail(anna, "new@x.de");
+  const token = await requestEmailChange(anna, "new@x.de");
 
   await assert.rejects(confirm(token, "bob-new@x.de"), withCode("INVALID_TOKEN"));
   await assert.rejects(confirm(token, "bob@x.de"), withCode("INVALID_TOKEN"));
@@ -209,7 +261,7 @@ test("one User's token with another User's address: INVALID_TOKEN", async () => 
 
 test("a token that matches no User: INVALID_TOKEN", async () => {
   const anna = await createUser("anna@x.de");
-  await changeEmail(anna, "new@x.de");
+  await requestEmailChange(anna, "new@x.de");
 
   await assert.rejects(confirm("ab".repeat(32), "new@x.de"), withCode("INVALID_TOKEN"));
 });
@@ -265,7 +317,7 @@ test("resend: an unconfirmed owner gets the mail, not a User pending the address
   assert.deepEqual(await resend("new@x.de"), { success: true });
 
   assert.equal(transport.sent.length, 1);
-  assert.equal((await stored(owner)).emailConfirmationToken !== null, true);
+  assert.notEqual((await stored(owner)).emailConfirmationToken, null);
   assert.equal((await stored(anna)).emailConfirmationToken ?? null, null);
 });
 

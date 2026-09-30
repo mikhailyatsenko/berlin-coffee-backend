@@ -15,9 +15,11 @@ const invalidLink = () =>
 const emailTaken = () =>
   appError("EMAIL_TAKEN", "This email now belongs to another account");
 
-const clearConfirmation = (user: IUser) => {
-  user.emailConfirmationToken = null;
-  user.emailConfirmationTokenExpires = null;
+/** What cancelling a pending email change stores. */
+const CANCELLED_CHANGE = {
+  pendingEmail: null,
+  emailConfirmationToken: null,
+  emailConfirmationTokenExpires: null,
 };
 
 const isDuplicateEmail = (error: unknown) => {
@@ -30,41 +32,48 @@ const isDuplicateEmail = (error: unknown) => {
 
 /**
  * Nothing reserves a pending address: it goes to whoever proves the mailbox
- * first. A confirmed owner keeps it and the change is cancelled; an
- * unconfirmed one never proved it, so that account gives way.
+ * first. A confirmed owner keeps it and the change is cancelled, even if the
+ * link has expired, since a new one could never win; an unconfirmed owner
+ * never proved it, so that account gives way.
  */
-const changeEmail = async (user: IUser, email: string) => {
+const applyEmailChange = async (user: IUser, email: string) => {
+  // Straight to the stored User: the in-memory copy may already hold the new email.
+  const cancel = async () => {
+    await User.updateOne({ _id: user._id }, CANCELLED_CHANGE);
+    return emailTaken();
+  };
+
   const owner = await User.findOne({ email });
   if (owner?.isEmailConfirmed) {
-    user.pendingEmail = null;
-    clearConfirmation(user);
-    await user.save();
-    throw emailTaken();
+    throw await cancel();
   }
-  if (owner) {
-    await owner.deleteOne();
+  assertNotExpired(user);
+  // Only while still unconfirmed: the owner may have confirmed since the lookup.
+  if (
+    owner &&
+    (await User.deleteOne({ _id: owner._id, isEmailConfirmed: false }))
+      .deletedCount === 0
+  ) {
+    throw await cancel();
   }
 
-  user.email = email;
-  user.pendingEmail = null;
-  user.isEmailConfirmed = true;
-  clearConfirmation(user);
+  user.set({ ...CANCELLED_CHANGE, email, isEmailConfirmed: true });
   user.lastActive = new Date();
   try {
     await user.save();
   } catch (error) {
+    // Taken between the check and the save.
     if (!isDuplicateEmail(error)) throw error;
-    // Taken between the check and the save. The in-memory copy already holds
-    // the new email, so the cancel goes straight to the stored one.
-    await User.updateOne(
-      { _id: user._id },
-      {
-        pendingEmail: null,
-        emailConfirmationToken: null,
-        emailConfirmationTokenExpires: null,
-      },
-    );
-    throw emailTaken();
+    throw await cancel();
+  }
+};
+
+const assertNotExpired = (user: IUser) => {
+  if (
+    !user.emailConfirmationTokenExpires ||
+    user.emailConfirmationTokenExpires < new Date()
+  ) {
+    throw appError("TOKEN_EXPIRED", "Confirmation link has expired");
   }
 };
 
@@ -93,18 +102,13 @@ export const confirmEmailResolver: MutationResolvers["confirmEmail"] = async (
     throw appError("EMAIL_ALREADY_CONFIRMED", "Email is already confirmed");
   }
 
-  if (
-    !user.emailConfirmationTokenExpires ||
-    user.emailConfirmationTokenExpires < new Date()
-  ) {
-    throw appError("TOKEN_EXPIRED", "Confirmation link has expired");
-  }
-
   if (isEmailChange) {
-    await changeEmail(user, email);
+    await applyEmailChange(user, email);
   } else {
+    assertNotExpired(user);
     user.isEmailConfirmed = true;
-    clearConfirmation(user);
+    user.emailConfirmationToken = null;
+    user.emailConfirmationTokenExpires = null;
     user.lastActive = new Date();
     await user.save();
   }
