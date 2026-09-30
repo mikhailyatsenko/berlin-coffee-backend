@@ -2,8 +2,9 @@
  * The server side of the deploy (deploy/release.sh): unpack into
  * releases/<sha>, install there, switch `current`, restart PM2, health-check
  * over HTTP, roll back on failure, keep the last 5 releases. Against a temp
- * app root, with pm2, npm and curl replaced by stubs on PATH that log their
- * calls; the curl stub answers healthy unless the live release ships a
+ * app root laid out as the one-time server migration leaves it (release
+ * sha(0) live), with pm2, npm and curl replaced by stubs on PATH that log
+ * their calls; the curl stub answers healthy unless the live release ships a
  * `dist/unhealthy` marker.
  *
  * Run: npm test
@@ -21,6 +22,7 @@ import {
   readlinkSync,
   realpathSync,
   rmSync,
+  symlinkSync,
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
@@ -35,8 +37,6 @@ const script = path.join(
 const stubs = {
   pm2: `#!/bin/sh
 echo "pm2 $*" >> "$STUB_LOG"
-if [ "$1" = describe ] && [ ! -f "$STUB_STATE/pm2-known" ]; then exit 1; fi
-if [ "$1" = start ]; then touch "$STUB_STATE/pm2-known"; fi
 if [ "$1" = restart ] && [ -f "$STUB_STATE/pm2-restart-fails" ]; then
   rm "$STUB_STATE/pm2-restart-fails"; echo "[PM2][ERROR] stub failure" >&2; exit 1
 fi
@@ -58,6 +58,8 @@ echo '{"data":{"__typename":"Query"}}'
 `,
 };
 
+const sha = (n: number) => n.toString(16).padStart(40, "a");
+
 let root: string;
 let appRoot: string;
 let stubBin: string;
@@ -77,11 +79,16 @@ beforeEach(() => {
     writeFileSync(path.join(stubBin, name), body);
     chmodSync(path.join(stubBin, name), 0o755);
   }
+  // What the one-time migration leaves: the running code as a release, and
+  // a relative `current` link to it.
+  mkdirSync(path.join(appRoot, "releases", sha(0), "dist"), {
+    recursive: true,
+  });
+  writeFileSync(path.join(appRoot, "releases", sha(0), "dist/index.js"), "");
+  symlinkSync(`releases/${sha(0)}`, path.join(appRoot, "current"));
 });
 
 afterEach(() => rmSync(root, { recursive: true, force: true }));
-
-const sha = (n: number) => n.toString(16).padStart(40, "a");
 
 /** The tarball the workflow uploads: dist/, package.json, package-lock.json. */
 const packTarball = (opts: { unhealthy?: boolean } = {}) => {
@@ -93,7 +100,8 @@ const packTarball = (opts: { unhealthy?: boolean } = {}) => {
   writeFileSync(path.join(src, "package-lock.json"), "{}\n");
   mkdirSync(path.join(appRoot, "incoming"), { recursive: true });
   const tarball = path.join(appRoot, "incoming/deploy.tar.gz");
-  const tar = spawnSync("tar", ["-czf", tarball, "-C", src, "dist", "package.json", "package-lock.json"]);
+  const files = ["dist", "package.json", "package-lock.json"];
+  const tar = spawnSync("tar", ["-czf", tarball, "-C", src, ...files]);
   assert.equal(tar.status, 0, tar.stderr.toString());
   return tarball;
 };
@@ -117,16 +125,18 @@ const deploy = (
     },
     encoding: "utf8",
   });
-  const calls = readFileSync(stubLog, "utf8").trim().split("\n").filter(Boolean);
+  const calls = readFileSync(stubLog, "utf8")
+    .trim()
+    .split("\n")
+    .filter(Boolean);
   return { status: run.status, output: run.stdout + run.stderr, calls };
 };
 
 const current = () => readlinkSync(path.join(appRoot, "current"));
-const releases = () =>
-  readdirSync(path.join(appRoot, "releases")).sort();
-const pm2Calls = (calls: string[]) => calls.filter((c) => c.startsWith("pm2 ") && !c.startsWith("pm2 describe"));
+const releases = () => readdirSync(path.join(appRoot, "releases")).sort();
+const pm2Calls = (calls: string[]) => calls.filter((c) => c.startsWith("pm2 "));
 
-test("the first deploy installs into releases/<sha>, points current at it and starts PM2 from current", () => {
+test("a deploy installs into releases/<sha>, points current at it and restarts PM2", () => {
   const tarball = packTarball();
   const run = deploy(sha(1), { tarball });
   assert.equal(run.status, 0, run.output);
@@ -134,15 +144,19 @@ test("the first deploy installs into releases/<sha>, points current at it and st
   const release = path.join(appRoot, "releases", sha(1));
   assert.equal(current(), `releases/${sha(1)}`);
   assert.ok(existsSync(path.join(release, "dist/index.js")));
-  assert.equal(readlinkSync(path.join(release, ".env")), path.join(appRoot, ".env"));
+  assert.equal(
+    readlinkSync(path.join(release, ".env")),
+    path.join(appRoot, ".env"),
+  );
   assert.ok(!existsSync(tarball), "the uploaded tarball is removed");
+  assert.deepEqual(releases(), [sha(0), sha(1)]);
 
-  assert.ok(run.calls.includes(`npm ci --omit=dev in ${release}`), run.calls.join("\n"));
-  assert.ok(run.calls.some((c) => c.startsWith("npm rebuild sharp") && c.endsWith(`in ${release}`)));
-  assert.deepEqual(pm2Calls(run.calls), [
-    `pm2 start ${appRoot}/current/dist/index.js --name coffe-server --cwd ${appRoot}/current --interpreter ${process.execPath}`,
-    "pm2 save",
+  const inRelease = run.calls.filter((c) => c.endsWith(` in ${release}`));
+  assert.deepEqual(inRelease, [
+    `npm ci --omit=dev in ${release}`,
+    `npm rebuild sharp --update-binary in ${release}`,
   ]);
+  assert.deepEqual(pm2Calls(run.calls), ["pm2 restart coffe-server"]);
 });
 
 test("the health check is a GraphQL POST to the local endpoint", () => {
@@ -156,15 +170,6 @@ test("the health check is a GraphQL POST to the local endpoint", () => {
   assert.match(health, /http:\/\/127\.0\.0\.1:3000\/coffee/);
 });
 
-test("a later deploy switches current to the new release and restarts PM2", () => {
-  assert.equal(deploy(sha(1)).status, 0);
-  const run = deploy(sha(2));
-  assert.equal(run.status, 0, run.output);
-  assert.equal(current(), `releases/${sha(2)}`);
-  assert.deepEqual(pm2Calls(run.calls), ["pm2 restart coffe-server"]);
-  assert.deepEqual(releases(), [sha(1), sha(2)]);
-});
-
 test("a failed health check points current back at the previous release, restarts PM2 and fails", () => {
   assert.equal(deploy(sha(1)).status, 0);
   const run = deploy(sha(2), { unhealthy: true });
@@ -174,9 +179,21 @@ test("a failed health check points current back at the previous release, restart
     "pm2 restart coffe-server",
     "pm2 restart coffe-server",
   ]);
-  assert.equal(run.calls.filter((c) => c.startsWith("curl ")).length, 3 + 1, "3 attempts, then one after rollback");
-  assert.deepEqual(releases(), [sha(1)], "the failed release is removed");
-  assert.match(run.output, /rolled back to releases\/a+1/i);
+  const healthChecks = run.calls.filter((c) => c.startsWith("curl "));
+  assert.equal(healthChecks.length, 3 + 1, "3 attempts, one after rollback");
+  assert.deepEqual(releases(), [sha(0), sha(1)], "the failed one is removed");
+  assert.match(run.output, /rolled back to .*releases\/a+1/i);
+});
+
+test("rollback works when the migration left an absolute current link", () => {
+  rmSync(path.join(appRoot, "current"));
+  const live = path.join(appRoot, "releases", sha(0));
+  symlinkSync(live, path.join(appRoot, "current"));
+  const run = deploy(sha(1), { unhealthy: true });
+  assert.notEqual(run.status, 0);
+  assert.equal(realpathSync(path.join(appRoot, "current")), live);
+  assert.deepEqual(releases(), [sha(0)]);
+  assert.match(run.output, /rolled back/i);
 });
 
 test("a failed PM2 restart after the switch rolls back like a failed health check", () => {
@@ -189,14 +206,17 @@ test("a failed PM2 restart after the switch rolls back like a failed health chec
     "pm2 restart coffe-server",
     "pm2 restart coffe-server",
   ]);
-  assert.deepEqual(releases(), [sha(1)]);
-  assert.match(run.output, /rolled back to releases\/a+1/i);
+  assert.deepEqual(releases(), [sha(0), sha(1)]);
+  assert.match(run.output, /rolled back to .*releases\/a+1/i);
 });
 
-test("a failed health check on the first deploy has nothing to roll back to and fails", () => {
-  const run = deploy(sha(1), { unhealthy: true });
+test("a server without the current link (not migrated) is rejected before anything happens", () => {
+  rmSync(path.join(appRoot, "current"));
+  const run = deploy(sha(1));
   assert.notEqual(run.status, 0);
-  assert.match(run.output, /no previous release/i);
+  assert.match(run.output, /not migrated/i);
+  assert.deepEqual(run.calls, []);
+  assert.deepEqual(releases(), [sha(0)]);
 });
 
 test("a failed npm ci never touches the live release", () => {
@@ -206,7 +226,7 @@ test("a failed npm ci never touches the live release", () => {
   assert.notEqual(run.status, 0);
   assert.equal(current(), `releases/${sha(1)}`);
   assert.deepEqual(pm2Calls(run.calls), []);
-  assert.deepEqual(releases(), [sha(1)], "no partial release is left behind");
+  assert.deepEqual(releases(), [sha(0), sha(1)], "no partial release is left");
 });
 
 test("only the last 5 releases are kept", () => {
@@ -229,7 +249,7 @@ test("deploying the sha that is already live changes nothing", () => {
   const run = deploy(sha(1));
   assert.equal(run.status, 0, run.output);
   assert.equal(current(), `releases/${sha(1)}`);
-  assert.deepEqual(run.calls.filter((c) => !c.startsWith("pm2 describe")), []);
+  assert.deepEqual(run.calls, []);
   assert.match(run.output, /already live/i);
 });
 
@@ -237,7 +257,7 @@ test("a malformed sha is rejected before anything happens", () => {
   const run = deploy("../../etc");
   assert.notEqual(run.status, 0);
   assert.deepEqual(run.calls, []);
-  assert.ok(!existsSync(path.join(appRoot, "releases")));
+  assert.deepEqual(releases(), [sha(0)]);
 });
 
 test("a missing shared .env is rejected before anything happens", () => {

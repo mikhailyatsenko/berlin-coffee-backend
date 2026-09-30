@@ -12,6 +12,11 @@
 #                     to it, so dotenv (which reads the cwd) finds it
 #   incoming/         upload target for the tarball (removed once unpacked)
 #
+# The server must have been migrated to this layout once by hand (ticket 20,
+# .scratch/backend-hardening/issues/20-release-directories-with-rollback.md):
+# `current` exists and PM2 runs coffe-server from it. Without `current` the
+# script refuses to run, so an old-layout server never gets a false success.
+#
 # Steps: unpack and `npm ci` in releases/<sha> (a failure here never touches the
 # live release), point `current` at it, restart PM2,
 # then POST `{ __typename }` to the local GraphQL endpoint until it answers. If
@@ -21,13 +26,15 @@
 #
 # Overridable for a local run (tests/deployRelease.test.ts): APP_ROOT,
 # HEALTH_URL, HEALTH_ATTEMPTS, HEALTH_INTERVAL; pm2, npm and curl come from PATH.
+# The health window is at most HEALTH_ATTEMPTS x (3 s curl + HEALTH_INTERVAL),
+# about 75 s, twice when rolling back; the deploy job's timeout must cover it.
 set -euo pipefail
 
 sha=${1:-}
 tarball=${2:-}
 
 APP_ROOT=${APP_ROOT:-/var/www/coffee-server}
-PM2_NAME=${PM2_NAME:-coffe-server}
+PM2_NAME=coffe-server
 HEALTH_URL=${HEALTH_URL:-http://127.0.0.1:3000/coffee}
 HEALTH_ATTEMPTS=${HEALTH_ATTEMPTS:-15}
 HEALTH_INTERVAL=${HEALTH_INTERVAL:-2}
@@ -42,17 +49,20 @@ fail() {
 [[ $sha =~ ^[0-9a-f]{7,40}$ ]] || fail "usage: release.sh <sha> <tarball>; got sha '$sha'"
 [[ -f $tarball ]] || fail "tarball not found: '$tarball'"
 [[ -f $APP_ROOT/.env ]] || fail "shared env file missing: $APP_ROOT/.env"
+[[ -L $APP_ROOT/current ]] ||
+  fail "$APP_ROOT/current is missing: server not migrated to releases/ (see ticket 20)"
 
 releases_dir=$APP_ROOT/releases
 release=$releases_dir/$sha
 current_link=$APP_ROOT/current
 
-previous=""
-if [[ -L $current_link ]]; then
-  previous=$(readlink "$current_link")
-fi
+# The link as it is (restored verbatim on rollback) and the live release as an
+# absolute path (the link may be relative or absolute).
+previous_link=$(readlink "$current_link")
+previous_release=$previous_link
+[[ $previous_release == /* ]] || previous_release=$APP_ROOT/$previous_release
 
-if [[ $previous == "releases/$sha" ]]; then
+if [[ $previous_release == "$release" ]]; then
   rm -f "$tarball"
   echo "✅ releases/$sha is already live; nothing to do"
   exit 0
@@ -86,21 +96,13 @@ touch "$release"
 # restart and healthy are called inside `if`, where set -e does not apply, so
 # every step returns its status explicitly.
 restart() {
-  if pm2 describe "$PM2_NAME" > /dev/null 2>&1; then
-    pm2 restart "$PM2_NAME"
-  else
-    # Only before the one-time migration registered the process (or if it was
-    # deleted by hand): register it from current and persist the list.
-    pm2 start "$current_link/dist/index.js" --name "$PM2_NAME" --cwd "$current_link" \
-      --interpreter "$(command -v node)" \
-      && pm2 save
-  fi
+  pm2 restart "$PM2_NAME"
 }
 
 healthy() {
   local attempt body
   for ((attempt = 1; attempt <= HEALTH_ATTEMPTS; attempt++)); do
-    if body=$(curl -fsS --max-time 5 -X POST \
+    if body=$(curl -fsS --max-time 3 -X POST \
       -H 'Content-Type: application/json' \
       --data '{"query":"{ __typename }"}' \
       "$HEALTH_URL" 2> /dev/null) && [[ $body == *'"__typename"'* ]]; then
@@ -115,15 +117,14 @@ ln -sfn "releases/$sha" "$current_link"
 
 if ! restart || ! healthy; then
   echo "❌ releases/$sha did not come up (PM2 restart or health check at $HEALTH_URL failed)" >&2
-  if [[ -z $previous || ! -d $APP_ROOT/$previous ]]; then
-    fail "no previous release to roll back to; the app is down"
-  fi
-  ln -sfn "$previous" "$current_link"
+  [[ -d $previous_release ]] ||
+    fail "previous release $previous_release is gone; nothing to roll back to"
+  ln -sfn "$previous_link" "$current_link"
   rm -rf "$release"
   if restart && healthy; then
-    fail "rolled back to $previous"
+    fail "rolled back to $previous_release"
   fi
-  fail "rolled back to $previous, but it does not answer either"
+  fail "rolled back to $previous_release, but it does not answer either"
 fi
 
 echo "✅ releases/$sha is live"
