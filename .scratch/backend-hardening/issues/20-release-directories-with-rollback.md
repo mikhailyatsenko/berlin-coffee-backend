@@ -27,3 +27,7 @@ The deploy deletes `dist` and `node_modules` of the live app and reinstalls unde
 - [ ] Old releases beyond 5 are pruned.
 - [ ] The deploy script is testable locally: its server-side part lives in a shell script in the repo, and a local run against a temp directory (with PM2 and the health check stubbed) shows switch, rollback on failed health check, and pruning; recorded in Comments.
 - [ ] The one-time migration checklist exists, and the ticket says plainly that merging waits for it.
+
+## Comments
+
+2026-09-30 (from ticket 19 review): deploys can overlap. CI's `cancel-in-progress` only covers the CI stage, so a newer push whose CI finishes while an older deploy is still running starts a second deploy on the server. With release directories and a `current` switch this matters more; consider `concurrency: { group: deploy-prod, cancel-in-progress: false }` on the deploy job (not on the workflow, where it could collide with the called CI's group).

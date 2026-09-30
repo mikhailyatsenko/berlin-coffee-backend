@@ -9,7 +9,7 @@ permissions:
   contents: read
 
 jobs:
-  # tsc, codegen drift and tests; a failure here stops the deploy.
+  # The same checks as a pull request (ci.yml); a failure stops the deploy.
   ci:
     uses: ./.github/workflows/ci.yml
 

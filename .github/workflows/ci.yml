@@ -13,7 +13,8 @@ permissions:
 
 # When called from deploy.yml, github.workflow is the caller's name and there
 # is no pull request, so the group falls back to the pushed ref: a newer push
-# to main cancels the older run's CI, and with it that run's deploy.
+# to main cancels the older run's CI while it is still running, and with it
+# that run's deploy. A deploy already past CI is not cancelled.
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
