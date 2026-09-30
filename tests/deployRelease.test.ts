@@ -47,7 +47,7 @@ echo "npm $* in $PWD" >> "$STUB_LOG"
 if [ "$1" = ci ]; then
   if [ -f "$STUB_STATE/npm-fails" ]; then echo "npm ERR! stub failure" >&2; exit 1; fi
   mkdir -p node_modules/sharp
-  echo "module.exports = { version: 'stub' };" > node_modules/sharp/index.js
+  echo "module.exports = { versions: { sharp: '0.0.0-stub' } };" > node_modules/sharp/index.js
 fi
 exit 0
 `,
@@ -156,6 +156,7 @@ test("a deploy installs into releases/<sha>, points current at it and restarts P
     `npm ci --omit=dev in ${release}`,
     `npm rebuild sharp --update-binary in ${release}`,
   ]);
+  assert.match(run.output, /sharp version: 0\.0\.0-stub/);
   assert.deepEqual(pm2Calls(run.calls), ["pm2 restart coffe-server"]);
 });
 
