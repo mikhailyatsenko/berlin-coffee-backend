@@ -119,3 +119,10 @@ Run as `SERVER_USER` on the server. Nothing is deleted until the first new deplo
 
 2026-09-30: The owner asked to keep 2 releases instead of 5 (`KEEP_RELEASES=2`): the live one and the automatic rollback target; manual rollback further back is not needed, and the server's disk is tight (~136M per release). Tests and README updated; `deployRelease.test.ts` 12/12.
 
+2026-09-30 14:26 CEST: Ran migration steps 1–3 on the server (agent over SSH as root, with the owner's go-ahead).
+- Step 1: copied `dist`, `node_modules`, `package*.json` into `releases/eeca79f77714397e81fe0c73cb2c44d802dc7200` (136M; `dist` identical to the original). Added the `.env` symlink (same content as the root `.env`), created `incoming/` and `current -> releases/eeca79f…` (relative).
+- Step 2: `pm2 delete coffe-server`, `pm2 start …/current/dist/index.js --cwd …/current --interpreter /root/.nvm/versions/node/v22.20.0/bin/node`, `pm2 save`. The other three PM2 apps were untouched and stay `online`.
+- Step 3: the health POST answered `{"data":{"__typename":"Query"}}` about 6 s after start. `pm2 describe`: `online`, script path `/var/www/coffee-server/current/dist/index.js`, exec cwd `/var/www/coffee-server/current`. The process cwd resolves to `releases/eeca79f…`. The out log shows "MongoDB connected successfully", and nothing new in the error log.
+- Left in place, as planned: the old top-level `dist/`, `node_modules/` and `package*.json` (remove after the first new deploy, step 5), and `uploads/`.
+- Next: step 4, merge and push.
+
