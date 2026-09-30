@@ -66,6 +66,8 @@ const deleteFolderCalls: string[] = [];
 let releaseFolderDelete: () => void = () => {};
 /** When true, folder deletes wait for releaseFolderDelete. */
 let holdFolderDeletes = false;
+/** When true, ImageKit answers every folder delete with a server error. */
+let failFolderDeletes = false;
 
 fakeImageKit.deleteFolder = async function (folderPath) {
   deleteFolderCalls.push(folderPath);
@@ -74,6 +76,7 @@ fakeImageKit.deleteFolder = async function (folderPath) {
       releaseFolderDelete = resolve;
     });
   }
+  if (failFolderDeletes) throw { message: "Internal server error" };
 };
 
 const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
@@ -95,6 +98,7 @@ beforeEach(async () => {
   holdUploads = true;
   releaseFolderDelete = () => {};
   holdFolderDeletes = false;
+  failFolderDeletes = false;
   await Interaction.deleteMany({});
 });
 
@@ -331,4 +335,62 @@ test("an upload that times out while deleteReview's fence is up still gets its h
     "the timed-out upload's file may still land, so its hold must stand",
   );
   releaseUpload();
+});
+
+test("a folder delete that outlasts deleteReview's fence fails the delete instead of uncounting a newer Photo", async () => {
+  const review: Review = await createReview(2);
+  holdFolderDeletes = true;
+
+  const deletePromise = deleteReview(review, "deleteAll");
+  while (deleteFolderCalls.length < 1) await sleep(5);
+
+  // The fence ran out meanwhile: a new upload took the lease and committed
+  // image_3 before the folder delete came back.
+  const later = { token: "later", until: new Date(Date.now() + 60_000) };
+  await Interaction.updateOne(
+    { _id: review.reviewId },
+    { $set: { photoUploadLease: later, reviewImages: 3 } },
+  );
+
+  releaseFolderDelete();
+  await assert.rejects(deletePromise, withCode("INTERNAL_SERVER_ERROR"));
+
+  const after = await Interaction.findById(review.reviewId).lean();
+  assert.equal(after?.reviewImages, 3, "the committed Photo stays counted");
+  assert.equal(after?.reviewText, "nice");
+  assert.equal(
+    after?.photoUploadLease?.token,
+    "later",
+    "its lease is not ours to release",
+  );
+
+  // Deleting again finishes the job.
+  holdFolderDeletes = false;
+  await Interaction.updateOne(
+    { _id: review.reviewId },
+    { $unset: { photoUploadLease: "" } },
+  );
+  await deleteReview(review, "deleteAll");
+  const final = await Interaction.findById(review.reviewId).lean();
+  assert.equal(final?.reviewImages, 0);
+  assert.equal(final?.reviewText, undefined);
+});
+
+test("an upload fenced by a deleteReview whose folder delete fails still commits", async () => {
+  const review: Review = await createReview(2);
+  failFolderDeletes = true;
+
+  const uploadPromise = upload(review);
+  while (uploadCalls < 1) await sleep(5);
+
+  await assert.rejects(
+    deleteReview(review, "deleteAll"),
+    withCode("INTERNAL_SERVER_ERROR"),
+  );
+
+  // Nothing was deleted, so the upload's lease was handed back intact.
+  releaseUpload();
+  assert.deepEqual(await uploadPromise, { reviewImages: 3 });
+  const final = await Interaction.findById(review.reviewId).lean();
+  assert.equal(final?.reviewText, "nice");
 });

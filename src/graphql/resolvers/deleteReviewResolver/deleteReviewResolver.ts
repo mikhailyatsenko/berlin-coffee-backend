@@ -28,9 +28,11 @@ import type {
  * The counter and the fields are cleared only once the folder is gone, so a
  * failed folder delete throws and leaves the text and the Photos as they were.
  * Holding the fence is what makes the late clear safe: no upload can commit
- * while it is up. If delete crashes between the two, the fence expires by
- * itself and the counter still names files that are gone; deleting again
- * finishes the job, a missing folder counting as deleted.
+ * while it is up. A folder delete slower than the fence lets a new upload take
+ * the lease and commit a Photo the clear would then wipe from the counter, so
+ * the clear only runs while the fence token is still in place, and otherwise
+ * the delete fails. Deleting again finishes the job, as it does after a crash
+ * between the two: a missing folder counts as deleted.
  */
 async function clearPhotosBehindFence(
   reviewId: string,
@@ -54,17 +56,26 @@ async function clearPhotosBehindFence(
     // resolver returns could take the lease, land a file, and have it wiped
     // out from under the just-saved photo by this still-in-flight call.
     await deleteFolder();
-    await Interaction.updateOne(
-      { _id: reviewId },
+    const cleared = await Interaction.updateOne(
+      { _id: reviewId, "photoUploadLease.token": token },
       { $set: { reviewImages: 0 }, $unset: unset },
     );
+    if (cleared.matchedCount === 0) {
+      throw new Error(
+        `The upload fence on review ${reviewId} expired before its Photo folder was deleted`,
+      );
+    }
   } finally {
     const previousIsLive =
       !!previous?.token && !!previous.until && previous.until > new Date();
 
     // Nobody raised `until` past the fence: hand back what was there before.
     const released = await Interaction.updateOne(
-      { _id: reviewId, "photoUploadLease.token": token, "photoUploadLease.until": until },
+      {
+        _id: reviewId,
+        "photoUploadLease.token": token,
+        "photoUploadLease.until": until,
+      },
       previousIsLive
         ? { $set: { photoUploadLease: previous } }
         : { $unset: { photoUploadLease: "" } },

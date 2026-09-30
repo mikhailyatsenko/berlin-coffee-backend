@@ -52,8 +52,8 @@ beforeEach(async () => {
 
 type Owner = { userId: mongoose.Types.ObjectId } | { guestId: string };
 
-const aUserOwner = (): Owner => ({ userId: new mongoose.Types.ObjectId() });
-const aGuestOwner = (): Owner => ({ guestId: crypto.randomUUID() });
+const aUserOwner = () => ({ userId: new mongoose.Types.ObjectId() });
+const aGuestOwner = () => ({ guestId: crypto.randomUUID() });
 
 /** The context a request from this author arrives with, identity in headers. */
 function contextOf(owner: Owner): TestContext {
@@ -131,7 +131,7 @@ test("a Guest deletes all of their own Review; the empty document stays", async 
   assert.equal(after.reviewText, undefined);
   assert.equal(after.rating, undefined);
   assert.equal(after.reviewImages, 0);
-  assert.equal(after.guestId, "guestId" in guest ? guest.guestId : undefined);
+  assert.equal(after.guestId, guest.guestId);
   assert.equal(deleteFolderCalls.length, 1);
 });
 
@@ -178,7 +178,10 @@ test("a missing Review is NOT_FOUND for a Guest", async () => {
 test("with neither a User nor a Guest identity, deleteReview is UNAUTHENTICATED", async () => {
   const { reviewId } = await aReview(aGuestOwner());
 
-  for (const context of [{}, { guest: { status: "absent" } }] as TestContext[]) {
+  for (const context of [
+    {},
+    { guest: { status: "absent" } },
+  ] as TestContext[]) {
     await assert.rejects(
       deleteReview(reviewId, "deleteAll", context),
       withCode("UNAUTHENTICATED"),
@@ -203,7 +206,7 @@ test("with Guest credentials that no longer work, deleteReview is GUEST_IDENTITY
 // --- the Photo folder can't be deleted -----------------------------------
 
 test("a failing folder delete leaves the text and the Photos in place, and a retry finishes", async () => {
-  for (const owner of [aUserOwner(), aGuestOwner()]) {
+  for (const owner of [aUserOwner(), aGuestOwner()] as Owner[]) {
     const { reviewId } = await aReview(owner);
     failFolderDeletes = true;
 
