@@ -17,14 +17,14 @@ The deploy deletes `dist` and `node_modules` of the live app and reinstalls unde
 - Each deploy unpacks into `/var/www/coffee-server/releases/<sha>/`, runs `npm ci --omit=dev` and the `sharp` rebuild there. A failed install never touches the live release.
 - Then the `current` symlink is switched to the new release and PM2 restarts the app from `current`. The `.env` is shared (symlinked into each release or read from a fixed path; pick one and document it).
 - **Health check:** an HTTP POST `{ "query": "{ __typename }" }` to the local GraphQL endpoint (`http://127.0.0.1:3000/coffee`, with `Content-Type: application/json`; a bare GET answers 400 by Apollo's CSRF rule), retried for a short window. On failure: point `current` back at the previous release, restart PM2, and fail the workflow.
-- Keep the last 5 releases; older ones are removed.
+- Keep the last 2 releases (the live one and the rollback target); older ones are removed. (Was 5; changed by the owner on 2026-09-30, see Comments.)
 - A 1–2 s restart gap is acceptable (no cluster/reload).
 - **One-time server migration** (human step): a checklist in the ticket's Comments (or a `/mattpocock-skills:wizard` script) that moves the existing layout onto `releases/` + `current` and re-registers the PM2 process from `current` (`pm2 delete`, `pm2 start` from `current`, `pm2 save`). The new `deploy.yml` must not be pushed to `main` before the human has run it; the agent stops on a branch and says so.
 
 ## Acceptance criteria
 
 - [x] `deploy.yml` deploys into `releases/<sha>`, switches `current`, health-checks over HTTP, and rolls back on failure.
-- [x] Old releases beyond 5 are pruned.
+- [x] Old releases beyond 2 are pruned.
 - [x] The deploy script is testable locally: its server-side part lives in a shell script in the repo, and a local run against a temp directory (with PM2 and the health check stubbed) shows switch, rollback on failed health check, and pruning; recorded in Comments.
 - [x] The one-time migration checklist exists, and the ticket says plainly that merging waits for it.
 
@@ -39,7 +39,7 @@ The deploy deletes `dist` and `node_modules` of the live app and reinstalls unde
   - `ln -sfn releases/<sha> current`, then `pm2 restart coffe-server`.
   - Health check: POST `{"query":"{ __typename }"}` with `Content-Type: application/json` to `http://127.0.0.1:3000/coffee`, up to 15 × (3 s curl + 2 s pause).
   - If the restart or the health check fails: `current` gets its old link text back, PM2 restarts, the failed release is removed, and the script exits 1.
-  - On success: releases beyond the newest 5 are removed, by mtime. The new release is `touch`ed, so a redeployed older sha counts as newest.
+  - On success: releases beyond the newest 5 (now 2, see below) are removed, by mtime. The new release is `touch`ed, so a redeployed older sha counts as newest.
   - It refuses to run on a malformed sha, a missing `$APP_ROOT/.env`, or a missing `current` (server not migrated). Deploying the sha that is already live does nothing.
 - `.env`: the one file stays at `/var/www/coffee-server/.env`, and each release gets a symlink to it (dotenv reads the cwd, PM2's cwd is `current`). Documented in the script header and in README "Deploy".
 - `deploy.yml`:
@@ -81,7 +81,7 @@ Run as `SERVER_USER` on the server. Nothing is deleted until the first new deplo
    df -h . && du -sh node_modules
    ```
    - Expected in the directory: `dist/`, `node_modules/`, `package.json`, `package-lock.json`, `.env`, maybe an old `deploy.tar.gz`. If the app keeps anything else there at runtime, stop: it would need to be shared like `.env`.
-   - Disk: up to 6 copies of `node_modules` will exist (5 kept plus the one being built).
+   - Disk: up to 3 copies of `node_modules` will exist (2 kept plus the one being built).
 1. **Make the running code the first release.** This copies, so the old layout keeps running. `SHA` is the last successful deploy: `eeca79f…` as of 2026-09-30; if something was pushed since, take `gh run list --workflow deploy.yml -L 1 --json headSha,conclusion`.
    ```
    SHA=eeca79f77714397e81fe0c73cb2c44d802dc7200
@@ -116,4 +116,6 @@ Run as `SERVER_USER` on the server. Nothing is deleted until the first new deplo
 - PM2: `coffe-server` is `online` as root. Script path `/var/www/coffee-server/dist/index.js`, exec cwd `/var/www/coffee-server`, interpreter `/root/.nvm/versions/node/v22.20.0/bin/node`. Other apps run in the same PM2 (`3welle-strapi`, `berlin-bars-server`, `encryptnotes`); systemd unit `pm2-root`. Daemon 6.0.13, `/usr/bin/pm2` CLI 5.4.1 (as before; don't `pm2 update`, it restarts every app).
 - A non-interactive SSH session (the one the deploy uses) has `/usr/bin/node` v22.22.3, `/usr/bin/npm` and `/usr/bin/pm2`. `npm ci` builds native modules with that node, and they run under nvm's 22.20.0, which has the same ABI; that is how production already runs. Step 2 now names the current interpreter explicitly instead of `$(command -v node)`, which would differ between an interactive and a non-interactive shell.
 - Disk: 6.0G free of 20G; 6 × 135M of `node_modules` fits.
+
+2026-09-30: The owner asked to keep 2 releases instead of 5 (`KEEP_RELEASES=2`): the live one and the automatic rollback target; manual rollback further back is not needed, and the server's disk is tight (~136M per release). Tests and README updated; `deployRelease.test.ts` 12/12.
 

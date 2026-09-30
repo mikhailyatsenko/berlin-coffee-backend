@@ -1,7 +1,7 @@
 /**
  * The server side of the deploy (deploy/release.sh): unpack into
  * releases/<sha>, install there, switch `current`, restart PM2, health-check
- * over HTTP, roll back on failure, keep the last 5 releases. Against a temp
+ * over HTTP, roll back on failure, keep the last 2 releases. Against a temp
  * app root laid out as the one-time server migration leaves it (release
  * sha(0) live), with pm2, npm and curl replaced by stubs on PATH that log
  * their calls; the curl stub answers healthy unless the live release ships a
@@ -229,19 +229,19 @@ test("a failed npm ci never touches the live release", () => {
   assert.deepEqual(releases(), [sha(0), sha(1)], "no partial release is left");
 });
 
-test("only the last 5 releases are kept", () => {
-  for (let n = 1; n <= 7; n++) assert.equal(deploy(sha(n)).status, 0);
-  assert.equal(current(), `releases/${sha(7)}`);
-  assert.deepEqual(releases(), [3, 4, 5, 6, 7].map(sha));
+test("only the last 2 releases are kept: the live one and one to roll back to", () => {
+  for (let n = 1; n <= 4; n++) assert.equal(deploy(sha(n)).status, 0);
+  assert.equal(current(), `releases/${sha(4)}`);
+  assert.deepEqual(releases(), [3, 4].map(sha));
 });
 
 test("pruning goes by deploy order, so a redeployed older sha counts as new", () => {
-  for (let n = 1; n <= 5; n++) assert.equal(deploy(sha(n)).status, 0);
+  for (let n = 1; n <= 2; n++) assert.equal(deploy(sha(n)).status, 0);
   // Deploying an old commit again (a re-run of an old workflow run).
   assert.equal(deploy(sha(1)).status, 0);
-  assert.equal(deploy(sha(6)).status, 0);
-  assert.equal(current(), `releases/${sha(6)}`);
-  assert.deepEqual(releases(), [1, 3, 4, 5, 6].map(sha));
+  assert.equal(deploy(sha(3)).status, 0);
+  assert.equal(current(), `releases/${sha(3)}`);
+  assert.deepEqual(releases(), [1, 3].map(sha));
 });
 
 test("deploying the sha that is already live changes nothing", () => {

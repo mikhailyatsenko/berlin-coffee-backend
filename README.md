@@ -93,7 +93,7 @@ A push to `main` runs CI, then `.github/workflows/deploy.yml`, which builds
 `dist/`, uploads it with `deploy/release.sh` and runs that script on the server.
 Layout in `/var/www/coffee-server`:
 
-    releases/<sha>/   one directory per deploy (the last 5 are kept)
+    releases/<sha>/   one directory per deploy (the live one and the one before it are kept)
     current           symlink to the live release; PM2 runs current/dist/index.js
     .env              the production env file, symlinked into every release
     incoming/         upload target of the workflow

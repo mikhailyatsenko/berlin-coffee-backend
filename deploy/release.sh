@@ -38,7 +38,8 @@ PM2_NAME=coffe-server
 HEALTH_URL=${HEALTH_URL:-http://127.0.0.1:3000/coffee}
 HEALTH_ATTEMPTS=${HEALTH_ATTEMPTS:-15}
 HEALTH_INTERVAL=${HEALTH_INTERVAL:-2}
-KEEP_RELEASES=5
+# The live release and the one before it (the rollback target).
+KEEP_RELEASES=2
 
 fail() {
   echo "❌ $*" >&2
