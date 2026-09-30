@@ -44,3 +44,5 @@ Every lookup of a Place's Interactions scans the whole collection. On production
 - `tsc --noEmit` clean, `npm test` 301/301.
 
 2026-09-30: Ran `npm run migrate:placeid-index` on production; `interactions` now has `placeId_1` next to the two partial unique indexes.
+
+2026-09-30 (from ticket 20): once the server is migrated to `releases/` + `current` (ticket 20), manual commands like the one above run in `/var/www/coffee-server/current`, not `/var/www/coffee-server` (see README "Deploy").
