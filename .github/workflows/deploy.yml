@@ -5,8 +5,16 @@ on:
     branches:
       - main
 
+permissions:
+  contents: read
+
 jobs:
+  # tsc, codegen drift and tests; a failure here stops the deploy.
+  ci:
+    uses: ./.github/workflows/ci.yml
+
   deploy:
+    needs: ci
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
