@@ -1,6 +1,6 @@
 # 18: Index on `interactions.placeId`
 
-Status: ready-for-agent
+Status: done
 Blocked by: 03 (Config module)
 Source: `map.md` Notes, "Place stats (A2)" (the index part) and "Facts from production"
 
@@ -22,6 +22,23 @@ Every lookup of a Place's Interactions scans the whole collection. On production
 
 ## Acceptance criteria
 
-- [ ] Test (`tests/support/mongod.ts`): after the script runs, `interactions` has an index whose first key is `placeId`; running it again succeeds and changes nothing.
-- [ ] Test: `Interaction.find({ placeId }).explain()` uses `IXSCAN`, not `COLLSCAN`.
-- [ ] `tsc --noEmit` and `npm test` pass.
+- [x] Test (`tests/support/mongod.ts`): after the script runs, `interactions` has an index whose first key is `placeId`; running it again succeeds and changes nothing.
+- [x] Test: `Interaction.find({ placeId }).explain()` uses `IXSCAN`, not `COLLSCAN`.
+- [x] `tsc --noEmit` and `npm test` pass.
+
+## Comments
+
+2026-09-30 (implement): Done on `feat/interactions-placeid-index`.
+
+- `InteractionSchema.index({ placeId: 1 })` in `src/models/Interaction.ts` (dev and tests get it through autoIndex).
+- `src/scripts/interactionPlaceIdIndex.ts`: `ensurePlaceIdIndex(connection)` and `PLACE_ID_INDEX` (`placeId_1`), the logic the test calls; `src/scripts/migratePlaceIdIndex.ts` is the runner (connects with `config.mongoUri`, prints the resulting indexes). `createIndex` with a fixed name is a no-op on a second run and creates the collection if missing.
+- **Run on production after deploying** (human step; read `src/scripts/migratePlaceIdIndex.ts` first, it only creates an index). The deploy (`.github/workflows/deploy.yml`) ships the built `dist/` with `package.json` to `/var/www/coffee-server`, so no build on the server; run it from there so dotenv reads the production `.env`:
+  ```
+  ssh <SERVER_USER>@<SERVER_HOST>
+  cd /var/www/coffee-server
+  npm run migrate:placeid-index
+  ```
+  Equivalent: `node dist/scripts/migratePlaceIdIndex.js`. Check that the printed list contains `placeId_1`. An index on `{ placeId: 1 }` under another name would make it fail with IndexOptionsConflict and change nothing; none existed on 2026-09-27.
+- Tests: `tests/interactionPlaceIdIndex.test.ts` (4): the schema declares the index the migration creates; the migration creates `placeId_1` after the indexes are dropped and a second run leaves the index list identical; it works on a missing collection; `Interaction.find({ placeId }).explain()` is an IXSCAN on `placeId_1` (fails without the schema declaration, checked).
+- Code review, applied: exact name/key assertions, a schema-vs-migration check, `indexName` in the explain test, `beforeEach` `syncIndexes` so the tests don't depend on order, the log line reads the constant, the name-conflict case documented. Not applied: an npm script for `migrateGuestIndexes` too (outside this ticket); the schema still spells the key itself rather than importing from `src/scripts/` (the test now catches drift).
+- `tsc --noEmit` clean, `npm test` 301/301.
