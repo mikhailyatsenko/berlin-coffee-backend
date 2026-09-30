@@ -55,21 +55,19 @@ const statsOfInteractions: mongoose.PipelineStage.FacetPipelineStage[] = [
 
 /**
  * Pipeline stages that add `averageRating` and `ratingCount` to each document,
- * for queries over many Places. `placeIdField` holds the Place's id.
+ * for queries over many Places, whose `_id` is the Place's id.
  *
  * They also add `unroundedAverageRating`, for sorting and for a `minRating`
  * threshold: a Place at 3.96 shows 4.0 but stays under `minRating: 4`, so a
  * Shortlist's total and `filteredPlaces` agree. Project it away before
  * returning.
  */
-export function placeStatsStages(
-  placeIdField = "_id",
-): mongoose.PipelineStage[] {
+export function placeStatsStages(): mongoose.PipelineStage[] {
   return [
     {
       $lookup: {
         from: "interactions",
-        localField: placeIdField,
+        localField: "_id",
         foreignField: "placeId",
         pipeline: statsOfInteractions,
         as: "placeStats",
