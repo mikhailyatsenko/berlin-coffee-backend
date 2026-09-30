@@ -389,7 +389,7 @@ export async function tryDeleteImageKitFolder(
     return true;
   } catch (error) {
     // The thrown Error names the folder and carries ImageKit's answer as cause.
-    console.error(error);
+    console.error("Error deleting folder from ImageKit:", error);
     return false;
   }
 }

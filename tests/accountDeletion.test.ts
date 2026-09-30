@@ -10,10 +10,10 @@
  */
 import { beforeEach, test } from "node:test";
 import assert from "node:assert/strict";
-import type { Request, Response } from "express";
 import mongoose from "mongoose";
 import { setTestEnv, useThrowawayMongod } from "./support/mongod.js";
 import { callResolver } from "./support/callResolver.js";
+import { fakeRequest, fakeResponse } from "./support/fakeHttp.js";
 
 setTestEnv();
 
@@ -39,6 +39,8 @@ const ENDPOINT = process.env.IMAGEKIT_URL_ENDPOINT!;
 
 const bucket = new Map<string, Buffer>();
 let failImageKit = false;
+/** Fails folder deletes only, so the avatar delete before them succeeds. */
+let failFolderDelete = false;
 
 const withSlash = (path: string) => (path.startsWith("/") ? path : `/${path}`);
 
@@ -76,7 +78,8 @@ fakeImageKit.deleteFile = async (fileId) => {
 };
 
 fakeImageKit.deleteFolder = async (folderPath) => {
-  if (failImageKit) throw imagekitError(500, "ImageKit 500");
+  if (failImageKit || failFolderDelete)
+    throw imagekitError(500, "ImageKit 500");
   const prefix = `${withSlash(folderPath)}/`;
   const inFolder = [...bucket.keys()].filter((key) => key.startsWith(prefix));
   if (inFolder.length === 0) {
@@ -92,6 +95,7 @@ useThrowawayMongod();
 beforeEach(async () => {
   bucket.clear();
   failImageKit = false;
+  failFolderDelete = false;
   await Promise.all([
     User.deleteMany({}),
     Interaction.deleteMany({}),
@@ -101,26 +105,6 @@ beforeEach(async () => {
 });
 
 // --- helpers -----------------------------------------------------------
-
-type Cookies = { jwt?: string; refreshToken?: string };
-
-/** A response that records what the server does to the auth cookies. */
-function fakeResponse() {
-  const set: Cookies = {};
-  const cleared: string[] = [];
-  const res = {
-    cookie: (name: keyof Cookies, value: string) => {
-      set[name] = value;
-    },
-    clearCookie: (name: string) => {
-      cleared.push(name);
-    },
-  } as unknown as Response;
-  return { res, set, cleared };
-}
-
-const fakeRequest = (cookies: Cookies) =>
-  ({ cookies, headers: {}, get: () => undefined }) as unknown as Request;
 
 const placeId = () => new mongoose.Types.ObjectId();
 
@@ -188,7 +172,11 @@ async function aUserWithData() {
     Buffer.from("o"),
   );
   await GuestIdentity.create({ guestId: "unclaimed-guest", secretHash: "y" });
-  await PlaceSuggestion.create({ name: "Ben's", address: "C 3", userId: other._id });
+  await PlaceSuggestion.create({
+    name: "Ben's",
+    address: "C 3",
+    userId: other._id,
+  });
 
   return { user, other };
 }
@@ -234,7 +222,7 @@ async function assertEverythingPersonalGone(
 
 // --- full removal ------------------------------------------------------
 
-test("deleting an account removes Interactions, Photos, avatar, claimed Guest identities and the User, and clears the cookies", async () => {
+test("deleting an account removes Reviews with their Photos, Favorites, the avatar, claimed Guest identities and the User, and clears the cookies", async () => {
   const { user, other } = await aUserWithData();
 
   const { result, cleared } = await deleteAccount(user);
@@ -283,12 +271,31 @@ test("a failing ImageKit call fails the deletion and leaves the database untouch
   failImageKit = true;
 
   const { res, cleared } = fakeResponse();
-  await assert.rejects(
-    callResolver(deleteAccountResolver, {}, { user, res }),
-  );
+  await assert.rejects(callResolver(deleteAccountResolver, {}, { user, res }));
 
   assert.equal(await databaseSnapshot(), before);
   assert.deepEqual(cleared, []);
+});
+
+test("a failing Photo folder delete after the avatar is gone leaves the database untouched, and a retry finishes", async () => {
+  const { user, other } = await aUserWithData();
+  const before = await databaseSnapshot();
+  failFolderDelete = true;
+
+  await assert.rejects(deleteAccount(user));
+
+  assert.equal(await databaseSnapshot(), before);
+  // The stored avatar URL now names a missing file, which a retry skips over.
+  assert.equal(
+    bucket.has(`/3welle/avatars/${user.id}/avatar-${user.id}-1.jpeg`),
+    false,
+  );
+
+  failFolderDelete = false;
+  const { result } = await deleteAccount(user);
+
+  assert.equal(result.success, true);
+  await assertEverythingPersonalGone(user, other);
 });
 
 test("a retry after the User delete failed half-way completes the deletion", async () => {

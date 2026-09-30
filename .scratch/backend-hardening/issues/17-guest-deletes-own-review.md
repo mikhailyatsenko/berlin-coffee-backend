@@ -30,3 +30,7 @@ Tests on `tests/support/mongod.ts` with ImageKit stubbed:
 - [ ] the existing `deleteReviewLeaseRace` test still passes;
 - [ ] `tsc --noEmit` and `npm test` pass.
 - [ ] Frontend follow-up exists: `../berlincoffeemap/.scratch/backend-hardening/issues/05-guest-deletes-own-review.md`.
+
+## Comments
+
+2026-09-30 (from ticket 16): The throwing `deleteImageKitFolder` is in `src/utils/imagekit.ts` (404 = success, else throws with `cause`); `deleteReview` still uses `tryDeleteImageKitFolder`. Swapping it in is not enough: `clearPhotosBehindFence` sets `reviewImages: 0` and `$unset`s the text **before** calling `deleteFolder`, so a failure would still lose them. The fence must take the lease first, delete the folder, and only then clear the counter and fields (or restore them on failure). `deleteAllReviewImages` mentioned above no longer exists.

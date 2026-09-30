@@ -9,12 +9,12 @@
  */
 import { beforeEach, test } from "node:test";
 import assert from "node:assert/strict";
-import type { Request, Response } from "express";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
 import { createHash } from "node:crypto";
 import { setTestEnv, useThrowawayMongod } from "./support/mongod.js";
 import { callResolver } from "./support/callResolver.js";
+import { type Cookies, fakeRequest, fakeResponse } from "./support/fakeHttp.js";
 import { clientCode } from "./support/clientCode.js";
 
 setTestEnv();
@@ -35,26 +35,6 @@ const { refreshTokenResolver } = await import(
 );
 
 useThrowawayMongod();
-
-type Cookies = { jwt?: string; refreshToken?: string };
-
-/** A response that records what the server does to the auth cookies. */
-function fakeResponse() {
-  const set: Cookies = {};
-  const cleared: string[] = [];
-  const res = {
-    cookie: (name: keyof Cookies, value: string) => {
-      set[name] = value;
-    },
-    clearCookie: (name: string) => {
-      cleared.push(name);
-    },
-  } as unknown as Response;
-  return { res, set, cleared };
-}
-
-const fakeRequest = (cookies: Cookies) =>
-  ({ cookies, headers: {}, get: () => undefined }) as unknown as Request;
 
 /** One request through the context builder with these cookies. */
 async function request(cookies: Cookies) {
@@ -121,7 +101,10 @@ test("after setNewPassword the old tokens are rejected and the calling device st
   assert.equal(oldRefresh.context.user, null);
   const oldBoth = await request(oldCookies);
   assert.equal(oldBoth.context.user, null);
-  assert.equal(clientCode(catchError(() => requireUser(oldBoth.context))), "UNAUTHENTICATED");
+  assert.equal(
+    clientCode(catchError(() => requireUser(oldBoth.context))),
+    "UNAUTHENTICATED",
+  );
 
   const newAccess = await request({ jwt: newCookies.jwt });
   assert.equal(newAccess.context.user?.id, user.id);

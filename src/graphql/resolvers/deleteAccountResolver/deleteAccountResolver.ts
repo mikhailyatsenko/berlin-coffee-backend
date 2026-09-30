@@ -13,8 +13,9 @@ import { requireUser } from "../../context.js";
 import type { MutationResolvers } from "../../generated/types.js";
 
 /**
- * Removes the User with their Interactions, Photos, avatar and claimed Guest
- * identities; their Place suggestions stay, with no author.
+ * Removes the User with their Reviews (Photos included), Ratings, Favorites,
+ * Visits, avatar and claimed Guest identities; their Place suggestions stay,
+ * with no author.
  *
  * ImageKit goes first: if any file can't be deleted the call fails with the
  * database untouched, so nothing is forgotten while its files remain. Every
