@@ -35,7 +35,7 @@ _Avoid_: Complaint, feedback, correction
 ### People
 
 **User**:
-A person with an account, signed in by email and password, by Google, or by both. The email identifies the User: signing in with a Google account whose verified email belongs to a User signs in to that User. An email the User has not confirmed does not hold the address: whoever first proves they own the mailbox, by confirming it or by signing in with Google, takes it. Deleting the account removes the User with their Reviews (Photos included), Favorites, avatar and Sessions; only their Place suggestions outlive them, with no author.
+A person with an account, signed in by email and password, by Google, or by both. The email identifies the User: signing in with a Google account whose verified email belongs to a User signs in to that User. An email the User has not confirmed does not hold the address: whoever first proves they own the mailbox, by confirming it or by signing in with Google, takes it. Deleting the account removes the User with their Reviews (Photos included), Favorites, avatar, Sessions and the Guest identities they claimed; only their Place suggestions outlive them, with no author.
 _Avoid_: Account, member
 
 **Session**:

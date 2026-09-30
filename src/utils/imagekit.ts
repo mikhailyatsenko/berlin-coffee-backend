@@ -127,6 +127,11 @@ export async function getPlaceImages(placeId: string): Promise<string[]> {
   }
 }
 
+/** One Review's Photo folder, holding `image_1.jpg`, `image_2.jpg`, ... */
+export function reviewPhotoFolder(placeId: string, reviewId: string): string {
+  return `3welle/review-images/${placeId}/${reviewId}`;
+}
+
 /**
  * Lists the file names in one Review's Photo folder, e.g. `image_1.jpg`.
  * Unlike getPlaceImages, a failed request throws: the repair script must not
@@ -148,7 +153,7 @@ export async function listReviewPhotoNames(
   lastRequestTime = Date.now();
 
   const result = await imagekit.listFiles({
-    path: `3welle/review-images/${placeId}/${reviewId}`,
+    path: reviewPhotoFolder(placeId, reviewId),
   });
 
   return result.filter(isFile).map((file) => file.name);
@@ -266,7 +271,7 @@ export async function uploadReviewImage(
       imagekit.upload({
         file: processedBuffer,
         fileName: `image_${index}.jpg`,
-        folder: `3welle/review-images/${placeId}/${reviewId}`,
+        folder: reviewPhotoFolder(placeId, reviewId),
         useUniqueFileName: false,
       }),
       remainingMs,
@@ -341,20 +346,50 @@ export async function deleteImageKitFile(filePath: string): Promise<void> {
   await imagekit.deleteFile(file.fileId);
 }
 
-/** Deletes an ImageKit folder and everything in it. Used for both Review Photo folders and Place suggestion photo folders. */
-export async function deleteImageKitFolder(
+/**
+ * The SDK rejects with the response body, not an Error; the HTTP status sits
+ * on a non-enumerable `$ResponseMetadata`.
+ */
+function isImageKitNotFound(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    (error as { $ResponseMetadata?: { statusCode?: number } })
+      .$ResponseMetadata?.statusCode === 404
+  );
+}
+
+/**
+ * Deletes an ImageKit folder and everything in it. A missing folder counts as
+ * deleted (ImageKit answers 404 for it); any other ImageKit error is thrown,
+ * so a caller that must know the files are gone can stop before it forgets
+ * them.
+ */
+export async function deleteImageKitFolder(folderPath: string): Promise<void> {
+  await awaitRateLimit();
+  try {
+    await imagekit.deleteFolder(folderPath);
+  } catch (error) {
+    if (isImageKitNotFound(error)) return;
+    throw new Error(`Failed to delete ImageKit folder ${folderPath}`, {
+      cause: error,
+    });
+  }
+}
+
+/**
+ * deleteImageKitFolder for callers that go on regardless: logs a failure and
+ * returns false instead of throwing.
+ */
+export async function tryDeleteImageKitFolder(
   folderPath: string,
 ): Promise<boolean> {
   try {
-    await awaitRateLimit();
-    await imagekit.deleteFolder(folderPath);
+    await deleteImageKitFolder(folderPath);
     return true;
   } catch (error) {
-    console.error("Error deleting folder from ImageKit:", {
-      folderPath,
-      error: error instanceof Error ? error.message : error,
-      stack: error instanceof Error ? error.stack : undefined,
-    });
+    // The thrown Error names the folder and carries ImageKit's answer as cause.
+    console.error("Error deleting folder from ImageKit:", error);
     return false;
   }
 }

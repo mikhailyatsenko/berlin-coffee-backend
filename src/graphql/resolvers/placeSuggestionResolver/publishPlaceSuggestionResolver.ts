@@ -12,7 +12,7 @@ import { suggestionOutcome } from "./placeSuggestionOutcome.js";
 import PlaceSuggestion from "../../../models/PlaceSuggestion.js";
 import {
   copyPlaceSuggestionPhotoToPlace,
-  deleteImageKitFolder,
+  tryDeleteImageKitFolder,
   placePhotoFolder,
   placeSuggestionPhotoFolder,
 } from "../../../utils/imagekit.js";
@@ -164,11 +164,11 @@ export const publishPlaceSuggestionResolver: MutationResolvers["publishPlaceSugg
 
   // Whatever's left in the suggestion's folder is the dropped photos' and the
   // kept ones' originals (the kept ones were only copied above), plus any
-  // upload that never made it into `photos`. Best-effort: deleteImageKitFolder
+  // upload that never made it into `photos`. Best-effort: tryDeleteImageKitFolder
   // logs and swallows its own failures, so a leftover ImageKit folder never
   // blocks Publish once the Place itself is safely created.
   if (suggestion.photos.length > 0) {
-    await deleteImageKitFolder(
+    await tryDeleteImageKitFolder(
       placeSuggestionPhotoFolder(suggestion._id.toString()),
     );
   }

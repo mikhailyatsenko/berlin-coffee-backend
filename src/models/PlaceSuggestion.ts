@@ -8,7 +8,7 @@ export interface IPlaceSuggestion extends Document {
   address: string;
   description?: string;
   instagram?: string;
-  /** Absent for a User's suggestion. Never set this to null. */
+  /** Absent for a Guest's suggestion, and once its User deleted their account. Never set this to null. */
   userId?: mongoose.Types.ObjectId;
   /** Absent for a suggestion that belongs to a registered user. */
   guestId?: string;
