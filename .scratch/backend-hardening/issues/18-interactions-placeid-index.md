@@ -42,3 +42,5 @@ Every lookup of a Place's Interactions scans the whole collection. On production
 - Tests: `tests/interactionPlaceIdIndex.test.ts` (4): the schema declares the index the migration creates; the migration creates `placeId_1` after the indexes are dropped and a second run leaves the index list identical; it works on a missing collection; `Interaction.find({ placeId }).explain()` is an IXSCAN on `placeId_1` (fails without the schema declaration, checked).
 - Code review, applied: exact name/key assertions, a schema-vs-migration check, `indexName` in the explain test, `beforeEach` `syncIndexes` so the tests don't depend on order, the log line reads the constant, the name-conflict case documented. Not applied: an npm script for `migrateGuestIndexes` too (outside this ticket); the schema still spells the key itself rather than importing from `src/scripts/` (the test now catches drift).
 - `tsc --noEmit` clean, `npm test` 301/301.
+
+2026-09-30: Ran `npm run migrate:placeid-index` on production; `interactions` now has `placeId_1` next to the two partial unique indexes.
