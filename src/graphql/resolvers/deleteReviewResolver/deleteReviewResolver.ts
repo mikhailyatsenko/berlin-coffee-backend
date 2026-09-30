@@ -2,11 +2,11 @@ import { randomUUID } from "node:crypto";
 import mongoose from "mongoose";
 import Interaction from "../../../models/Interaction.js";
 import {
+  deleteImageKitFolder,
   reviewPhotoFolder,
-  tryDeleteImageKitFolder,
 } from "../../../utils/imagekit.js";
+import { resolveReviewActor } from "../../../utils/reviewActor.js";
 import { uploadLeaseUntil } from "../uploadReviewImageResolver/uploadReviewImageResolver.js";
-import { requireUser } from "../../context.js";
 import { notFound } from "../../errors.js";
 import type {
   DeleteReviewResult,
@@ -25,22 +25,25 @@ import type {
  * before the fence is handed back, so its holder can still release it or hold
  * it while a timed-out file may land (see uploadReviewImageResolver).
  *
- * If delete crashes before the release, the fence expires by itself; the
- * counter is already 0 and any leftover file is overwritten by the next upload.
+ * The counter and the fields are cleared only once the folder is gone, so a
+ * failed folder delete throws and leaves the text and the Photos as they were.
+ * Holding the fence is what makes the late clear safe: no upload can commit
+ * while it is up. If delete crashes between the two, the fence expires by
+ * itself and the counter still names files that are gone; deleting again
+ * finishes the job, a missing folder counting as deleted.
  */
 async function clearPhotosBehindFence(
   reviewId: string,
   unset: Record<string, "">,
-  deleteFolder: () => Promise<unknown>,
+  deleteFolder: () => Promise<void>,
 ) {
   const token = randomUUID();
   const until = uploadLeaseUntil(new Date());
   const before = await Interaction.findOneAndUpdate(
     { _id: reviewId },
     {
-      $set: { reviewImages: 0, "photoUploadLease.token": token },
+      $set: { "photoUploadLease.token": token },
       $max: { "photoUploadLease.until": until },
-      $unset: unset,
     },
   ).lean();
   const previous = before?.photoUploadLease;
@@ -51,6 +54,10 @@ async function clearPhotosBehindFence(
     // resolver returns could take the lease, land a file, and have it wiped
     // out from under the just-saved photo by this still-in-flight call.
     await deleteFolder();
+    await Interaction.updateOne(
+      { _id: reviewId },
+      { $set: { reviewImages: 0 }, $unset: unset },
+    );
   } finally {
     const previousIsLive =
       !!previous?.token && !!previous.until && previous.until > new Date();
@@ -77,16 +84,18 @@ async function clearPhotosBehindFence(
 export const deleteReviewResolver: MutationResolvers["deleteReview"] = async (
   _parent,
   { reviewId, deleteOptions },
-  context,
+  { user, guest },
 ): Promise<DeleteReviewResult> => {
-  const user = requireUser(context);
+  // Headers only: deleteReview never took the argument form of the Guest
+  // identity, so there is no older client to keep working.
+  const actor = await resolveReviewActor(user, guest, {});
 
-  const interaction = await Interaction.findById(reviewId);
-
-  // Someone else's Review reads as a missing one, so ids don't leak. Guest
-  // reviews have no userId, so this also keeps them out of reach until they
-  // are claimed by an account.
-  if (!interaction || interaction.userId?.toString() !== user.id) {
+  // Someone else's Review reads as a missing one, so ids don't leak.
+  const interaction = await Interaction.findOne({
+    _id: reviewId,
+    ...actor.owner,
+  });
+  if (!interaction) {
     throw notFound("Review not found");
   }
 
@@ -108,7 +117,7 @@ export const deleteReviewResolver: MutationResolvers["deleteReview"] = async (
     await Interaction.updateOne({ _id: reviewId }, { $unset: unset });
   } else {
     await clearPhotosBehindFence(reviewId, unset, () =>
-      tryDeleteImageKitFolder(
+      deleteImageKitFolder(
         reviewPhotoFolder(interaction.placeId.toString(), reviewId),
       ),
     );
