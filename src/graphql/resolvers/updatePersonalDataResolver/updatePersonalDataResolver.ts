@@ -35,8 +35,9 @@ export const updatePersonalDataResolver: MutationResolvers["updatePersonalData"]
       }
       consumeRateLimit("emailChange", clientIp(context.req));
 
-      const existingUser = await User.findOne({ email });
-      if (existingUser && String(existingUser._id) !== String(user._id)) {
+      // Only a confirmed owner holds the address; an unconfirmed one gives way
+      // if this User confirms first (see confirmEmail).
+      if (await User.exists({ email, isEmailConfirmed: true })) {
         throw badInput("User already exists with this email.");
       }
       // Before pendingEmail is stored, so a refused mail leaves nothing behind.

@@ -24,18 +24,19 @@ export const resendConfirmationEmailResolver: MutationResolvers["resendConfirmat
       return { success: true };
     }
 
-    // Find by current email (registration flow) or by pendingEmail (email change flow)
-    let user = (await User.findOne({ email })) as IUser | null;
-    if (!user) {
-      user = (await User.findOne({ pendingEmail: email })) as IUser | null;
+    // At most one User gets the mail. An owner of the address decides it
+    // alone: unconfirmed gets it, confirmed gets nothing. With no owner, the
+    // User whose pending change to it is the latest.
+    const owner = (await User.findOne({ email })) as IUser | null;
+    let user: IUser | null;
+    if (owner) {
+      user = owner.isEmailConfirmed ? null : owner;
+    } else {
+      user = (await User.findOne({ pendingEmail: email }).sort({
+        emailConfirmationTokenExpires: -1,
+      })) as IUser | null;
     }
     if (!user) {
-      return { success: true };
-    }
-
-    const isEmailChange = user.pendingEmail === email;
-    if (!isEmailChange && user.isEmailConfirmed) {
-      // Registration flow: already confirmed, nothing to resend.
       return { success: true };
     }
 
