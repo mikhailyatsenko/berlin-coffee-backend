@@ -1,5 +1,6 @@
 import type mongoose from "mongoose";
 import Interaction from "../../../models/Interaction.js";
+import { placeStatsStages } from "../../../utils/placeStats.js";
 import { requireUser } from "../../context.js";
 import type {
   QueryResolvers,
@@ -13,7 +14,8 @@ export const userReviewActivityResolver: QueryResolvers["userReviewActivity"] =
     const activity = await Interaction.aggregate<{
       _id: mongoose.Types.ObjectId;
       placeName: string;
-      averageRating: number | null;
+      averageRating: number;
+      ratingCount: number;
       reviews: { rating?: number; reviewText?: string; date: Date }[];
     }>([
       {
@@ -40,8 +42,6 @@ export const userReviewActivityResolver: QueryResolvers["userReviewActivity"] =
         $group: {
           _id: "$place._id",
           placeName: { $first: "$place.properties.name" },
-          averageRating: { $avg: "$rating" },
-          allRatings: { $push: "$rating" },
           reviews: {
             $push: {
               id: "$_id",
@@ -52,21 +52,7 @@ export const userReviewActivityResolver: QueryResolvers["userReviewActivity"] =
           },
         },
       },
-      {
-        $lookup: {
-          from: "interactions",
-          localField: "_id",
-          foreignField: "placeId",
-          as: "allInteractions",
-        },
-      },
-      {
-        $addFields: {
-          averageRating: {
-            $avg: "$allInteractions.rating",
-          },
-        },
-      },
+      ...placeStatsStages(),
       {
         $sort: {
           "reviews.date": -1,
@@ -80,9 +66,8 @@ export const userReviewActivityResolver: QueryResolvers["userReviewActivity"] =
         reviewText: interaction.reviews[0]?.reviewText,
         placeId: interaction._id.toString(),
         placeName: interaction.placeName,
-        // @ts-expect-error Ticket 21: `averageRating` is a Float; the string only works because the serializer coerces it.
-        averageRating: interaction.averageRating
-          ? interaction.averageRating.toFixed(1)
+        averageRating: interaction.ratingCount
+          ? interaction.averageRating
           : null,
         createdAt: interaction.reviews[0]?.date.toISOString(),
       }),

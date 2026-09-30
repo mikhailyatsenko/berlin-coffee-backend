@@ -15,8 +15,6 @@ export const placesResolver: QueryResolvers["places"] = async (
   );
   // Convert to GraphQL format
   const formattedPlaces = places.map((place): Place => {
-    const averageRating = place.averageRating;
-    const ratingCount = place.ratingCount;
     return {
       id: place._id.toString(),
       type: place.type || "Feature",
@@ -32,8 +30,8 @@ export const placesResolver: QueryResolvers["places"] = async (
         image: place.properties.image || "",
         // images: null, // null for places list
         instagram: place.properties.instagram || "",
-        averageRating: Number(averageRating.toFixed(1)),
-        ratingCount: ratingCount,
+        averageRating: place.averageRating,
+        ratingCount: place.ratingCount,
         favoriteCount: place.favoriteCount,
         isFavorite: place.isFavorite,
         googleId: place.properties.googleId || null,

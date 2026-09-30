@@ -36,8 +36,6 @@ export const placeResolver: QueryResolvers["place"] = async (
     // Cache images for 30 minutes (longer than place data)
     cache.set(imagesCacheKey, images, 30 * 60 * 1000);
   }
-  const averageRating = place.averageRating;
-  const ratingCount = place.ratingCount;
 
   return {
     id: place._id.toString(),
@@ -54,8 +52,8 @@ export const placeResolver: QueryResolvers["place"] = async (
       image: place.properties.image || "",
       images: images, // array of images for individual place
       instagram: place.properties.instagram || "",
-      averageRating: Number(averageRating.toFixed(1)),
-      ratingCount: ratingCount,
+      averageRating: place.averageRating,
+      ratingCount: place.ratingCount,
       characteristicCounts: place.characteristicCounts,
       favoriteCount: place.favoriteCount,
       isFavorite: place.isFavorite,

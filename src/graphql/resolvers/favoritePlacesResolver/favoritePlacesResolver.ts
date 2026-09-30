@@ -13,14 +13,13 @@ export const favoritePlacesResolver: QueryResolvers["favoritePlaces"] = async (
   
   // Convert to simplified GraphQL format
   const formattedPlaces = places.map((place) => {
-    const averageRating = place.averageRating;
     return {
       id: place._id.toString(),
       name: place.properties.name || "",
       address: place.properties.address || "",
       image: place.properties.image || "",
       instagram: place.properties.instagram || "",
-      averageRating: Number(averageRating.toFixed(1)),
+      averageRating: place.averageRating,
       isFavorite: place.isFavorite,
       neighborhood: place.properties.neighborhood || null,
       googleId: place.properties.googleId || null,

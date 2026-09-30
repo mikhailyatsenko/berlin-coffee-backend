@@ -1,10 +1,11 @@
 import type { Characteristic } from "../../../generated/types.js";
 import Place, { VISIBLE_PLACE_MATCH } from "../../../../models/Place.js";
 import mongoose from "mongoose";
+import { placeStatsStages, type PlaceStats } from "../../../../utils/placeStats.js";
 import { ActorRef, ownInteractionCond } from "../../../../utils/reviewActor.js";
 import { amenitySpellings } from "../../../../amenities/synonyms.js";
 
-export interface PlaceWithStats {
+export interface PlaceWithStats extends PlaceStats {
     _id: mongoose.Types.ObjectId;
     type: string;
     geometry: {
@@ -22,8 +23,6 @@ export interface PlaceWithStats {
         neighborhood?: string;
     };
     favoriteCount: number;
-    averageRating: number;
-    ratingCount: number;
     isFavorite: boolean;
     /** The caller's own Review of the Place, absent when they have none. */
     ownReview?: {
@@ -162,32 +161,9 @@ export async function getFilteredPlacesWithStats(
                 },
             },
         },
-        {
-            $lookup: {
-                from: "interactions",
-                localField: "_id",
-                foreignField: "placeId",
-                pipeline: [
-                    { $match: { rating: { $exists: true, $ne: null } } },
-                    {
-                        $group: {
-                            _id: null,
-                            averageRating: { $avg: "$rating" },
-                            ratingCount: { $sum: 1 },
-                        },
-                    },
-                ],
-                as: "ratingStats",
-            },
-        },
+        ...placeStatsStages(),
         {
             $addFields: {
-                averageRating: {
-                    $ifNull: [{ $arrayElemAt: ["$ratingStats.averageRating", 0] }, 0],
-                },
-                ratingCount: {
-                    $ifNull: [{ $arrayElemAt: ["$ratingStats.ratingCount", 0] }, 0],
-                },
                 // One Interaction per person and Place (unique indexes)
                 ownReview: {
                     $arrayElemAt: [
@@ -226,11 +202,11 @@ export async function getFilteredPlacesWithStats(
         },
     );
 
-    // Фильтр по минимальному рейтингу (применяем после вычисления averageRating)
+    // Фильтр по минимальному рейтингу, до округления (см. placeStatsStages)
     if (minRating !== undefined && minRating !== null) {
         pipeline.push({
             $match: {
-                averageRating: { $gte: minRating },
+                unroundedAverageRating: { $gte: minRating },
             },
         });
     }
@@ -244,7 +220,7 @@ export async function getFilteredPlacesWithStats(
         // _id last, so the order (and the cut at `limit`) is stable
         pipeline.push({
             $sort: {
-                averageRating: -1,
+                unroundedAverageRating: -1,
                 ratingCount: -1,
                 "properties.name": 1,
                 _id: 1,
@@ -260,7 +236,7 @@ export async function getFilteredPlacesWithStats(
         $project: {
             interactions: 0,
             userInteractions: 0,
-            ratingStats: 0,
+            unroundedAverageRating: 0,
             "properties.additionalInfo": 0,
             "properties.openingHours": 0,
             "properties.phone": 0,

@@ -1,10 +1,10 @@
 import { randomUUID } from "node:crypto";
-import mongoose from "mongoose";
 import Interaction from "../../../models/Interaction.js";
 import {
   deleteImageKitFolder,
   reviewPhotoFolder,
 } from "../../../utils/imagekit.js";
+import { getPlaceStats } from "../../../utils/placeStats.js";
 import { resolveReviewActor } from "../../../utils/reviewActor.js";
 import { uploadLeaseUntil } from "../uploadReviewImageResolver/uploadReviewImageResolver.js";
 import { notFound } from "../../errors.js";
@@ -134,31 +134,9 @@ export const deleteReviewResolver: MutationResolvers["deleteReview"] = async (
     );
   }
 
-  const aggregationResult = await Interaction.aggregate<{
-    averageRating: number;
-    ratingCount: number;
-  }>([
-    {
-      $match: {
-        placeId: new mongoose.Types.ObjectId(interaction.placeId),
-        rating: { $exists: true, $ne: null },
-      },
-    },
-    {
-      $group: {
-        _id: null,
-        averageRating: { $avg: "$rating" },
-        ratingCount: { $sum: 1 },
-      },
-    },
-  ]);
+  const { averageRating, ratingCount } = await getPlaceStats(
+    interaction.placeId,
+  );
 
-  const stats = aggregationResult[0] || { averageRating: 0, ratingCount: 0 };
-
-  return {
-    reviewId: reviewId,
-    // @ts-expect-error Ticket 21: `averageRating` is a Float; the string only works because the serializer coerces it.
-    averageRating: stats.averageRating.toFixed(1),
-    ratingCount: stats.ratingCount,
-  };
+  return { reviewId, averageRating, ratingCount };
 };
