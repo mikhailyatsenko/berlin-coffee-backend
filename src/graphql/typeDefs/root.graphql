@@ -47,6 +47,8 @@ type Mutation {
   # resolver requires it. Always success: it doesn't say whether the address
   # has an account.
   resendConfirmationEmail(email: String!, captchaToken: String): SuccessResponse!
+  # Fails with EMAIL_TAKEN when an email change loses its address to a User who
+  # confirmed it first; the pending change is then cancelled.
   confirmEmail(token: String!, email: String!): AuthPayload!
   # captchaToken: as on resendConfirmationEmail.
   requestPasswordReset(email: String!, captchaToken: String): SuccessResponse!
