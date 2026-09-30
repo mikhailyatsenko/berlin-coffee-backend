@@ -1,9 +1,10 @@
 /**
  * The HTTP surface outside GraphQL: no unscoped ImageKit upload signatures are
  * handed out, and `/coffee` responses (personalized queries and mutations
- * among them) are never marked for public caching.
- * Against the app started on a random port; no database is needed, since a
- * signed-out `{ __typename }` never reaches it.
+ * among them) are never marked for public caching, and a `/coffee` JSON body
+ * is capped at the size the largest real upload needs.
+ * Against the app started on a random port; no database is needed, since
+ * signed-out requests never reach it.
  *
  * Run: npm test
  */
@@ -67,14 +68,17 @@ test("a /coffee CORS preflight carries no public Cache-Control header", async ()
   assert.doesNotMatch(response.headers.get("cache-control") ?? "", /public/);
 });
 
-// The largest real request is an avatar: the client sends the picked file as
-// is, up to 5 MB, base64-encoded (~6.7 MB). The limit is 7 MB.
+// JSON_BODY_LIMIT in src/app.ts.
 const BODY_LIMIT_BYTES = 7 * 1024 * 1024;
+// The client sends an avatar unresized, up to this size.
+const MAX_AVATAR_BYTES = 5 * 1024 * 1024;
 
 test("a /coffee JSON body just over the limit gets 413", async () => {
-  const envelope = JSON.stringify({ query: "{ __typename }", padding: "" });
-  const padding = "a".repeat(BODY_LIMIT_BYTES + 1 - envelope.length);
-  const body = JSON.stringify({ query: "{ __typename }", padding });
+  const bodyWith = (padding: string) =>
+    JSON.stringify({ query: "{ __typename }", padding });
+  const body = bodyWith(
+    "a".repeat(BODY_LIMIT_BYTES + 1 - bodyWith("").length),
+  );
   assert.equal(Buffer.byteLength(body), BODY_LIMIT_BYTES + 1);
 
   const response = await fetch(`${baseUrl}/coffee`, {
@@ -87,7 +91,7 @@ test("a /coffee JSON body just over the limit gets 413", async () => {
 });
 
 test("a 5 MB avatar as base64 in a mutation gets past the body parser", async () => {
-  const fileBuffer = Buffer.alloc(5 * 1024 * 1024, 1).toString("base64");
+  const fileBuffer = Buffer.alloc(MAX_AVATAR_BYTES, 1).toString("base64");
 
   const response = await fetch(`${baseUrl}/coffee`, {
     method: "POST",
