@@ -21,6 +21,17 @@ Branches are merged locally and pushed to `main`, and every push to `main` deplo
 
 ## Acceptance criteria
 
-- [ ] `deploy.yml` has a CI job that the deploy job depends on; `ci.yml` accepts `workflow_call`.
-- [ ] Both workflow files pass `actionlint` (or an equivalent syntax check run locally), recorded in Comments.
+- [x] `deploy.yml` has a CI job that the deploy job depends on; `ci.yml` accepts `workflow_call`.
+- [x] Both workflow files pass `actionlint` (or an equivalent syntax check run locally), recorded in Comments.
 - [ ] Verified on a real push after merge: the Actions run shows CI before deploy (recorded in Comments; a human may need to confirm if the agent can't read Actions runs via `gh`).
+
+## Comments
+
+2026-09-30 (implement): Done on `ci/deploy-gated-on-ci`.
+
+- `ci.yml`: `workflow_call` next to `pull_request`. Concurrency group is `ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}`. In a called workflow the `github` context is the caller's, so a push gets `ci-Deploy Coffemap Server-refs/heads/main` and a PR `ci-CI-<n>`; they never share a group, and `deploy.yml` has no workflow-level concurrency, so no caller/callee deadlock. `cancel-in-progress` stays: a newer push to `main` cancels an older run's CI while it is still running, and that run's deploy is skipped (the newer commit contains it).
+- `deploy.yml`: first job `ci: uses: ./.github/workflows/ci.yml` (no secrets passed, CI needs none); `deploy` has `needs: ci`, so a failed or cancelled CI skips the deploy. Also a top-level `permissions: contents: read` (not asked for): the deploy only checks out and uses SSH secrets, and the called workflow's own `contents: read` must not exceed the caller's.
+- `actionlint` 1.7.12 on both files: clean. Negative check: with `workflow_call` removed from `ci.yml`, actionlint fails on `deploy.yml` (`"workflow_call" event trigger is not found`), so it does check the link.
+- `tsc --noEmit` clean, `npm test` 301/301 (no TS changes).
+- Code review: comments reworded (a deploy already past CI is not cancelled; the deploy.yml comment no longer lists CI's steps). Not applied: a deploy concurrency group (two deploys can still overlap if a newer push finishes CI while an older deploy runs; pre-existing, noted on ticket 20); aligning the deploy runner (`ubuntu-latest`) with CI's `ubuntu-24.04`.
+- **Open:** the last criterion needs a real push to `main` after merge; check that the Actions run shows `ci` before `deploy` (`gh run list --workflow deploy.yml`, `gh run view <id>`).

@@ -4,12 +4,19 @@ on:
   pull_request:
     branches:
       - main
+  # deploy.yml calls this as its first job, so a push to main deploys only
+  # after the same checks a pull request gets.
+  workflow_call:
 
 permissions:
   contents: read
 
+# When called from deploy.yml, github.workflow is the caller's name and there
+# is no pull request, so the group falls back to the pushed ref: a newer push
+# to main cancels the older run's CI while it is still running, and with it
+# that run's deploy. A deploy already past CI is not cancelled.
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number }}
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
