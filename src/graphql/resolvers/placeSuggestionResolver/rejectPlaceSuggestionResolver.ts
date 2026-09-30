@@ -2,7 +2,7 @@ import PlaceSuggestion from "../../../models/PlaceSuggestion.js";
 import { requireSuggestionForReview } from "../../../utils/placeSuggestionToken.js";
 import { suggestionOutcome } from "./placeSuggestionOutcome.js";
 import {
-  deleteImageKitFolder,
+  tryDeleteImageKitFolder,
   placeSuggestionPhotoFolder,
 } from "../../../utils/imagekit.js";
 import type { MutationResolvers } from "../../generated/types.js";
@@ -16,10 +16,10 @@ export const rejectPlaceSuggestionResolver: MutationResolvers["rejectPlaceSugges
       return suggestionOutcome(suggestion);
     }
 
-    // Best-effort: deleteImageKitFolder logs and swallows its own failures, so a
+    // Best-effort: tryDeleteImageKitFolder logs and swallows its own failures, so a
     // stuck ImageKit folder never blocks Reject.
     if (suggestion.photos.length > 0) {
-      await deleteImageKitFolder(
+      await tryDeleteImageKitFolder(
         placeSuggestionPhotoFolder(suggestion._id.toString()),
       );
     }

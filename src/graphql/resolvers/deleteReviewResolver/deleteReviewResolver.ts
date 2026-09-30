@@ -1,7 +1,10 @@
 import { randomUUID } from "node:crypto";
 import mongoose from "mongoose";
 import Interaction from "../../../models/Interaction.js";
-import { deleteImageKitFolder } from "../../../utils/imagekit.js";
+import {
+  reviewPhotoFolder,
+  tryDeleteImageKitFolder,
+} from "../../../utils/imagekit.js";
 import { uploadLeaseUntil } from "../uploadReviewImageResolver/uploadReviewImageResolver.js";
 import { requireUser } from "../../context.js";
 import { notFound } from "../../errors.js";
@@ -105,8 +108,8 @@ export const deleteReviewResolver: MutationResolvers["deleteReview"] = async (
     await Interaction.updateOne({ _id: reviewId }, { $unset: unset });
   } else {
     await clearPhotosBehindFence(reviewId, unset, () =>
-      deleteImageKitFolder(
-        `3welle/review-images/${interaction.placeId}/${reviewId}`,
+      tryDeleteImageKitFolder(
+        reviewPhotoFolder(interaction.placeId.toString(), reviewId),
       ),
     );
   }
