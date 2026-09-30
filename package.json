@@ -12,7 +12,8 @@
     "dev": "nodemon ./dist/index.js",
     "generate": "graphql-codegen --config codegen.yml",
     "build": "rimraf dist && tsc -p tsconfig.build.json && npm run copy-files",
-    "start": "node dist/index.js"
+    "start": "node dist/index.js",
+    "migrate:placeid-index": "node dist/scripts/migratePlaceIdIndex.js"
   },
   "keywords": [],
   "author": "",

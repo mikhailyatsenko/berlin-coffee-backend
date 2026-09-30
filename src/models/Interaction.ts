@@ -68,4 +68,8 @@ InteractionSchema.index(
   { unique: true, partialFilterExpression: { guestId: { $exists: true } } },
 );
 
+// Every lookup of a Place's Reviews. autoIndex is off in production, where
+// src/scripts/migratePlaceIdIndex.ts creates it; keep the two in sync.
+InteractionSchema.index({ placeId: 1 });
+
 export default mongoose.model<IInteraction>("Interaction", InteractionSchema);
