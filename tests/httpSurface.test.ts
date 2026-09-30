@@ -66,3 +66,43 @@ test("a /coffee CORS preflight carries no public Cache-Control header", async ()
   assert.equal(response.status, 204);
   assert.doesNotMatch(response.headers.get("cache-control") ?? "", /public/);
 });
+
+// The largest real request is an avatar: the client sends the picked file as
+// is, up to 5 MB, base64-encoded (~6.7 MB). The limit is 7 MB.
+const BODY_LIMIT_BYTES = 7 * 1024 * 1024;
+
+test("a /coffee JSON body just over the limit gets 413", async () => {
+  const envelope = JSON.stringify({ query: "{ __typename }", padding: "" });
+  const padding = "a".repeat(BODY_LIMIT_BYTES + 1 - envelope.length);
+  const body = JSON.stringify({ query: "{ __typename }", padding });
+  assert.equal(Buffer.byteLength(body), BODY_LIMIT_BYTES + 1);
+
+  const response = await fetch(`${baseUrl}/coffee`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body,
+  });
+
+  assert.equal(response.status, 413);
+});
+
+test("a 5 MB avatar as base64 in a mutation gets past the body parser", async () => {
+  const fileBuffer = Buffer.alloc(5 * 1024 * 1024, 1).toString("base64");
+
+  const response = await fetch(`${baseUrl}/coffee`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      query: `mutation ($userId: ID!, $fileBuffer: String!, $fileName: String!) {
+        uploadAvatar(userId: $userId, fileBuffer: $fileBuffer, fileName: $fileName) { success }
+      }`,
+      variables: { userId: "u1", fileBuffer, fileName: "avatar.jpg" },
+    }),
+  });
+
+  // Signed out, so the resolver refuses it: the body was parsed and reached it.
+  const result = (await response.json()) as {
+    errors?: { extensions?: { code?: string } }[];
+  };
+  assert.equal(result.errors?.[0]?.extensions?.code, "UNAUTHENTICATED");
+});

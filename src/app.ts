@@ -14,6 +14,11 @@ import type { Context } from "./graphql/context.js";
 import { buildContext } from "./graphql/buildContext.js";
 import { formatError } from "./graphql/formatError.js";
 
+// The largest real request is an avatar: the client sends the picked file as
+// is, up to 5 MB, base64-encoded (~6.7 MB), plus the GraphQL envelope.
+// A larger body gets 413 from the parser.
+const JSON_BODY_LIMIT = "7mb";
+
 /**
  * Builds the Express app with GraphQL mounted on `/coffee` and starts Apollo.
  * Returns the HTTP server Apollo drains on shutdown; connecting the database and
@@ -37,8 +42,6 @@ export const createApp = async () => {
     }),
   );
 
-  app.use(express.urlencoded({ extended: true }));
-
   const server = new ApolloServer<Context>({
     typeDefs,
     resolvers,
@@ -49,8 +52,6 @@ export const createApp = async () => {
 
   await server.start();
 
-  app.use(express.json({ limit: "10mb" }));
-  app.use(express.urlencoded({ limit: "10mb", extended: true }));
   app.use(cookieParser());
 
   app.use(
@@ -67,7 +68,7 @@ export const createApp = async () => {
       ],
       methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     }),
-    express.json(),
+    express.json({ limit: JSON_BODY_LIMIT }),
     expressMiddleware(server, { context: buildContext }),
   );
 
