@@ -102,6 +102,32 @@ for (const mode of ["development", "test"]) {
   });
 }
 
+test("production accepts API calls only from 3welle.com", () => {
+  const prod = buildConfig(validEnv({ NODE_ENV: "production" }));
+
+  assert.equal(prod.corsOrigin, "https://3welle.com");
+});
+
+for (const mode of ["development", "test"]) {
+  test(`${mode} accepts API calls from localhost on any port, and nothing else`, () => {
+    const { corsOrigin } = buildConfig(validEnv({ NODE_ENV: mode }));
+    assert.ok(corsOrigin instanceof RegExp);
+
+    for (const origin of ["http://localhost:5173", "http://localhost:5199", "http://localhost:4173"]) {
+      assert.match(origin, corsOrigin);
+    }
+    for (const origin of [
+      "https://3welle.com",
+      "http://example.com",
+      "http://localhost.example.com:5173",
+      "http://evil-localhost:5173",
+      "http://localhost:5173.example.com",
+    ]) {
+      assert.doesNotMatch(origin, corsOrigin);
+    }
+  });
+}
+
 test("the upload timeouts default to the production values and can be shortened", () => {
   const defaults = buildConfig(validEnv());
   assert.equal(defaults.photoUploadTimeoutMs, 30_000);

@@ -62,8 +62,13 @@ export const buildConfig = (raw: RawEnv) => {
     nodeEnv,
     isProduction,
 
-    /** The only origin allowed to call the API, and the base of links in emails. */
+    /** The base of links in emails and the Google OAuth redirect. */
     frontendUrl: isProduction ? "https://3welle.com" : "http://localhost:5173",
+    /**
+     * Origins allowed to call the API: the site in production, and localhost
+     * on any port locally, so a second dev server or a preview build works too.
+     */
+    corsOrigin: isProduction ? "https://3welle.com" : /^http:\/\/localhost:\d+$/,
 
     authCookie,
     accessTokenCookie: { ...authCookie, maxAge: 15 * 60 * 1000 },

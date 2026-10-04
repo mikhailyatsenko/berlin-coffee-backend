@@ -57,7 +57,7 @@ export const createApp = async () => {
   app.use(
     "/coffee",
     cors<cors.CorsRequest>({
-      origin: config.frontendUrl,
+      origin: config.corsOrigin,
       credentials: true,
       allowedHeaders: [
         "Content-Type",

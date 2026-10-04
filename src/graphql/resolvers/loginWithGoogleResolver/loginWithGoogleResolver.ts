@@ -84,9 +84,6 @@ export const loginWithGoogleResolver: MutationResolvers["loginWithGoogle"] = asy
 
   setAuthCookies(user, res);
 
-  res.setHeader("Access-Control-Allow-Credentials", "true");
-  res.setHeader("Access-Control-Allow-Origin", config.frontendUrl);
-
   return {
     user: {
       id: user.id,

@@ -68,6 +68,27 @@ test("a /coffee CORS preflight carries no public Cache-Control header", async ()
   assert.doesNotMatch(response.headers.get("cache-control") ?? "", /public/);
 });
 
+const preflightFrom = (origin: string) =>
+  fetch(`${baseUrl}/coffee`, {
+    method: "OPTIONS",
+    headers: { Origin: origin, "Access-Control-Request-Method": "POST" },
+  });
+
+test("outside production, a /coffee preflight from localhost on another port is allowed", async () => {
+  const response = await preflightFrom("http://localhost:5199");
+
+  assert.equal(
+    response.headers.get("access-control-allow-origin"),
+    "http://localhost:5199",
+  );
+});
+
+test("a /coffee preflight from a foreign origin is not allowed", async () => {
+  const response = await preflightFrom("http://example.com");
+
+  assert.equal(response.headers.get("access-control-allow-origin"), null);
+});
+
 // JSON_BODY_LIMIT in src/app.ts.
 const BODY_LIMIT_BYTES = 7 * 1024 * 1024;
 // The client sends an avatar unresized, up to this size.
