@@ -53,26 +53,20 @@ test("a /coffee response carries no public Cache-Control header", async () => {
   assert.doesNotMatch(response.headers.get("cache-control") ?? "", /public/);
 });
 
-// Apollo sets its own `no-store` on the responses it sends, so a public header
-// set earlier only survived on responses Apollo never sees, like a preflight.
-test("a /coffee CORS preflight carries no public Cache-Control header", async () => {
-  const response = await fetch(`${baseUrl}/coffee`, {
-    method: "OPTIONS",
-    headers: {
-      Origin: config.frontendUrl,
-      "Access-Control-Request-Method": "POST",
-    },
-  });
-
-  assert.equal(response.status, 204);
-  assert.doesNotMatch(response.headers.get("cache-control") ?? "", /public/);
-});
-
 const preflightFrom = (origin: string) =>
   fetch(`${baseUrl}/coffee`, {
     method: "OPTIONS",
     headers: { Origin: origin, "Access-Control-Request-Method": "POST" },
   });
+
+// Apollo sets its own `no-store` on the responses it sends, so a public header
+// set earlier only survived on responses Apollo never sees, like a preflight.
+test("a /coffee CORS preflight carries no public Cache-Control header", async () => {
+  const response = await preflightFrom(config.frontendUrl);
+
+  assert.equal(response.status, 204);
+  assert.doesNotMatch(response.headers.get("cache-control") ?? "", /public/);
+});
 
 test("outside production, a /coffee preflight from localhost on another port is allowed", async () => {
   const response = await preflightFrom("http://localhost:5199");
