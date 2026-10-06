@@ -1,6 +1,6 @@
 import { config } from "../config/config.js";
 import mongoose from "mongoose";
-import { apply, plan, rollback } from "./googleSync.js";
+import { apply, budget, plan, rollback, SYNC_BUDGET, SyncBudgetRefusal } from "./googleSync.js";
 
 /**
  * The Google sync CLI: parses arguments, connects to MONGO_URI, calls the
@@ -21,12 +21,20 @@ Subcommands:
   plan [--limit=N]     Look up Places in Google and write a Sync plan to
                        ${DEFAULT_DIR}/<datetime>-plan.json. Writes nothing to Places.
                        --limit=N looks up only the first N Places by _id.
+                       Refused up front if the lookups don't fit in this month's
+                       Sync budget (${SYNC_BUDGET} per US Pacific month); stops on the first 429.
   apply <plan.json>    Write what is left in a reviewed Sync plan to Places, skipping
                        fields edited since the plan, and record an Applied sync in
                        <datetime>-applied.json next to the plan. Sends nothing to Google.
   rollback <applied.json>
                        Write back the values an Applied sync replaced, leaving alone
                        fields edited since the apply. Sends nothing to Google.
+  budget               Show this month's Sync budget (spent, reserved, left) and
+                       its runs. Asks Google nothing.
+  budget --set=N --reason="…"
+                       Set this month's spent count to N, release every
+                       reservation and close unfinished runs. For seeding the
+                       count at rollout and after a crashed run.
 
 Guide: docs/google-places-sync.md`;
 
@@ -34,11 +42,29 @@ type Command =
   | { name: "help" }
   | { name: "plan"; limit?: number }
   | { name: "apply"; planPath: string }
-  | { name: "rollback"; appliedPath: string };
+  | { name: "rollback"; appliedPath: string }
+  | { name: "budget"; set?: number; reason?: string };
+
+const parseBudget = (options: string[]): Command => {
+  let set: number | undefined;
+  let reason: string | undefined;
+  for (const option of options) {
+    const setMatch = option.match(/^--set=(\d+)$/);
+    const reasonMatch = option.match(/^--reason=(.+)$/s);
+    if (setMatch) set = Number(setMatch[1]);
+    else if (reasonMatch?.[1].trim()) reason = reasonMatch[1];
+    else throw new Error(`Unknown or invalid option for budget: ${option}`);
+  }
+  if ((set === undefined) !== (reason === undefined)) {
+    throw new Error("budget: --set and --reason go together");
+  }
+  return { name: "budget", set, reason };
+};
 
 const parse = (args: string[]): Command => {
   const [subcommand, ...options] = args;
   if (subcommand === undefined) return { name: "help" };
+  if (subcommand === "budget") return parseBudget(options);
 
   if (subcommand === "apply") {
     if (options.length !== 1 || options[0].startsWith("-")) {
@@ -63,15 +89,6 @@ const parse = (args: string[]): Command => {
     limit = Number(match[1]);
   }
   return { name: "plan", limit };
-};
-
-const runPlan = async (limit: number | undefined) => {
-  const { path, syncPlan } = await plan({ limit, dir: DEFAULT_DIR, now: new Date() });
-  console.log(`Looked up ${syncPlan.meta.lookedUp} Places`);
-  console.log(`  with changes: ${syncPlan.places.length}`);
-  console.log(`  not found:    ${syncPlan.notFound.length}`);
-  console.log(`  failed:       ${syncPlan.failed.length}`);
-  console.log(`\nSync plan: ${path}`);
 };
 
 const runApply = async (planPath: string) => {
@@ -103,6 +120,46 @@ const runRollback = async (appliedPath: string) => {
   console.log(`Changed since apply (left alone): ${leftAlone.length}`);
 };
 
+const runPlan = async (limit?: number) => {
+  let result: Awaited<ReturnType<typeof plan>>;
+  try {
+    result = await plan({ limit, dir: DEFAULT_DIR, now: new Date() });
+  } catch (error) {
+    if (!(error instanceof SyncBudgetRefusal)) throw error;
+    console.error(`Refused, nothing sent. ${error.message}`);
+    process.exitCode = 1;
+    return;
+  }
+  const { path, syncPlan } = result;
+  if (syncPlan.meta.stoppedOn) {
+    console.log("PARTIAL PLAN: Google answered 429, the run stopped; unanswered Places are failed (quota).\n");
+  }
+  console.log(`Looked up ${syncPlan.meta.lookedUp} Places`);
+  console.log(`  with changes: ${syncPlan.places.length}`);
+  console.log(`  not found:    ${syncPlan.notFound.length}`);
+  console.log(`  failed:       ${syncPlan.failed.length}`);
+  console.log(`\nSync plan: ${path}`);
+};
+
+const runBudget = async ({ set, reason }: { set?: number; reason?: string }) => {
+  const month = await budget({ set, reason, now: new Date() });
+  console.log(`Sync budget ${month.month} (US Pacific): ${month.spent} spent, ${month.reserved} reserved, ${month.left} of ${month.budget} left`);
+  console.log(`Resets ${month.resetsAt.toISOString()} (the 1st, 09:00 Berlin)`);
+  if (!month.runs.length) return console.log("\nNo runs this month.");
+  console.log("\nRuns:");
+  for (const run of month.runs) {
+    const started = run.startedAt.toISOString();
+    if (run.kind === "correction") {
+      console.log(`  ${started}  correction on ${run.host}: spent set to ${run.setTo} (${run.reason})`);
+    } else {
+      const end = run.finishedAt
+        ? `${run.outcome}, sent ${run.sent} of ${run.reserved} reserved`
+        : `NOT FINISHED, holds ${run.reserved} reserved`;
+      console.log(`  ${started}  plan on ${run.host}: ${end}${run.planPath ? `, ${run.planPath}` : ""}`);
+    }
+  }
+};
+
 const main = async () => {
   let command: Command;
   try {
@@ -117,7 +174,8 @@ const main = async () => {
   try {
     if (command.name === "plan") await runPlan(command.limit);
     else if (command.name === "apply") await runApply(command.planPath);
-    else await runRollback(command.appliedPath);
+    else if (command.name === "rollback") await runRollback(command.appliedPath);
+    else await runBudget(command);
   } finally {
     await mongoose.disconnect();
   }
