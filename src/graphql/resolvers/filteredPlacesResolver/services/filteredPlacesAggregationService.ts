@@ -1,9 +1,10 @@
-import type { Characteristic } from "../../../generated/types.js";
+import type { Characteristic, ShortlistId } from "../../../generated/types.js";
 import Place, { VISIBLE_PLACE_MATCH } from "../../../../models/Place.js";
 import mongoose from "mongoose";
 import { placeStatsStages, type PlaceStats } from "../../../../utils/placeStats.js";
 import { ActorRef, ownInteractionCond } from "../../../../utils/reviewActor.js";
 import { amenitySpellings } from "../../../../amenities/synonyms.js";
+import { SHORTLISTS } from "../../../../amenities/shortlists.js";
 
 export interface PlaceWithStats extends PlaceStats {
     _id: mongoose.Types.ObjectId;
@@ -24,6 +25,8 @@ export interface PlaceWithStats extends PlaceStats {
     };
     favoriteCount: number;
     isFavorite: boolean;
+    /** The Shortlists whose Amenities the Place has, in Shortlist order. */
+    shortlistIds: ShortlistId[];
     /** The caller's own Review of the Place, absent when they have none. */
     ownReview?: {
         rating?: number | null;
@@ -94,6 +97,15 @@ function hasAmenity(spelling: string) {
     };
 }
 
+/** True when the Place has every Amenity in `names`, each through any of its spellings. */
+function hasAllAmenities(names: readonly string[]) {
+    return {
+        $and: names.map((name) => ({
+            $or: amenitySpellings(name).map(hasAmenity),
+        })),
+    };
+}
+
 export interface FilteredPlacesOptions {
     /** Best first: Average rating, then Rating count, then name. */
     sortByRating?: boolean;
@@ -122,15 +134,7 @@ export async function getFilteredPlacesWithStats(
     if (additionalInfo && additionalInfo.length > 0) {
         // Каждая Amenity совпадает по любому своему написанию (OR),
         // а все выбранные Amenities должны выполняться (AND логика)
-        pipeline.push({
-            $match: {
-                $and: additionalInfo.map((name) => ({
-                    $or: amenitySpellings(name).map((spelling) => ({
-                        $expr: hasAmenity(spelling),
-                    })),
-                })),
-            },
-        });
+        pipeline.push({ $match: { $expr: hasAllAmenities(additionalInfo) } });
     }
 
     // Получаем взаимодействия и статистику рейтингов
@@ -230,6 +234,17 @@ export async function getFilteredPlacesWithStats(
     if (limit !== undefined) {
         pipeline.push({ $limit: limit });
     }
+
+    // Before the projection drops additionalInfo; no rating threshold here
+    pipeline.push({
+        $addFields: {
+            shortlistIds: {
+                $concatArrays: SHORTLISTS.map(({ id, amenities }) => ({
+                    $cond: [hasAllAmenities(amenities), [id], []],
+                })),
+            },
+        },
+    });
 
     // Добавляем финальную проекцию
     pipeline.push({

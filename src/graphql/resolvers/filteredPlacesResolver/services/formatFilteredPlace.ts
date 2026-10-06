@@ -29,6 +29,7 @@ export function formatFilteredPlace(place: PlaceWithStats): Place {
                 : null,
             googleId: place.properties.googleId || null,
             neighborhood: place.properties.neighborhood || null,
+            shortlistIds: place.shortlistIds,
         },
     };
 }

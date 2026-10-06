@@ -334,3 +334,58 @@ test("a Favorite without a Rating gives no ownRating", async () => {
   assert.equal(place.properties.ownRating, null);
   assert.deepEqual(place.properties.ownCharacteristics, []);
 });
+
+test("shortlistIds lists every Shortlist a Place has the Amenities of, in Shortlist order", async () => {
+  await seedPlace(
+    "Everything",
+    [
+      "Brunch",
+      "Outdoor seating",
+      "Dogs allowed outside",
+      "Free Wi-Fi",
+      "Good for working on laptop",
+    ],
+    [5],
+  );
+  await seedPlace("Wifi terrace", ["Wi-Fi", "Outdoor seating"], [5]);
+
+  const outdoor = await shortlist("outdoorSeating");
+
+  assert.deepEqual(
+    outdoor.places.map((p) => [p.properties.name, p.properties.shortlistIds]),
+    [
+      ["Everything", ["work", "dogFriendly", "outdoorSeating", "breakfastBrunch"]],
+      // Work needs both of its Amenities
+      ["Wifi terrace", ["outdoorSeating"]],
+    ],
+  );
+  assert.equal("additionalInfo" in outdoor.places[0].properties, false);
+});
+
+test("shortlistIds ignores the Shortlists' rating threshold and is empty without Amenities", async () => {
+  await seedPlace("Low dogs", ["Dogs allowed"], [3]);
+  await seedPlace("Unrated brunch", ["Brunch"]);
+  await seedPlace("Plain", ["Restroom"], [5]);
+  await Place.create({
+    geometry: { coordinates: [13.4, 52.5] },
+    properties: { name: "No info", address: "Somewhere 1, Berlin", neighborhood: "Mitte" },
+  });
+
+  const { places } = await callResolver(
+    filteredPlacesResolver,
+    { neighborhood: ["Mitte"] },
+    {},
+  );
+
+  assert.deepEqual(
+    Object.fromEntries(
+      places.map((p) => [p.properties.name, p.properties.shortlistIds]),
+    ),
+    {
+      "Low dogs": ["dogFriendly"],
+      "Unrated brunch": ["breakfastBrunch"],
+      Plain: [],
+      "No info": [],
+    },
+  );
+});

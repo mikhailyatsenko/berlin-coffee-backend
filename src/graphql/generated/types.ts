@@ -448,6 +448,8 @@ export type PlaceProperties = {
   ownRating?: Maybe<Scalars['Int']['output']>;
   phone?: Maybe<Scalars['String']['output']>;
   ratingCount: Scalars['Int']['output'];
+  /** The Shortlists whose Amenities the Place has, in Shortlist order; the Shortlists' Average rating threshold does not apply. Filled by filteredPlaces and neighborhoodShortlists only, empty elsewhere. */
+  shortlistIds: Array<ShortlistId>;
   website?: Maybe<Scalars['String']['output']>;
 };
 
@@ -1075,6 +1077,7 @@ export type PlacePropertiesResolvers<ContextType = Context, ParentType extends R
   ownRating?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   phone?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   ratingCount?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  shortlistIds?: Resolver<Array<ResolversTypes['ShortlistId']>, ParentType, ContextType>;
   website?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 };
