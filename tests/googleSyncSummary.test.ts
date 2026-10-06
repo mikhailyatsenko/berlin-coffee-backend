@@ -93,6 +93,27 @@ test("a plan stopped on a 429 says it is partial on the summary's first line", a
   assert.match(firstLine, /429/);
 });
 
+test("a partial plan's Looked up counts only Places sent, and says how many were never sent", async () => {
+  await seedPlace("First");
+  google.status("g-First", 429);
+  for (const name of ["P1", "P2", "P3", "P4", "P5", "P6"]) {
+    await seedPlace(name);
+    google.place(`g-${name}`);
+  }
+
+  const { path: planPath, syncPlan } = await plan({ dir, now });
+
+  const sent = google.calls.length;
+  const notSent = 7 - sent;
+  assert.ok(notSent > 0, "the 429 stopped the run before every Place was sent");
+  assert.equal(syncPlan.meta.notSent, notSent);
+  const markdown = readFileSync(summaryPathOf(planPath), "utf8");
+  assert.match(markdown, new RegExp(`^- Looked up: ${sent} \\(of 7 selected; ${notSent} not sent, stopped on 429\\)$`, "m"));
+  // The 429'd Place and the ones never sent are failed; the rest Google answered unchanged.
+  assert.match(markdown, new RegExp(`^- Unchanged: ${sent - 1}$`, "m"));
+  assert.match(markdown, new RegExp(`^- Failed: ${notSent + 1} \\(${notSent} of them not sent\\)$`, "m"));
+});
+
 test("a full plan's summary does not open with the partial-plan line", async () => {
   await seedPlace("Calm");
   google.place("g-Calm", { internationalPhoneNumber: "+49 30 4444" });

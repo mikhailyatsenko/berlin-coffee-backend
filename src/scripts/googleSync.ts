@@ -186,11 +186,14 @@ export interface SyncPlan {
   meta: {
     createdAt: string;
     database: DatabaseIdentity;
+    /** Places selected for lookup; on a partial plan `notSent` of them were never sent. */
     lookedUp: number;
     limit: number | null;
     fieldMaskVersion: number;
     /** Set when Google answered 429 and the run stopped early: a partial plan. */
     stoppedOn?: "429";
+    /** Partial plans only: Places never sent because the run stopped (failed with reason "quota"). */
+    notSent?: number;
     /** Places already closed (temporarily or permanently) that Google left unchanged; for the summary. */
     closedUnchanged?: number;
   };
@@ -492,6 +495,7 @@ async function lookUp(
     const { name, googleId } = place.properties;
     if (stopped) {
       result.failed.push({ placeId, name, reason: "quota" });
+      result.meta.notSent!++;
       return;
     }
 
@@ -506,6 +510,7 @@ async function lookUp(
     if (fetched.status === "quota") {
       stopped = true;
       result.meta.stoppedOn = "429";
+      result.meta.notSent ??= 0;
       result.failed.push({ placeId, name, reason: "quota" });
       return;
     }
@@ -580,7 +585,10 @@ const renderSummary = (syncPlan: SyncPlan, planFile: string) => {
     places.filter(({ changes }) => changes.some(isMark)).map(({ placeId }) => placeId),
   );
   // A Place whose changes were all trimmed from the JSON counts as unchanged.
+  // `lookedUp` is every Place selected; on a partial plan the ones never sent
+  // are in `failed` too, so they cancel out here and are named in the counters.
   const unchanged = meta.lookedUp - withChanges.length - notFound.length - failed.length;
+  const notSent = meta.notSent ?? 0;
   const lines: string[] = [];
 
   if (meta.stoppedOn) {
@@ -597,11 +605,13 @@ const renderSummary = (syncPlan: SyncPlan, planFile: string) => {
       (meta.limit ? ` with --limit=${meta.limit}` : "") +
       ". Generated from the plan JSON; after trimming it, regenerate with `summary <plan.json>`.",
     "",
-    `- Looked up: ${meta.lookedUp}`,
+    notSent
+      ? `- Looked up: ${meta.lookedUp - notSent} (of ${meta.lookedUp} selected; ${notSent} not sent, stopped on ${meta.stoppedOn})`
+      : `- Looked up: ${meta.lookedUp}`,
     `- With changes: ${withChanges.length}`,
     `- Unchanged: ${unchanged}`,
     `- Not found: ${notFound.length}`,
-    `- Failed: ${failed.length}`,
+    `- Failed: ${failed.length}` + (notSent ? ` (${notSent} of them not sent)` : ""),
     `- Skipped as Lost Google match: ${skipped.length}`,
   );
 

@@ -145,7 +145,12 @@ const runPlan = async (limit?: number) => {
   if (syncPlan.meta.stoppedOn) {
     console.log("PARTIAL PLAN: Google answered 429, the run stopped; unanswered Places are failed (quota).\n");
   }
-  console.log(`Looked up ${syncPlan.meta.lookedUp} Places`);
+  const { lookedUp, notSent = 0 } = syncPlan.meta;
+  console.log(
+    notSent
+      ? `Looked up ${lookedUp - notSent} of ${lookedUp} selected Places (${notSent} not sent, stopped on 429)`
+      : `Looked up ${lookedUp} Places`,
+  );
   const notFoundIds = new Set(syncPlan.notFound.map(({ placeId }) => placeId));
   console.log(`  with changes: ${syncPlan.places.filter(({ placeId }) => !notFoundIds.has(placeId)).length}`);
   console.log(`  not found:    ${syncPlan.notFound.length}`);
