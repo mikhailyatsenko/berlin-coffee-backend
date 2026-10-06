@@ -8,7 +8,7 @@
  */
 import { after } from "node:test";
 
-type Answer = { status: number; body?: unknown };
+type Answer = { status: number; body?: unknown } | "hang";
 
 export interface GoogleCall {
   url: string;
@@ -32,7 +32,9 @@ export function useFakeGoogle() {
       apiKey: headers["X-Goog-Api-Key"],
       fieldMask: headers["X-Goog-FieldMask"],
     });
-    const { status, body = {} } = answers.get(googleId) ?? { status: 404 };
+    const answer = answers.get(googleId) ?? { status: 404 };
+    if (answer === "hang") return new Promise<Response>(() => {});
+    const { status, body = {} } = answer;
     return {
       ok: status >= 200 && status < 300,
       status,
@@ -54,6 +56,10 @@ export function useFakeGoogle() {
     /** Google answers this status (404, 429, 500…) with an error body. */
     status(googleId: string, status: number) {
       answers.set(googleId, { status, body: { error: { code: status } } });
+    },
+    /** Google never answers: the run hangs mid-flight, like a killed process. */
+    hang(googleId: string) {
+      answers.set(googleId, "hang");
     },
     reset() {
       answers.clear();

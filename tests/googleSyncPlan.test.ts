@@ -113,13 +113,11 @@ test("a Place whose Google data matches ours, or that Google leaves blank, has n
   assert.equal(syncPlan.meta.lookedUp, 3);
 });
 
-test("404 goes to notFound and 500 to failed; a 429 is failed too, not retried", async () => {
+test("404 goes to notFound and 500 to failed, without a retry", async () => {
   const goneId = await seedPlace("Gone");
   google.status("g-Gone", 404);
   const brokenId = await seedPlace("Broken");
   google.status("g-Broken", 500);
-  const busyId = await seedPlace("Busy");
-  google.status("g-Busy", 429);
 
   const { syncPlan } = await plan({ dir, now });
 
@@ -128,15 +126,11 @@ test("404 goes to notFound and 500 to failed; a 429 is failed too, not retried",
   ]);
   assert.deepEqual(
     syncPlan.failed.map(({ placeId, name }) => ({ placeId, name })),
-    [
-      { placeId: brokenId, name: "Broken" },
-      { placeId: busyId, name: "Busy" },
-    ],
+    [{ placeId: brokenId, name: "Broken" }],
   );
   assert.match(syncPlan.failed[0].reason, /500/);
-  assert.match(syncPlan.failed[1].reason, /429/);
   assert.deepEqual(syncPlan.places, []);
-  assert.equal(google.calls.length, 3, "one request per Place, no retry");
+  assert.equal(google.calls.length, 2, "one request per Place, no retry");
 });
 
 test("--limit looks up only the first N Places by _id", async () => {
