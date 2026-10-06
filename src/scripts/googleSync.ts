@@ -75,7 +75,7 @@ const budgetMonth = (now: Date) => {
   return `${year}-${String(month).padStart(2, "0")}`;
 };
 
-/** When the month of `now` ends: the next 1st, 00:00 US Pacific (09:00 Berlin). */
+/** When the month of `now` ends: the next 1st, 00:00 US Pacific. */
 const budgetResetsAt = (now: Date) => {
   const { year, month } = pacificParts(now);
   // The 1st, 00:00 Pacific is 07:00 or 08:00 UTC, depending on daylight saving.
@@ -88,6 +88,21 @@ const budgetResetsAt = (now: Date) => {
     })!;
 };
 
+/**
+ * `instant` as Berlin wall-clock time, "2026-11-01 08:00 Berlin". The budget
+ * resets at 00:00 Pacific: 09:00 in Berlin, but 08:00 on November 1st, when
+ * Berlin is already back on winter time and California is not.
+ */
+export const berlinTime = (instant: Date) =>
+  `${new Intl.DateTimeFormat("sv-SE", {
+    timeZone: "Europe/Berlin",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(instant)} Berlin`;
+
 /** `plan` was refused before any request: the lookups it needs don't fit in the month. */
 export class SyncBudgetRefusal extends Error {
   constructor(
@@ -98,7 +113,7 @@ export class SyncBudgetRefusal extends Error {
   ) {
     super(
       `Sync budget for ${month}: ${left} of ${SYNC_BUDGET} lookups left, this plan needs ${needed}. ` +
-        `Run \`plan --limit=${left}\` or wait for ${resetsAt.toISOString()} (the 1st, 09:00 Berlin).`,
+        `Run \`plan --limit=${left}\` or wait for ${resetsAt.toISOString()} (${berlinTime(resetsAt)}).`,
     );
     this.name = "SyncBudgetRefusal";
   }

@@ -64,6 +64,8 @@ test("a plan that doesn't fit is refused before any request, and the month is un
     assert.equal(error.needed, 11);
     assert.equal(error.resetsAt.toISOString(), "2026-11-01T07:00:00.000Z");
     assert.match(error.message, /--limit=10/);
+    // November's 1st, 00:00 Pacific falls after Berlin left summer time: 08:00, not 09:00.
+    assert.match(error.message, /2026-11-01 08:00 Berlin/);
     return true;
   });
 
@@ -258,7 +260,7 @@ test("a correction needs a reason and a whole, non-negative count", async () => 
   assert.deepEqual((await budget({ now })).runs, []);
 });
 
-test("the month turns on the 1st at 09:00 Berlin (00:00 US Pacific)", async () => {
+test("the month turns on the 1st at 00:00 US Pacific (on October 1st, 09:00 Berlin)", async () => {
   const before = new Date("2026-10-01T08:59:00+02:00");
   const after = new Date("2026-10-01T09:01:00+02:00");
   assert.equal((await budget({ now: before })).month, "2026-09");

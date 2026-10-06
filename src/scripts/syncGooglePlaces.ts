@@ -1,6 +1,6 @@
 import { config } from "../config/config.js";
 import mongoose from "mongoose";
-import { apply, budget, plan, rollback, summary, SYNC_BUDGET, SyncBudgetRefusal } from "./googleSync.js";
+import { apply, berlinTime, budget, plan, rollback, summary, SYNC_BUDGET, SyncBudgetRefusal } from "./googleSync.js";
 
 /**
  * The Google sync CLI: parses arguments, connects to MONGO_URI, calls the
@@ -166,7 +166,7 @@ const runPlan = async (limit?: number) => {
 const runBudget = async ({ set, reason }: { set?: number; reason?: string }) => {
   const month = await budget({ set, reason, now: new Date() });
   console.log(`Sync budget ${month.month} (US Pacific): ${month.spent} spent, ${month.reserved} reserved, ${month.left} of ${month.budget} left`);
-  console.log(`Resets ${month.resetsAt.toISOString()} (the 1st, 09:00 Berlin)`);
+  console.log(`Resets ${month.resetsAt.toISOString()} (${berlinTime(month.resetsAt)})`);
   if (!month.runs.length) return console.log("\nNo runs this month.");
   console.log("\nRuns:");
   for (const run of month.runs) {
