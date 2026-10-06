@@ -114,6 +114,32 @@ test("a Place whose Google data matches ours, or that Google leaves blank, has n
   assert.equal(syncPlan.meta.closedUnchanged, 1, "already closed and unchanged, for the summary's counter");
 });
 
+test("Google's editorial summary fills an empty description and never replaces one", async () => {
+  const missing = await seedPlace("Missing");
+  const blank = await seedPlace("Blank", { description: "  " });
+  await seedPlace("Ours", { description: "Our own words." });
+  await seedPlace("NoSummary");
+  for (const name of ["Missing", "Blank", "Ours"]) {
+    google.place(`g-${name}`, { editorialSummary: { text: `Google about ${name}.`, languageCode: "en" } });
+  }
+  google.place("g-NoSummary", {});
+
+  const { syncPlan } = await plan({ dir, now });
+
+  assert.deepEqual(syncPlan.places, [
+    {
+      placeId: missing,
+      name: "Missing",
+      changes: [{ field: "description", current: null, proposed: "Google about Missing." }],
+    },
+    {
+      placeId: blank,
+      name: "Blank",
+      changes: [{ field: "description", current: "  ", proposed: "Google about Blank." }],
+    },
+  ]);
+});
+
 test("a stored opening hour without hours doesn't crash the plan: Google's hours are proposed", async () => {
   // Older or hand-imported data can hold a day without hours; the schema can't stop that.
   const { insertedId } = await Place.collection.insertOne({
@@ -213,7 +239,7 @@ test("the plan file lands in dir with its meta, and Places stay unchanged", asyn
     },
     lookedUp: 2,
     limit: null,
-    fieldMaskVersion: 1,
+    fieldMaskVersion: 2,
     closedUnchanged: 0,
   });
   assert.equal(written.places.length, 2, "Bonanza's changes and Gone's Lost Google match mark");
@@ -242,7 +268,7 @@ test("each request asks for English with today's field mask and the API key", as
       googleId: "g-Bonanza",
       apiKey: "test-google-places-key",
       fieldMask:
-        "id,businessStatus,regularOpeningHours.weekdayDescriptions,internationalPhoneNumber,websiteUri",
+        "id,businessStatus,regularOpeningHours.weekdayDescriptions,internationalPhoneNumber,websiteUri,editorialSummary",
     },
   ]);
 });
