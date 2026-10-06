@@ -1,6 +1,6 @@
 # Spec: Safe and economical Google sync
 
-Status: ready-for-agent
+Status: done
 
 Map: [map.md](map.md). Decisions behind this spec live in its tickets: [01 pricing and quotas](issues/01-places-pricing-and-quotas.md), [02 budget guard](issues/02-budget-guard.md), [03 Sync plan, apply, rollback](issues/03-sync-plan-and-rollback.md), [04 console quotas](issues/04-check-getplace-quotas.md), [05 Lost Google match](issues/05-not-found-places.md), [06 testing](issues/06-testing-without-google.md). Glossary: `CONTEXT.md` (Google sync, Sync plan, Applied sync, Sync budget, Lost Google match).
 
