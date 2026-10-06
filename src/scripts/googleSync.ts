@@ -14,6 +14,9 @@ import SyncRun, { SyncRunOutcome } from "../models/SyncRun.js";
  * ID and writes a Sync plan: one entry per field Google would change. It
  * writes nothing to Places. Every lookup is billed.
  *
+ * `summary` (also run by `plan`) writes the plan's readable `.md` beside it,
+ * from the plan file alone, so a trimmed plan can be reviewed again.
+ *
  * Every request counts against the Sync budget: SYNC_BUDGET lookups per US
  * Pacific month, kept in the database so every machine sees the same count.
  * `plan` reserves what it needs before sending anything, or refuses.
@@ -176,6 +179,8 @@ export interface SyncPlan {
     fieldMaskVersion: number;
     /** Set when Google answered 429 and the run stopped early: a partial plan. */
     stoppedOn?: "429";
+    /** Places already closed (temporarily or permanently) that Google left unchanged; for the summary. */
+    closedUnchanged?: number;
   };
   places: { placeId: string; name: string; changes: SyncChange[] }[];
   notFound: { placeId: string; name: string; googleId: string }[];
@@ -379,6 +384,7 @@ async function lookUp(
       lookedUp: places.length,
       limit: limit || null,
       fieldMaskVersion: FIELD_MASK_VERSION,
+      closedUnchanged: 0,
     },
     places: [],
     notFound: [],
@@ -420,6 +426,7 @@ async function lookUp(
     } else {
       const changes = changesFor(place.properties, fetched.place);
       if (changes.length) result.places.push({ placeId, name, changes });
+      else if (isClosed(place.properties.businessStatus)) result.meta.closedUnchanged!++;
     }
   });
 
@@ -431,8 +438,114 @@ async function lookUp(
   await mkdir(dir, { recursive: true });
   const planPath = path.join(dir, `${fileStamp(now)}-plan.json`);
   await writeFile(planPath, `${JSON.stringify(result, null, 2)}\n`);
+  const { path: summaryPath } = await summary(planPath);
 
-  return { path: planPath, syncPlan: result };
+  return { path: planPath, summaryPath, syncPlan: result };
+}
+
+const isClosed = (status: unknown) => status === "CLOSED_TEMPORARILY" || status === "CLOSED_PERMANENTLY";
+
+const show = (value: unknown) =>
+  value === null || value === undefined || value === "" ? "(none)" : `\`${String(value)}\``;
+
+/** Opening hours as a per-day diff: only the days that change, before → after. */
+const hoursDiff = (current: unknown, proposed: unknown) => {
+  const byDay = (value: unknown) =>
+    new Map(((value ?? []) as IOpeningHour[]).map(({ day, hours }) => [day, normalizeSpaces(hours)]));
+  const before = byDay(current);
+  const after = byDay(proposed);
+  return [...new Set([...after.keys(), ...before.keys()])]
+    .filter((day) => before.get(day) !== after.get(day))
+    .map((day) => `    - ${day}: ${show(before.get(day))} → ${show(after.get(day))}`);
+};
+
+/**
+ * The readable summary of a Sync plan, built from the plan alone, in the
+ * order the admin reviews it: partial-plan warning, counters, status changes
+ * (closures, then reopenings), Google Place ID changes, other changes per
+ * Place, not found and failed, already-closed-unchanged.
+ */
+const renderSummary = (syncPlan: SyncPlan, planFile: string) => {
+  const { meta, places, notFound, failed } = syncPlan;
+  const withChanges = places.filter(({ changes }) => changes.length);
+  // A Place whose changes were all trimmed from the JSON counts as unchanged.
+  const unchanged = meta.lookedUp - withChanges.length - notFound.length - failed.length;
+  const lines: string[] = [];
+
+  if (meta.stoppedOn) {
+    lines.push(
+      `**Partial plan: stopped on ${meta.stoppedOn}.** Google answered ${meta.stoppedOn} and the run stopped; ` +
+        "the Places it left unanswered are under Failed with reason `quota`.",
+      "",
+    );
+  }
+  lines.push(
+    `# Sync plan ${planFile}`,
+    "",
+    `Made ${meta.createdAt} from database \`${meta.database?.name}\` on \`${meta.database?.host}\`` +
+      (meta.limit ? ` with --limit=${meta.limit}` : "") +
+      ". Generated from the plan JSON; after trimming it, regenerate with `summary <plan.json>`.",
+    "",
+    `- Looked up: ${meta.lookedUp}`,
+    `- With changes: ${withChanges.length}`,
+    `- Unchanged: ${unchanged}`,
+    `- Not found: ${notFound.length}`,
+    `- Failed: ${failed.length}`,
+  );
+
+  const section = (title: string, body: string[]) =>
+    lines.push("", `## ${title}`, "", ...(body.length ? body : ["None."]));
+  const entries = (field: SyncField) =>
+    withChanges.flatMap(({ name, changes }) =>
+      changes.filter((change) => change.field === field).map((change) => ({ name, ...change })),
+    );
+  const beforeAfter = ({ name, current, proposed }: { name: string; current: unknown; proposed: unknown }) =>
+    `- **${name}**: ${show(current)} → ${show(proposed)}`;
+
+  const statuses = entries("businessStatus");
+  section("Status changes", [
+    ...statuses.filter(({ proposed }) => isClosed(proposed)).map((entry) => `${beforeAfter(entry)} (closes)`),
+    ...statuses.filter(({ proposed }) => !isClosed(proposed)).map((entry) => `${beforeAfter(entry)} (reopens)`),
+  ]);
+
+  section("Google Place ID changes", entries("googleId").map(beforeAfter));
+
+  section(
+    "Other changes",
+    withChanges.flatMap(({ name, changes }) => {
+      const rest = changes.filter(({ field }) => field !== "businessStatus" && field !== "googleId");
+      if (!rest.length) return [];
+      return [
+        `- **${name}**`,
+        ...rest.flatMap(({ field, current, proposed }) =>
+          field === "openingHours"
+            ? ["  - openingHours:", ...hoursDiff(current, proposed)]
+            : [`  - ${field}: ${show(current)} → ${show(proposed)}`],
+        ),
+      ];
+    }),
+  );
+
+  section("Not found", notFound.map(({ name, googleId }) => `- **${name}**: Google doesn't know ${show(googleId)}`));
+  section("Failed", failed.map(({ name, reason }) => `- **${name}**: ${reason}`));
+
+  if (meta.closedUnchanged !== undefined) {
+    lines.push("", `Already closed and unchanged: ${meta.closedUnchanged}`);
+  }
+  return `${lines.join("\n")}\n`;
+};
+
+/**
+ * Writes the readable summary of a Sync plan, `<name>.md` next to
+ * `<name>.json`, from the plan file alone: after the admin trims the JSON it
+ * shows exactly what `apply` would write. Touches neither the database nor Google.
+ */
+export async function summary(planPath: string) {
+  const syncPlan = JSON.parse(await readFile(planPath, "utf8")) as SyncPlan;
+  const markdown = renderSummary(syncPlan, path.basename(planPath));
+  const summaryPath = path.join(path.dirname(planPath), `${path.basename(planPath, path.extname(planPath))}.md`);
+  await writeFile(summaryPath, markdown);
+  return { path: summaryPath, markdown };
 }
 
 const SYNC_FIELDS: readonly SyncField[] = ["businessStatus", "googleId", "openingHours", "phone", "website"];

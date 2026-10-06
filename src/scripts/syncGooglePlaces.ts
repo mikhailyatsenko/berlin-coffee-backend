@@ -1,6 +1,6 @@
 import { config } from "../config/config.js";
 import mongoose from "mongoose";
-import { apply, budget, plan, rollback, SYNC_BUDGET, SyncBudgetRefusal } from "./googleSync.js";
+import { apply, budget, plan, rollback, summary, SYNC_BUDGET, SyncBudgetRefusal } from "./googleSync.js";
 
 /**
  * The Google sync CLI: parses arguments, connects to MONGO_URI, calls the
@@ -19,10 +19,13 @@ Usage: node dist/scripts/syncGooglePlaces.js <subcommand> [options]
 
 Subcommands:
   plan [--limit=N]     Look up Places in Google and write a Sync plan to
-                       ${DEFAULT_DIR}/<datetime>-plan.json. Writes nothing to Places.
+                       ${DEFAULT_DIR}/<datetime>-plan.json, with a readable summary
+                       in <datetime>-plan.md beside it. Writes nothing to Places.
                        --limit=N looks up only the first N Places by _id.
                        Refused up front if the lookups don't fit in this month's
                        Sync budget (${SYNC_BUDGET} per US Pacific month); stops on the first 429.
+  summary <plan.json>  Regenerate the plan's .md summary from the JSON, e.g. after
+                       trimming entries. Needs no database and asks Google nothing.
   apply <plan.json>    Write what is left in a reviewed Sync plan to Places, skipping
                        fields edited since the plan, and record an Applied sync in
                        <datetime>-applied.json next to the plan. Sends nothing to Google.
@@ -43,6 +46,7 @@ type Command =
   | { name: "plan"; limit?: number }
   | { name: "apply"; planPath: string }
   | { name: "rollback"; appliedPath: string }
+  | { name: "summary"; planPath: string }
   | { name: "budget"; set?: number; reason?: string };
 
 const parseBudget = (options: string[]): Command => {
@@ -78,6 +82,13 @@ const parse = (args: string[]): Command => {
       throw new Error("rollback takes exactly one argument: the Applied sync file");
     }
     return { name: "rollback", appliedPath: options[0] };
+  }
+
+  if (subcommand === "summary") {
+    if (options.length !== 1 || options[0].startsWith("-")) {
+      throw new Error("summary takes exactly one argument: the plan file");
+    }
+    return { name: "summary", planPath: options[0] };
   }
 
   if (subcommand !== "plan") throw new Error(`Unknown subcommand: ${subcommand}`);
@@ -139,6 +150,7 @@ const runPlan = async (limit?: number) => {
   console.log(`  not found:    ${syncPlan.notFound.length}`);
   console.log(`  failed:       ${syncPlan.failed.length}`);
   console.log(`\nSync plan: ${path}`);
+  console.log(`Summary:   ${result.summaryPath}`);
 };
 
 const runBudget = async ({ set, reason }: { set?: number; reason?: string }) => {
@@ -169,6 +181,11 @@ const main = async () => {
     process.exit(1);
   }
   if (command.name === "help") return console.log(HELP);
+  // The summary is made from the plan file alone: no database connection.
+  if (command.name === "summary") {
+    const { path } = await summary(command.planPath);
+    return console.log(`Summary: ${path}`);
+  }
 
   await mongoose.connect(config.mongoUri);
   try {

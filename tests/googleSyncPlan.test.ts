@@ -111,6 +111,7 @@ test("a Place whose Google data matches ours, or that Google leaves blank, has n
 
   assert.deepEqual(syncPlan.places, []);
   assert.equal(syncPlan.meta.lookedUp, 3);
+  assert.equal(syncPlan.meta.closedUnchanged, 1, "already closed and unchanged, for the summary's counter");
 });
 
 test("404 goes to notFound and 500 to failed, without a retry", async () => {
@@ -174,7 +175,7 @@ test("the plan file lands in dir with its meta, and Places stay unchanged", asyn
 
   const { path: planPath, syncPlan } = await plan({ dir, now });
 
-  assert.deepEqual(readdirSync(dir), ["2026-10-06T12-34-56Z-plan.json"]);
+  assert.deepEqual(readdirSync(dir), ["2026-10-06T12-34-56Z-plan.json", "2026-10-06T12-34-56Z-plan.md"]);
   assert.equal(planPath, path.join(dir, "2026-10-06T12-34-56Z-plan.json"));
   const written = JSON.parse(readFileSync(planPath, "utf8"));
   assert.deepEqual(written, syncPlan);
@@ -187,6 +188,7 @@ test("the plan file lands in dir with its meta, and Places stay unchanged", asyn
     lookedUp: 2,
     limit: null,
     fieldMaskVersion: 1,
+    closedUnchanged: 0,
   });
   assert.equal(written.places.length, 1);
   assert.equal(written.notFound.length, 1);
@@ -199,7 +201,7 @@ test("plan creates a missing dir", async () => {
   const { path: planPath } = await plan({ dir: nested, now });
 
   assert.equal(path.dirname(planPath), nested);
-  assert.deepEqual(readdirSync(nested), ["2026-10-06T12-34-56Z-plan.json"]);
+  assert.deepEqual(readdirSync(nested), ["2026-10-06T12-34-56Z-plan.json", "2026-10-06T12-34-56Z-plan.md"]);
 });
 
 test("each request asks for English with today's field mask and the API key", async () => {

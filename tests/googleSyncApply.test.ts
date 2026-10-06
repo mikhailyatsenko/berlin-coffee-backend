@@ -196,7 +196,7 @@ test("a plan made from a different database is refused and nothing is written", 
   });
 
   assert.equal((await propertiesOf(id)).phone, null);
-  assert.deepEqual(readdirSync(dir), [path.basename(planPath)], "no Applied sync file");
+  assert.deepEqual(readdirSync(dir).filter((file) => file.endsWith("-applied.json")), [], "no Applied sync file");
 });
 
 test("a plan older than 7 days still applies, with a warning", async () => {
