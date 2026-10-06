@@ -29,6 +29,11 @@ import SyncRun, { SyncRunOutcome } from "../models/SyncRun.js";
  * `rollback` writes an Applied sync's previous values back to Places, never
  * over a field edited since the apply. It sends nothing to Google.
  *
+ * A Place Google answers 404 for gets a proposed `googleNotFoundId` mark;
+ * once applied it is a Lost Google match, which `plan` doesn't look up (or
+ * reserve for) while the mark equals its Google Place ID, and lists in
+ * `skipped` for the summary. A new Google Place ID makes it looked up again.
+ *
  * Google only proposes a field when it returns a value, so data entered by
  * hand is never wiped. Name, address and location are never taken from
  * Google: ours are formatted differently on purpose.
@@ -162,7 +167,14 @@ type FetchResult =
   | { status: "quota" }
   | { status: "error"; message: string };
 
-export type SyncField = "businessStatus" | "googleId" | "openingHours" | "phone" | "website";
+export type SyncField =
+  | "businessStatus"
+  | "googleId"
+  | "openingHours"
+  | "phone"
+  | "website"
+  /** The Lost Google match mark: the Google Place ID that answered 404. */
+  | "googleNotFoundId";
 
 export interface SyncChange {
   field: SyncField;
@@ -185,6 +197,17 @@ export interface SyncPlan {
   places: { placeId: string; name: string; changes: SyncChange[] }[];
   notFound: { placeId: string; name: string; googleId: string }[];
   failed: { placeId: string; name: string; reason: string }[];
+  /** Lost Google matches: not looked up while their mark equals their Google Place ID. For the summary. */
+  skipped?: SkippedPlace[];
+}
+
+export interface SkippedPlace {
+  placeId: string;
+  name: string;
+  address: string;
+  googleNotFoundId: string;
+  /** When the mark was applied (ISO), or null if unknown. */
+  markedAt: string | null;
 }
 
 export interface DatabaseIdentity {
@@ -262,6 +285,7 @@ type StoredPlace = {
   openingHours?: IOpeningHour[];
   phone?: string | null;
   website?: string | null;
+  googleNotFoundId?: string | null;
 };
 
 /** What Google would change on one Place, field by field, in a fixed order. */
@@ -301,11 +325,29 @@ const changesFor = (stored: StoredPlace, google: GooglePlace): SyncChange[] => {
 const fileStamp = (now: Date) => now.toISOString().replace(/\.\d+Z$/, "Z").replace(/:/g, "-");
 
 type PlannedPlace = Awaited<ReturnType<typeof findPlaces>>[number];
+const WITH_GOOGLE_ID = { "properties.googleId": { $nin: [null, ""] } };
+const IS_LOST_GOOGLE_MATCH = { $eq: ["$properties.googleNotFoundId", "$properties.googleId"] };
+
+/** Places to look up: those with a Google Place ID, except Lost Google matches. */
 const findPlaces = (limit?: number) =>
-  Place.find({ "properties.googleId": { $nin: [null, ""] } })
+  Place.find({ ...WITH_GOOGLE_ID, $expr: { $not: [IS_LOST_GOOGLE_MATCH] } })
     .sort({ _id: 1 })
     .limit(limit ?? 0)
     .lean();
+
+/** Lost Google matches: marked with the Google Place ID they still have. Never looked up. */
+const findLostGoogleMatches = async (): Promise<SkippedPlace[]> => {
+  const places = await Place.find({ ...WITH_GOOGLE_ID, $expr: IS_LOST_GOOGLE_MATCH })
+    .sort({ _id: 1 })
+    .lean();
+  return places.map(({ _id, properties }) => ({
+    placeId: _id.toString(),
+    name: properties.name,
+    address: properties.address,
+    googleNotFoundId: properties.googleNotFoundId!,
+    markedAt: properties.googleNotFoundAt ? new Date(properties.googleNotFoundAt).toISOString() : null,
+  }));
+};
 
 /**
  * Looks up every Place with a Google Place ID (the first `limit` by `_id`, if
@@ -318,10 +360,12 @@ const findPlaces = (limit?: number) =>
  * run throws.
  */
 export async function plan({ limit, dir, now }: { limit?: number; dir: string; now: Date }) {
+  // Lost Google matches are left out of the lookup and so of the reservation.
   const places = await findPlaces(limit);
+  const skipped = await findLostGoogleMatches();
 
   const requests = { sent: 0 };
-  const options = { limit, dir, now, requests };
+  const options = { limit, dir, now, requests, skipped };
   if (!places.length) return lookUp(places, options);
 
   // Reserve before the first request; the run takes its month from here even
@@ -371,7 +415,13 @@ export async function plan({ limit, dir, now }: { limit?: number; dir: string; n
 /** Asks Google about `places`, counting every request in `requests.sent`, and writes the plan file. */
 async function lookUp(
   places: PlannedPlace[],
-  { limit, dir, now, requests }: { limit?: number; dir: string; now: Date; requests: { sent: number } },
+  {
+    limit,
+    dir,
+    now,
+    requests,
+    skipped,
+  }: { limit?: number; dir: string; now: Date; requests: { sent: number }; skipped: SkippedPlace[] },
 ) {
   const order = new Map(places.map((place, index) => [place._id.toString(), index]));
   const byId = <T extends { placeId: string }>(a: T, b: T) =>
@@ -389,6 +439,7 @@ async function lookUp(
     places: [],
     notFound: [],
     failed: [],
+    skipped,
   };
 
   // The first 429 stops the run: requests in flight finish, nothing new is
@@ -421,6 +472,15 @@ async function lookUp(
 
     if (fetched.status === "not_found") {
       result.notFound.push({ placeId, name, googleId: googleId! });
+      // The mark goes through review like any change; once applied, later
+      // plans skip the Place until its Google Place ID changes.
+      result.places.push({
+        placeId,
+        name,
+        changes: [
+          { field: "googleNotFoundId", current: place.properties.googleNotFoundId ?? null, proposed: googleId },
+        ],
+      });
     } else if (fetched.status === "error") {
       result.failed.push({ placeId, name, reason: fetched.message });
     } else {
@@ -443,6 +503,9 @@ async function lookUp(
   return { path: planPath, summaryPath, syncPlan: result };
 }
 
+const googleMapsSearch = (name: string, address: string) =>
+  `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${name}, ${address}`)}`;
+
 const isClosed = (status: unknown) => status === "CLOSED_TEMPORARILY" || status === "CLOSED_PERMANENTLY";
 
 const show = (value: unknown) =>
@@ -463,11 +526,18 @@ const hoursDiff = (current: unknown, proposed: unknown) => {
  * The readable summary of a Sync plan, built from the plan alone, in the
  * order the admin reviews it: partial-plan warning, counters, status changes
  * (closures, then reopenings), Google Place ID changes, other changes per
- * Place, not found and failed, already-closed-unchanged.
+ * Place, not found (with its proposed Lost Google match mark), failed, Lost
+ * Google matches skipped with a Google Maps search link, already-closed-unchanged.
  */
 const renderSummary = (syncPlan: SyncPlan, planFile: string) => {
-  const { meta, places, notFound, failed } = syncPlan;
-  const withChanges = places.filter(({ changes }) => changes.length);
+  const { meta, places, notFound, failed, skipped = [] } = syncPlan;
+  // The Lost Google match mark is listed with Not found, not as a change of
+  // the Place: a Place whose only entry is the mark isn't "with changes".
+  const isMark = ({ field }: SyncChange) => field === "googleNotFoundId";
+  const withChanges = places.filter(({ changes }) => changes.some((change) => !isMark(change)));
+  const markProposed = new Set(
+    places.filter(({ changes }) => changes.some(isMark)).map(({ placeId }) => placeId),
+  );
   // A Place whose changes were all trimmed from the JSON counts as unchanged.
   const unchanged = meta.lookedUp - withChanges.length - notFound.length - failed.length;
   const lines: string[] = [];
@@ -491,6 +561,7 @@ const renderSummary = (syncPlan: SyncPlan, planFile: string) => {
     `- Unchanged: ${unchanged}`,
     `- Not found: ${notFound.length}`,
     `- Failed: ${failed.length}`,
+    `- Skipped as Lost Google match: ${skipped.length}`,
   );
 
   const section = (title: string, body: string[]) =>
@@ -513,7 +584,9 @@ const renderSummary = (syncPlan: SyncPlan, planFile: string) => {
   section(
     "Other changes",
     withChanges.flatMap(({ name, changes }) => {
-      const rest = changes.filter(({ field }) => field !== "businessStatus" && field !== "googleId");
+      const rest = changes.filter(
+        (change) => change.field !== "businessStatus" && change.field !== "googleId" && !isMark(change),
+      );
       if (!rest.length) return [];
       return [
         `- **${name}**`,
@@ -526,8 +599,25 @@ const renderSummary = (syncPlan: SyncPlan, planFile: string) => {
     }),
   );
 
-  section("Not found", notFound.map(({ name, googleId }) => `- **${name}**: Google doesn't know ${show(googleId)}`));
+  section(
+    "Not found",
+    notFound.map(
+      ({ placeId, name, googleId }) =>
+        `- **${name}**: Google doesn't know ${show(googleId)}; ` +
+        (markProposed.has(placeId)
+          ? "applying marks it as a Lost Google match, not looked up again until its Google Place ID changes"
+          : "no mark in the plan, so the next plan looks it up again"),
+    ),
+  );
   section("Failed", failed.map(({ name, reason }) => `- **${name}**: ${reason}`));
+  section(
+    "Skipped: Lost Google match",
+    skipped.map(
+      ({ name, address, googleNotFoundId, markedAt }) =>
+        `- **${name}**, ${address}: Google doesn't know ${show(googleNotFoundId)}, marked ${markedAt ?? "(date unknown)"}. ` +
+        `Find it on Google Maps and fix its \`googleId\` by hand: ${googleMapsSearch(name, address)}`,
+    ),
+  );
 
   if (meta.closedUnchanged !== undefined) {
     lines.push("", `Already closed and unchanged: ${meta.closedUnchanged}`);
@@ -548,7 +638,24 @@ export async function summary(planPath: string) {
   return { path: summaryPath, markdown };
 }
 
-const SYNC_FIELDS: readonly SyncField[] = ["businessStatus", "googleId", "openingHours", "phone", "website"];
+const SYNC_FIELDS: readonly SyncField[] = [
+  "businessStatus",
+  "googleId",
+  "openingHours",
+  "phone",
+  "website",
+  "googleNotFoundId",
+];
+
+/**
+ * The `$set` for writing `value` to `field`. The Lost Google match mark sets
+ * two properties: setting it stamps `googleNotFoundAt` with `now`, clearing it
+ * clears both.
+ */
+const setField = (field: SyncField, value: unknown, now: Date | null): Record<string, unknown> =>
+  field === "googleNotFoundId"
+    ? { "properties.googleNotFoundId": value, "properties.googleNotFoundAt": value == null ? null : now }
+    : { [`properties.${field}`]: value };
 const STALE_PLAN_DAYS = 7;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -657,7 +764,7 @@ export async function apply(planPath: string, { now }: { now: Date }) {
       const value = stored?.[field];
       if (stored && sameValue(field, value, current)) {
         filter[`properties.${field}`] = value === undefined ? { $exists: false } : value;
-        update[`properties.${field}`] = proposed;
+        Object.assign(update, setField(field, proposed, now));
         toWrite.push({ placeId, name, field, current: comparable(field, value), proposed });
       } else if (stored && sameValue(field, value, proposed)) {
         appliedSync.skipped.push({ placeId, name, field, reason: "already applied" });
@@ -728,7 +835,8 @@ export async function rollback(appliedPath: string): Promise<RollbackResult> {
       const value = stored?.[field];
       if (stored && sameValue(field, value, proposed)) {
         filter[`properties.${field}`] = value === undefined ? { $exists: false } : value;
-        update[`properties.${field}`] = current;
+        // A restored mark has no date of its own: rolling one back clears both.
+        Object.assign(update, setField(field, current, null));
         toRestore.push({ placeId, name, field, restored: current, replaced: proposed });
       } else {
         result.leftAlone.push({ placeId, name, field, reason: "changed since apply" });

@@ -130,7 +130,13 @@ test("404 goes to notFound and 500 to failed, without a retry", async () => {
     [{ placeId: brokenId, name: "Broken" }],
   );
   assert.match(syncPlan.failed[0].reason, /500/);
-  assert.deepEqual(syncPlan.places, []);
+  assert.deepEqual(syncPlan.places, [
+    {
+      placeId: goneId,
+      name: "Gone",
+      changes: [{ field: "googleNotFoundId", current: null, proposed: "g-Gone" }],
+    },
+  ], "the 404 proposes a Lost Google match mark; the 500 proposes nothing");
   assert.equal(google.calls.length, 2, "one request per Place, no retry");
 });
 
@@ -190,7 +196,7 @@ test("the plan file lands in dir with its meta, and Places stay unchanged", asyn
     fieldMaskVersion: 1,
     closedUnchanged: 0,
   });
-  assert.equal(written.places.length, 1);
+  assert.equal(written.places.length, 2, "Bonanza's changes and Gone's Lost Google match mark");
   assert.equal(written.notFound.length, 1);
   assert.equal(await snapshot(), before, "plan writes nothing to Places");
 });
