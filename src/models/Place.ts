@@ -27,6 +27,10 @@ export interface IPlace extends Document {
     phone?: string | null;
     website?: string | null;
     businessStatus?: BusinessStatus;
+    /** Lost Google match: the Google Place ID that answered 404, set only by the Google sync. */
+    googleNotFoundId?: string | null;
+    /** When that mark was applied. */
+    googleNotFoundAt?: Date | null;
   };
 }
 
@@ -73,6 +77,10 @@ const PlaceSchema = new mongoose.Schema({
     phone: { type: String, default: null },
     website: { type: String, default: null },
     businessStatus: { type: String, default: "OPERATIONAL" },
+    // Lost Google match (see CONTEXT.md): the Google sync skips the Place while
+    // googleNotFoundId equals googleId. Not exposed in GraphQL; the Place stays visible.
+    googleNotFoundId: { type: String, default: null },
+    googleNotFoundAt: { type: Date, default: null },
   },
 });
 

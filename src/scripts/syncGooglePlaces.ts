@@ -1,184 +1,203 @@
 import { config } from "../config/config.js";
 import mongoose from "mongoose";
-import Place, { BusinessStatus, IOpeningHour } from "../models/Place.js";
+import { apply, berlinTime, budget, plan, rollback, summary, SYNC_BUDGET, SyncBudgetRefusal } from "./googleSync.js";
 
 /**
- * Refreshes opening hours, phone and website of every place from the
- * Google Places API (New), using the Place ID stored in properties.googleId.
+ * The Google sync CLI: parses arguments, connects to MONGO_URI, calls the
+ * googleSync module and prints what it did. No arguments print help.
  *
- * Dry run by default — prints the diff without writing:
- *   node dist/scripts/syncGooglePlaces.js
- * Write the changes:
- *   node dist/scripts/syncGooglePlaces.js --apply
- * Try it on a few places first (each request is billed):
- *   node dist/scripts/syncGooglePlaces.js --limit=5
- *
- * Google only overwrites a field when it returns a value, so data entered by
- * hand is never wiped. Places Google reports as closed get their businessStatus
- * set, which hides them from listings; they reappear once Google reports them
- * open again. Nothing is deleted. Address and coordinates are left alone: ours
- * are formatted differently on purpose.
- *
- * Requires GOOGLE_PLACES_API_KEY with "Places API (New)" enabled.
+ * Only run it with the owner's go-ahead: every Place looked up is billed, and
+ * `apply` and `rollback` write to the database MONGO_URI points at.
  * Full guide, costs and pitfalls: docs/google-places-sync.md
  */
 
-const APPLY = process.argv.includes("--apply");
-// --limit=N syncs only the first N places: every request is billed, so test small.
-const LIMIT = Number(process.argv.find((arg) => arg.startsWith("--limit="))?.split("=")[1]) || 0;
-const CONCURRENCY = 3;
-const MAX_RETRIES = 4;
+const DEFAULT_DIR = "untracked/google-sync";
 
-const FIELD_MASK = [
-  "id",
-  "businessStatus",
-  "regularOpeningHours.weekdayDescriptions",
-  "internationalPhoneNumber",
-  "websiteUri",
-].join(",");
+const HELP = `Google sync. Every Place looked up is billed; run only with the owner's go-ahead.
 
-interface GooglePlace {
-  id: string;
-  businessStatus?: BusinessStatus;
-  regularOpeningHours?: { weekdayDescriptions?: string[] };
-  internationalPhoneNumber?: string;
-  websiteUri?: string;
-}
+Usage: node dist/scripts/syncGooglePlaces.js <subcommand> [options]
 
-type FetchResult =
-  | { status: "ok"; place: GooglePlace }
-  | { status: "not_found" }
-  | { status: "error"; message: string };
+Subcommands:
+  plan [--limit=N]     Look up Places in Google and write a Sync plan to
+                       ${DEFAULT_DIR}/<datetime>-plan.json, with a readable summary
+                       in <datetime>-plan.md beside it. Writes nothing to Places.
+                       --limit=N looks up only the first N Places by _id.
+                       Refused up front if the lookups don't fit in this month's
+                       Sync budget (${SYNC_BUDGET} per US Pacific month); stops on the first 429.
+  summary <plan.json>  Regenerate the plan's .md summary from the JSON, e.g. after
+                       trimming entries. Needs no database and asks Google nothing.
+  apply <plan.json>    Write what is left in a reviewed Sync plan to Places, skipping
+                       fields edited since the plan, and record an Applied sync in
+                       <datetime>-applied.json next to the plan. Sends nothing to Google.
+  rollback <applied.json>
+                       Write back the values an Applied sync replaced, leaving alone
+                       fields edited since the apply. Sends nothing to Google.
+  budget               Show this month's Sync budget (spent, reserved, left) and
+                       its runs. Asks Google nothing.
+  budget --set=N --reason="…"
+                       Set this month's spent count to N, release every
+                       reservation and close unfinished runs. For seeding the
+                       count at rollout and after a crashed run.
 
-const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+Guide: docs/google-places-sync.md`;
 
-const fetchPlace = async (placeId: string, attempt = 0): Promise<FetchResult> => {
-  const response = await fetch(
-    `https://places.googleapis.com/v1/places/${placeId}?languageCode=en`,
-    {
-      headers: {
-        "X-Goog-Api-Key": config.googlePlacesApiKey,
-        "X-Goog-FieldMask": FIELD_MASK,
-      },
-    },
+type Command =
+  | { name: "help" }
+  | { name: "plan"; limit?: number }
+  | { name: "apply"; planPath: string }
+  | { name: "rollback"; appliedPath: string }
+  | { name: "summary"; planPath: string }
+  | { name: "budget"; set?: number; reason?: string };
+
+const parseBudget = (options: string[]): Command => {
+  let set: number | undefined;
+  let reason: string | undefined;
+  for (const option of options) {
+    const setMatch = option.match(/^--set=(\d+)$/);
+    const reasonMatch = option.match(/^--reason=(.+)$/s);
+    if (setMatch) set = Number(setMatch[1]);
+    else if (reasonMatch?.[1].trim()) reason = reasonMatch[1];
+    else throw new Error(`Unknown or invalid option for budget: ${option}`);
+  }
+  if ((set === undefined) !== (reason === undefined)) {
+    throw new Error("budget: --set and --reason go together");
+  }
+  return { name: "budget", set, reason };
+};
+
+const parse = (args: string[]): Command => {
+  const [subcommand, ...options] = args;
+  if (subcommand === undefined) return { name: "help" };
+  if (subcommand === "budget") return parseBudget(options);
+
+  const theFile = (what: string) => {
+    if (options.length !== 1 || options[0].startsWith("-")) {
+      throw new Error(`${subcommand} takes exactly one argument: the ${what}`);
+    }
+    return options[0];
+  };
+  if (subcommand === "apply") return { name: "apply", planPath: theFile("plan file") };
+  if (subcommand === "rollback") return { name: "rollback", appliedPath: theFile("Applied sync file") };
+  if (subcommand === "summary") return { name: "summary", planPath: theFile("plan file") };
+
+  if (subcommand !== "plan") throw new Error(`Unknown subcommand: ${subcommand}`);
+
+  let limit: number | undefined;
+  for (const option of options) {
+    const match = option.match(/^--limit=(\d+)$/);
+    if (!match || Number(match[1]) < 1) throw new Error(`Unknown or invalid option for plan: ${option}`);
+    limit = Number(match[1]);
+  }
+  return { name: "plan", limit };
+};
+
+const runApply = async (planPath: string) => {
+  const { path, appliedSync, warnings } = await apply(planPath, { now: new Date() });
+  for (const warning of warnings) console.warn(`Warning: ${warning}`);
+
+  for (const { name, field, current, proposed } of appliedSync.written) {
+    console.log(`written          ${name}: ${field} ${JSON.stringify(current)} -> ${JSON.stringify(proposed)}`);
+  }
+  for (const { name, field, reason } of appliedSync.skipped) {
+    console.log(`${reason.padEnd(17)}${name}: ${field}`);
+  }
+  const count = (reason: string) => appliedSync.skipped.filter((entry) => entry.reason === reason).length;
+  console.log(`\nWritten: ${appliedSync.written.length}`);
+  console.log(`Already applied: ${count("already applied")}`);
+  console.log(`Changed since plan (skipped): ${count("changed since plan")}`);
+  console.log(`\nApplied sync: ${path}`);
+};
+
+const runRollback = async (appliedPath: string) => {
+  const { restored, leftAlone } = await rollback(appliedPath);
+  for (const { name, field, replaced, restored: value } of restored) {
+    console.log(`restored             ${name}: ${field} ${JSON.stringify(replaced)} -> ${JSON.stringify(value)}`);
+  }
+  for (const { name, field, reason } of leftAlone) {
+    console.log(`${reason.padEnd(21)}${name}: ${field}`);
+  }
+  console.log(`\nRestored: ${restored.length}`);
+  console.log(`Changed since apply (left alone): ${leftAlone.length}`);
+};
+
+const runPlan = async (limit?: number) => {
+  let result: Awaited<ReturnType<typeof plan>>;
+  try {
+    result = await plan({ limit, dir: DEFAULT_DIR, now: new Date() });
+  } catch (error) {
+    if (!(error instanceof SyncBudgetRefusal)) throw error;
+    console.error(`Refused, nothing sent. ${error.message}`);
+    process.exitCode = 1;
+    return;
+  }
+  const { path, syncPlan } = result;
+  if (syncPlan.meta.stoppedOn) {
+    console.log("PARTIAL PLAN: Google answered 429, the run stopped; unanswered Places are failed (quota).\n");
+  }
+  const { lookedUp, notSent = 0 } = syncPlan.meta;
+  console.log(
+    notSent
+      ? `Looked up ${lookedUp - notSent} of ${lookedUp} selected Places (${notSent} not sent, stopped on 429)`
+      : `Looked up ${lookedUp} Places`,
   );
-
-  if (response.status === 404) return { status: "not_found" };
-  // Per-minute quota; the minute window resets quickly, so back off and retry.
-  if (response.status === 429 && attempt < MAX_RETRIES) {
-    await sleep(15_000 * (attempt + 1));
-    return fetchPlace(placeId, attempt + 1);
+  const notFoundIds = new Set(syncPlan.notFound.map(({ placeId }) => placeId));
+  console.log(`  with changes: ${syncPlan.places.filter(({ placeId }) => !notFoundIds.has(placeId)).length}`);
+  console.log(`  not found:    ${syncPlan.notFound.length}`);
+  console.log(`  failed:       ${syncPlan.failed.length}`);
+  console.log(`Skipped as Lost Google match: ${syncPlan.skipped?.length ?? 0}`);
+  console.log(`\nSync plan: ${path}`);
+  console.log(`Summary:   ${result.summaryPath}`);
+  for (const warning of result.warnings) {
+    console.warn(`\nWarning: ${warning} The plan above is complete: review it, don't run plan again.`);
   }
-  if (!response.ok) {
-    return { status: "error", message: `${response.status} ${await response.text()}` };
-  }
-  return { status: "ok", place: (await response.json()) as GooglePlace };
 };
 
-// "Monday: 9:00 AM – 5:30 PM" -> { day: "Monday", hours: "9 AM to 5:30 PM" },
-// matching the format already stored in the database.
-// Google puts narrow no-break spaces before AM/PM; stored data has them too.
-const normalizeSpaces = (value: string) => value.replace(/[\u202f\u2009\u00a0]/g, " ");
-
-const toOpeningHours = (descriptions: string[]): IOpeningHour[] =>
-  descriptions.map((line) => {
-    const normalized = normalizeSpaces(line);
-    const separator = normalized.indexOf(": ");
-    return {
-      day: normalized.slice(0, separator),
-      hours: normalized
-        .slice(separator + 2)
-        .replace(/\s*[–-]\s*/g, " to ")
-        .replace(/:00\b/g, ""),
-    };
-  });
-
-const sameHours = (stored: IOpeningHour[] = [], fresh: IOpeningHour[]) =>
-  JSON.stringify(stored.map(({ day, hours }) => ({ day, hours: normalizeSpaces(hours) }))) ===
-  JSON.stringify(fresh);
-
-const runPool = async <T>(items: T[], worker: (item: T) => Promise<void>) => {
-  let next = 0;
-  const lanes = Array.from({ length: CONCURRENCY }, async () => {
-    while (next < items.length) await worker(items[next++]);
-  });
-  await Promise.all(lanes);
+const runBudget = async ({ set, reason }: { set?: number; reason?: string }) => {
+  const month = await budget({ set, reason, now: new Date() });
+  console.log(`Sync budget ${month.month} (US Pacific): ${month.spent} spent, ${month.reserved} reserved, ${month.left} of ${month.budget} left`);
+  console.log(`Resets ${month.resetsAt.toISOString()} (${berlinTime(month.resetsAt)})`);
+  if (!month.runs.length) return console.log("\nNo runs this month.");
+  console.log("\nRuns:");
+  for (const run of month.runs) {
+    const started = run.startedAt.toISOString();
+    if (run.kind === "correction") {
+      console.log(`  ${started}  correction on ${run.host}: spent set to ${run.setTo} (${run.reason})`);
+    } else {
+      const end = run.finishedAt
+        ? `${run.outcome}, sent ${run.sent} of ${run.reserved} reserved`
+        : `NOT FINISHED, holds ${run.reserved} reserved`;
+      console.log(`  ${started}  plan on ${run.host}: ${end}${run.planPath ? `, ${run.planPath}` : ""}`);
+    }
+  }
 };
 
-const sync = async () => {
+const main = async () => {
+  let command: Command;
+  try {
+    command = parse(process.argv.slice(2));
+  } catch (error) {
+    console.error(`${(error as Error).message}\n\n${HELP}`);
+    process.exit(1);
+  }
+  if (command.name === "help") return console.log(HELP);
+  // The summary is made from the plan file alone: no database connection.
+  if (command.name === "summary") {
+    const { path } = await summary(command.planPath);
+    return console.log(`Summary: ${path}`);
+  }
+
   await mongoose.connect(config.mongoUri);
-  console.log(`Connected to MongoDB (${APPLY ? "APPLY" : "DRY RUN"})`);
-
-  const places = await Place.find({ "properties.googleId": { $nin: [null, ""] } })
-    .sort({ _id: 1 })
-    .limit(LIMIT);
-  console.log(`Syncing ${places.length} places`);
-
-  const closed: string[] = [];
-  const notFound: string[] = [];
-  const failed: string[] = [];
-  let updated = 0;
-
-  await runPool(places, async (place) => {
-    const { name, googleId } = place.properties;
-    const label = `${name} (${place._id})`;
-    const result = await fetchPlace(googleId!);
-
-    if (result.status === "not_found") return void notFound.push(label);
-    if (result.status === "error") return void failed.push(`${label}: ${result.message}`);
-
-    const google = result.place;
-    if (google.businessStatus && google.businessStatus !== "OPERATIONAL") {
-      closed.push(`${label}: ${google.businessStatus}`);
-    }
-
-    const changes: Record<string, unknown> = {};
-
-    const storedStatus = place.properties.businessStatus ?? "OPERATIONAL";
-    if (google.businessStatus && google.businessStatus !== storedStatus) {
-      changes["properties.businessStatus"] = google.businessStatus;
-    }
-
-    // Google may migrate a place to a new ID; keep ours current.
-    if (google.id && google.id !== googleId) changes["properties.googleId"] = google.id;
-
-    const descriptions = google.regularOpeningHours?.weekdayDescriptions;
-    if (descriptions?.length) {
-      const hours = toOpeningHours(descriptions);
-      if (!sameHours(place.properties.openingHours, hours)) {
-        changes["properties.openingHours"] = hours;
-      }
-    }
-
-    if (google.internationalPhoneNumber && google.internationalPhoneNumber !== place.properties.phone) {
-      changes["properties.phone"] = google.internationalPhoneNumber;
-    }
-
-    if (google.websiteUri && google.websiteUri !== place.properties.website) {
-      changes["properties.website"] = google.websiteUri;
-    }
-
-    if (Object.keys(changes).length === 0) return;
-
-    updated++;
-    console.log(`\n~ ${label}`);
-    for (const [field, value] of Object.entries(changes)) {
-      console.log(`  ${field}: ${JSON.stringify(value)}`);
-    }
-
-    if (APPLY) await Place.updateOne({ _id: place._id }, { $set: changes });
-  });
-
-  console.log(`\n${APPLY ? "Updated" : "Would update"} ${updated} of ${places.length} places`);
-  if (closed.length) console.log(`\nNot operational (hidden from listings):\n  ${closed.join("\n  ")}`);
-  if (notFound.length) console.log(`\nPlace ID not found:\n  ${notFound.join("\n  ")}`);
-  if (failed.length) console.log(`\nFailed requests:\n  ${failed.join("\n  ")}`);
-
-  await mongoose.disconnect();
+  try {
+    if (command.name === "plan") await runPlan(command.limit);
+    else if (command.name === "apply") await runApply(command.planPath);
+    else if (command.name === "rollback") await runRollback(command.appliedPath);
+    else await runBudget(command);
+  } finally {
+    await mongoose.disconnect();
+  }
 };
 
-sync().catch(async (error) => {
+main().catch((error) => {
   console.error("Sync failed:", error);
-  await mongoose.disconnect();
   process.exit(1);
 });

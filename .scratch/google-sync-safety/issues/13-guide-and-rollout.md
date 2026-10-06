@@ -1,0 +1,32 @@
+# 13: Rewrite the Google sync guide and the rollout checklist
+
+Status: done
+
+**Spec:** [spec.md](../spec.md) (Doc changes, Rollout checklist). Corrections: branch `research/places-pricing-and-quotas`, section "Corrections to `docs/google-places-sync.md`".
+
+**What to build:** the Google sync guide (Russian, as now) describes the new flow, so neither the admin nor an AI assistant runs the old procedure from memory, and it carries the owner's rollout checklist. Documentation only: nothing is changed in Google Cloud, no request to Google, no write to production.
+
+**Blocked by:** 07, 08, 09, 10, 11, 12 (the whole new flow).
+
+- [x] Every point of the spec's "Doc changes" section is done: field table with the Lost Google match fields; plan → review → apply → rollback procedure with the subcommands and file locations; reading the summary; money and quotas (00:00 US Pacific reset, 404 billed, allowance shared across the billing account, GMP console usage with 48 h lag, Sync budget and `budget`, daily cap 500 and the rule to raise it); 429 stops the run; Lost Google match handling; closed Places via the plan; developer and AI-assistant rules.
+- [x] No mention of dry run or `--apply` remains.
+- [x] The rollout checklist from the spec is in the guide: deploy; read this month's Place Details Enterprise usage in the GMP console; `budget --set=<it> --reason=…`; `GetPlaceRequest per day = 500` on `berlin-coffee-f0bf8` (per-minute and Text Search rows untouched); `budget` to confirm; first `plan --limit=5` only with the owner's go-ahead.
+- [x] The guide states that `plan` runs only against production and only after this checklist.
+
+## Comments
+
+- 2026-10-06: Done on `docs/gss-13-guide-and-rollout`.
+  - `docs/google-places-sync.md` rewritten (Russian) to match `src/scripts/googleSync.ts` and the CLI help: two-phase overview; field table with `googleNotFoundId`/`googleNotFoundAt` and the plan's field names; subcommand table (Google / database per subcommand); file locations `untracked/google-sync/<datetime>-plan.json|.md|-applied.json`; plan → review → trim → `summary` → apply → rollback procedure with "written" / "already applied" / "changed since plan" / "changed since apply"; database-identity refusal and 7-day warning; summary sections in the order `renderSummary` writes them; money and quotas (00:00 US Pacific reset, 404 billed, allowance shared across the billing account, GMP console / Billing reports with up to 48 h lag, Sync budget 900 with reservation, refusal before any request, `budget` and `budget --set`, daily cap 500 and the "> ~450 Places → count + 10 %" rule, inexact quotas); 429 stops the run; Lost Google match (stays on the map, fix `googleId` by hand, drop the mark from the plan, remove a mark by nulling both fields); closed Places via "Status changes"; Google Cloud quota values; rollout checklist; developer and AI-assistant rules. The guide says `plan` runs only against production, only after the checklist and with the owner's go-ahead.
+  - No mention of dry run or `--apply` is left in the guide.
+  - Also fixed: `README.md` Scripts line (was "Every run is billed"; now names `plan`/`apply` and the rollout checklist) and the header comment of `src/scripts/repairReviewPhotoCounts.ts` (referred to `syncGooglePlaces`'s `--apply`).
+  - Nothing changed in Google Cloud, no request to Google, no connection to any real database; `plan` was not run.
+- 2026-10-06: Code review fixes on `fix/gss-review` (across tickets 07–13; recorded here).
+  - Crash undercount (08): `runPool` now stops every lane on the first throw and rejects only after the requests in flight settle, so a crashed `plan` sends nothing after `finish("error")` counts `requests.sent`. A stored opening hour without `hours` no longer crashes `plan` (`normalizeSpaces` reads it as ""); Google's hours are proposed for it. Tests: `googleSyncBudget` "a run that crashes mid-lookup…" (fake Google gained a per-answer `delayMs`), `googleSyncPlan` "a stored opening hour without hours…".
+  - Finalisation (08): if `SyncRun.create` throws after reserving, the reservation is released and the error rethrown. After a written plan, `finish` runs its two updates independently (`Promise.allSettled`) and never throws; failures come back in `plan`'s new `warnings` (also `[]` on success and for an empty plan) and the CLI prints them with "review it, don't run plan again". Tests: SyncRun.create / SyncRun.updateOne made to fail once.
+  - Partial-plan counting (11): `meta.lookedUp` keeps meaning "selected"; a partial plan gains `meta.notSent` (Places never sent after the 429). The summary shows `Looked up: <sent> (of <selected> selected; <notSent> not sent, stopped on 429)` and `Failed: N (<notSent> of them not sent)`; "Unchanged = lookedUp − with changes − not found − failed" is unchanged and still adds up. CLI `plan` prints the same. Test in `googleSyncSummary`.
+  - Berlin reset time (08): the fixed "09:00 Berlin" is gone; new exported `berlinTime(instant)` formats `budgetResetsAt` in Europe/Berlin for the refusal message and `budget` (Nov 1 is 08:00 Berlin; no other 1st differs). Guide: "обычно 09:00 по Берлину, но 1 ноября — 08:00". Refusal test asserts `2026-11-01 08:00 Berlin`.
+  - Guide (13): the daily cap is stated as 125 000 until rollout step 4 sets 500; the mark entry is `<текущая метка или null> → <Place ID>`; summary counters on a partial plan; `plan` warnings and crash behaviour in the Sync budget section.
+  - CONTEXT.md (12): "not found" is the plan's list for a single 404, a Place becomes a Lost Google match only once the mark is applied; Code names rows for Sync budget, Lost Google match, Sync plan, Applied sync. Spec names (`notFound`, `googleNotFoundId`, summary "Not found") kept.
+  - Cleanups, behaviour unchanged: one `checkFile` for `apply`/`rollback` (database identity + field whitelist), `writeJson` for the plan file, `sameHours` replaced by `sameValue("openingHours", …)`, `SyncField` derived from `SYNC_FIELDS as const`, shared CLI "exactly one file argument" parsing, `isClosed` defined before use.
+  - Left as accepted: the identity check compares with config `MONGO_URI`, not the live connection (decided in 09); the overloaded `skipped` name (spec-defined).
+  - `npm test` 369/369, `tsc --noEmit` clean for `tsconfig.json` and `tsconfig.build.json`. No request to Google, no real database, plan/apply/rollback/budget run only in tests.

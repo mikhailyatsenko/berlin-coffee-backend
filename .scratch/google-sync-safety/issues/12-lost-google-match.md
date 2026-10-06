@@ -1,0 +1,27 @@
+# 12: Lost Google match: mark on 404, skip while the ID is unchanged
+
+Status: done
+
+**Spec:** [spec.md](../spec.md) (Sync plan file, Schema, Testing Decisions scenario 7). Decisions: [Places Google answers "not found" for](05-not-found-places.md). Glossary: Lost Google match.
+
+**What to build:** a Place Google answers 404 for is paid for once, not every month. The plan proposes a mark for it; once applied, the Place is a Lost Google match: it stays on the map, later plans skip it while its Google Place ID is unchanged, and the summary reminds the admin to fix it with a Google Maps search link. Changing its Google Place ID by hand makes the next plan look it up again.
+
+**Blocked by:** 08 (Sync budget), 09 (Applying a Sync plan and recording the Applied sync), 11 (Readable summary next to every plan).
+
+- [x] Place gains `googleNotFoundId` and `googleNotFoundAt` (default null), not exposed in GraphQL; Places stay visible on the map whatever their value.
+- [x] A 404 adds a change `googleNotFoundId: null → <the googleId that answered 404>` besides the `notFound` item; applying it also sets `googleNotFoundAt`, rolling it back clears both.
+- [x] `plan` skips Places whose `googleNotFoundId` equals their `googleId`, lists them in `skipped` (name, address, mark, marked at) and leaves them out of N for the reservation.
+- [x] The summary counts skipped Places and lists them with when they were marked and a Google Maps search link for name + address.
+- [x] Tests: (7) a 404 yields the `notFound` item and the mark entry; after applying it the next `plan` doesn't request the Place and reserves one less; after changing `googleId` the Place is requested again.
+
+## Comments
+
+- 2026-10-06: Done on `feat/gss-12-lost-google-match` (off `feat/google-sync-plan`).
+  - Place gains `properties.googleNotFoundId` (string) and `properties.googleNotFoundAt` (date), both default null, not in the GraphQL schema. Visibility still goes only by `businessStatus` (`VISIBLE_PLACE_MATCH`), so a Lost Google match stays on the map.
+  - `plan`: a 404 adds the Place to `notFound` and to `places` with one change `googleNotFoundId: <stored mark or null> → <the googleId that answered 404>`. `findPlaces` excludes Lost Google matches in the query (`$expr: googleNotFoundId ≠ googleId`), so they drop out of N and the reservation; `--limit` caps what is left. A separate query (no reservation, no `--limit`) collects every Lost Google match into the plan's new top-level `skipped: [{ placeId, name, address, googleNotFoundId, markedAt }]` (`markedAt` ISO from `googleNotFoundAt`, or null). `SyncPlan` exports `SkippedPlace`; `skipped` is optional in the type, so older plan files still summarise.
+  - `apply`: `googleNotFoundId` joins the `SYNC_FIELDS` whitelist. A helper `setField` builds the `$set`: writing a non-null mark also sets `googleNotFoundAt` to `apply`'s `now`, writing null clears both. The compare-and-set filter checks only `googleNotFoundId`. The Applied sync's written entry is the plain `googleNotFoundId` entry (no separate date entry).
+  - `rollback`: restoring a `googleNotFoundId` entry clears `googleNotFoundAt` too. Decision: the date is cleared even when the restored value is an older non-null mark (a 404 on a hand-changed ID replaced a mark for the old ID). Such a mark no longer equals `googleId`, so it never causes a skip, and the date it had isn't recorded anywhere.
+  - Summary: a counter "Skipped as Lost Google match", and a section "Skipped: Lost Google match" after Failed: name, address, the failed ID, when marked, and a Google Maps search link `https://www.google.com/maps/search/?api=1&query=<encodeURIComponent(name + ", " + address)>`. The mark entry is listed with Not found (each not-found line says whether a mark is in the plan or was trimmed), not under "Other changes". A Place whose only change is the mark doesn't count as "with changes", so the counters still add up. The CLI's `plan` output does the same and prints the skipped count.
+  - Existing tests adjusted: in `googleSyncPlan.test.ts` the 404 test now expects the mark entry in `places`, and the plan-file test expects 2 Places in `places`.
+  - For 13: the doc should cover `googleNotFoundId`/`googleNotFoundAt` in the field table; that a Lost Google match stays on the map; that the fix is setting `properties.googleId` by hand in Mongo (no need to clear the mark); that a mark is dropped from review by deleting its entry from the plan JSON; that removing a mark by hand when Google restores the old ID means setting both fields to null; and the summary's "Skipped: Lost Google match" section with its search link.
+  - Tests: `tests/googleSyncLostMatch.test.ts`, 6 tests (scenario 7: a 404 gives the `notFound` item and the mark; after `apply` both properties are set and the next `plan` doesn't request the Place, lists it in `skipped` and reserves one less; after a hand-changed `googleId` it is requested again; a re-404 on a new ID proposes a new mark over the old one; `rollback` clears both properties and the Place is requested again; the summary has the marked date and the Maps link). Full suite 363/363 (one earlier run hit a transient mongod failure across unrelated suites; the rerun passed). `tsc --noEmit` clean for `tsconfig.json` and `tsconfig.build.json`. No request was sent to Google, and nothing was run against a real database. No frontend change needed: the fields are not in GraphQL.
