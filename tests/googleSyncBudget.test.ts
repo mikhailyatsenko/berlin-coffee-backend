@@ -17,6 +17,7 @@ setTestEnv();
 
 const { default: mongoose } = await import("mongoose");
 const { default: Place } = await import("../src/models/Place.js");
+const { default: SyncRun } = await import("../src/models/SyncRun.js");
 const { plan, budget, SyncBudgetRefusal } = await import("../src/scripts/googleSync.js");
 
 const google = useFakeGoogle();
@@ -158,6 +159,46 @@ test("a run that crashes mid-lookup sends nothing after it is counted: spent cov
   assert.equal(month.reserved, 0);
   assert.equal(month.runs[0].outcome, "error");
   assert.equal(month.runs[0].sent, google.calls.length);
+});
+
+/** Makes `method` of `model` throw on its next call only, as if the database dropped then. */
+function failOnce(model: Record<string, unknown>, method: string) {
+  const original = model[method];
+  model[method] = () => {
+    model[method] = original;
+    return Promise.reject(new Error("connection lost"));
+  };
+}
+
+test("if the run can't be recorded after reserving, the reservation is released and nothing is sent", async () => {
+  await seedPlaces(3);
+  failOnce(SyncRun as unknown as Record<string, unknown>, "create");
+
+  await assert.rejects(plan({ dir, now }), /connection lost/);
+
+  assert.equal(google.calls.length, 0);
+  const month = await budget({ now });
+  assert.equal(month.reserved, 0);
+  assert.equal(month.spent, 0);
+});
+
+test("if closing the run fails after the plan is written, the plan is returned with a warning and the month is still settled", async () => {
+  await seedPlaces(3);
+  failOnce(SyncRun as unknown as Record<string, unknown>, "updateOne");
+
+  const { path: planPath, warnings } = await plan({ dir, now });
+
+  assert.ok(readFileSync(planPath, "utf8"));
+  assert.equal(warnings.length, 1);
+  assert.match(warnings[0], /budget/);
+  const month = await budget({ now });
+  assert.equal(month.spent, 3, "the month gets what was sent although the run record failed");
+  assert.equal(month.reserved, 0);
+});
+
+test("a fully finished plan has no warnings", async () => {
+  await seedPlaces(1);
+  assert.deepEqual((await plan({ dir, now })).warnings, []);
 });
 
 test("two plans at once that don't fit together: exactly one is refused", async () => {

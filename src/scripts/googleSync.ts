@@ -381,50 +381,76 @@ export async function plan({ limit, dir, now }: { limit?: number; dir: string; n
 
   const requests = { sent: 0 };
   const options = { limit, dir, now, requests, skipped };
-  if (!places.length) return lookUp(places, options);
+  if (!places.length) return { ...(await lookUp(places, options)), warnings: [] as string[] };
 
   // Reserve before the first request; the run takes its month from here even
   // if it finishes after Pacific midnight.
   const month = budgetMonth(now);
   await reserve(month, places.length, now);
-  const run = await SyncRun.create({
-    month,
-    kind: "plan",
-    host: hostname(),
-    startedAt: now,
-    reserved: places.length,
-    sent: 0,
-  });
+  const release = () =>
+    SyncBudgetMonth.updateOne({ month }, { $inc: { spent: requests.sent, reserved: -places.length } });
+  let runId: unknown;
+  try {
+    ({ _id: runId } = await SyncRun.create({
+      month,
+      kind: "plan",
+      host: hostname(),
+      startedAt: now,
+      reserved: places.length,
+      sent: 0,
+    }));
+  } catch (error) {
+    // Nothing was sent yet: give the whole reservation back.
+    await release().catch(() => {});
+    throw error;
+  }
   const startedAt = Date.now();
 
-  /** Moves what was sent from reserved to spent, releases the rest, closes the run. */
+  /**
+   * Moves what was sent from reserved to spent, releases the rest, closes the
+   * run. Best effort: each step is tried even if the other fails, and what
+   * failed comes back as warnings, so a written plan is never lost to them.
+   */
   const finish = async (outcome: SyncRunOutcome, planPath?: string) => {
-    await SyncBudgetMonth.updateOne(
-      { month },
-      { $inc: { spent: requests.sent, reserved: -places.length } },
-    );
-    await SyncRun.updateOne(
-      { _id: run._id },
-      {
-        $set: {
-          finishedAt: new Date(now.getTime() + Date.now() - startedAt),
-          sent: requests.sent,
-          outcome,
-          ...(planPath && { planPath }),
+    const steps = await Promise.allSettled([
+      release(),
+      SyncRun.updateOne(
+        { _id: runId },
+        {
+          $set: {
+            finishedAt: new Date(now.getTime() + Date.now() - startedAt),
+            sent: requests.sent,
+            outcome,
+            ...(planPath && { planPath }),
+          },
         },
-      },
-    );
+      ),
+    ]);
+    const [month, record] = steps.map((step) => (step.status === "rejected" ? String(step.reason) : null));
+    const warnings: string[] = [];
+    if (month) {
+      warnings.push(
+        `The Sync budget wasn't updated (${month}): it still holds this run's ${places.length} reserved. ` +
+          `${requests.sent} requests were sent; correct with \`budget --set=<spent + ${requests.sent}> --reason=…\`.`,
+      );
+    }
+    if (record) {
+      warnings.push(`This run's record wasn't closed (${record}); \`budget\` shows it as not finished.`);
+    }
+    return warnings;
   };
 
   let written: Awaited<ReturnType<typeof lookUp>>;
   try {
     written = await lookUp(places, options);
   } catch (error) {
-    await finish("error").catch(() => {});
+    await finish("error");
     throw error;
   }
-  await finish(written.syncPlan.meta.stoppedOn ? "stopped-429" : "done", written.path);
-  return written;
+  // The plan is written: a failure to settle the budget is reported, not thrown,
+  // so the admin reviews this plan instead of paying for another.
+  const warnings = await finish(written.syncPlan.meta.stoppedOn ? "stopped-429" : "done", written.path);
+  return { ...written, warnings };
 }
 
 /** Asks Google about `places`, counting every request in `requests.sent`, and writes the plan file. */

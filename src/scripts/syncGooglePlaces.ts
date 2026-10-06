@@ -153,6 +153,9 @@ const runPlan = async (limit?: number) => {
   console.log(`Skipped as Lost Google match: ${syncPlan.skipped?.length ?? 0}`);
   console.log(`\nSync plan: ${path}`);
   console.log(`Summary:   ${result.summaryPath}`);
+  for (const warning of result.warnings) {
+    console.warn(`\nWarning: ${warning} The plan above is complete: review it, don't run plan again.`);
+  }
 };
 
 const runBudget = async ({ set, reason }: { set?: number; reason?: string }) => {
