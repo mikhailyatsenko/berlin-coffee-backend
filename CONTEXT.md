@@ -28,6 +28,26 @@ _Avoid_: Check-in, been there, visited place
 A proposal from a User or Guest to add a Place that is not yet on the map, with its name, address and optionally Place photos. Not shown on the map until the admin publishes it; the admin completes the Place's details before publishing. Outlives its author: when a User deletes their account, their suggestions stay, anonymous.
 _Avoid_: Submission, request, new place
 
+**Google sync**:
+Refreshing Places' opening hours, phone, website and closed-or-open status from Google, by each Place's Google Place ID. Every Place looked up costs money beyond a monthly free allowance, so it runs rarely and by hand. Name, address and location are never taken from Google.
+_Avoid_: Update script, refresh, import
+
+**Sync plan**:
+The list of changes a Google sync proposes, each one field of one Place with its current and proposed value. Reviewed and trimmed by the admin before anything reaches the map; only what is left in it gets written, and a change whose Place was edited since the plan was made is skipped, not overwritten.
+_Avoid_: Diff, dry run, changeset
+
+**Applied sync**:
+What was actually written from a Sync plan, with each field's value from just before the write. A Google sync is undone from it; a field edited again since is left alone.
+_Avoid_: Apply log, backup, sync log
+
+**Sync budget**:
+How many Places a Google sync may look up in one billing month (US Pacific), kept below Google's free allowance. A Sync plan is refused up front if it would not fit in what is left; Places looked up count against it whether Google found them or not.
+_Avoid_: Quota, allowance, limit, ledger
+
+**Lost Google match**:
+A Place whose Google Place ID Google no longer recognises. The Google sync stops looking it up, so its details are no longer refreshed, until the admin gives it a new Place ID. Stays on the map: it says nothing about whether the Place is open.
+_Avoid_: Not found, missing, broken ID
+
 **Inaccuracy report**:
 A message from anyone that a Place's details are wrong, such as its opening hours or address.
 _Avoid_: Complaint, feedback, correction
