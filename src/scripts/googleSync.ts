@@ -249,7 +249,9 @@ const fetchPlace = async (googleId: string): Promise<FetchResult> => {
 // "Monday: 9:00 AM – 5:30 PM" -> { day: "Monday", hours: "9 AM to 5:30 PM" },
 // matching the format already stored in the database.
 // Google puts narrow no-break spaces before AM/PM; stored data has them too.
-const normalizeSpaces = (value: string) => value.replace(/[\u202f\u2009\u00a0]/g, " ");
+// A stored day without hours (older or hand-imported data) reads as "".
+const normalizeSpaces = (value: string | null | undefined) =>
+  (value ?? "").replace(/[\u202f\u2009\u00a0]/g, " ");
 
 const toOpeningHours = (descriptions: string[]): IOpeningHour[] =>
   descriptions.map((line) => {
@@ -271,12 +273,25 @@ const sameHours = (stored: IOpeningHour[] | undefined, fresh: IOpeningHour[]) =>
   JSON.stringify(plainHours(stored).map(({ day, hours }) => ({ day, hours: normalizeSpaces(hours) }))) ===
   JSON.stringify(fresh);
 
+/**
+ * Runs `worker` over `items`, CONCURRENCY at a time. The first throw stops
+ * every lane from taking a new item, and the pool rejects only once the items
+ * in flight have settled: nothing is sent after the caller counts what was.
+ */
 const runPool = async <T>(items: T[], worker: (item: T) => Promise<void>) => {
   let next = 0;
+  let failure: { error: unknown } | undefined;
   const lanes = Array.from({ length: CONCURRENCY }, async () => {
-    while (next < items.length) await worker(items[next++]);
+    while (!failure && next < items.length) {
+      try {
+        await worker(items[next++]);
+      } catch (error) {
+        failure ??= { error };
+      }
+    }
   });
   await Promise.all(lanes);
+  if (failure) throw failure.error;
 };
 
 type StoredPlace = {

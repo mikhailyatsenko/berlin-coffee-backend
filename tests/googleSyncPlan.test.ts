@@ -114,6 +114,26 @@ test("a Place whose Google data matches ours, or that Google leaves blank, has n
   assert.equal(syncPlan.meta.closedUnchanged, 1, "already closed and unchanged, for the summary's counter");
 });
 
+test("a stored opening hour without hours doesn't crash the plan: Google's hours are proposed", async () => {
+  // Older or hand-imported data can hold a day without hours; the schema can't stop that.
+  const { insertedId } = await Place.collection.insertOne({
+    type: "Feature",
+    geometry: { type: "Point", coordinates: [13.4, 52.5] },
+    properties: { name: "Halfday", address: "Halfday Str. 1, Berlin", googleId: "g-Halfday", openingHours: [{ day: "Monday" }] },
+  });
+  google.place("g-Halfday", { regularOpeningHours: { weekdayDescriptions: [MONDAY] } });
+
+  const { path: planPath } = await plan({ dir, now });
+
+  assert.deepEqual(JSON.parse(readFileSync(planPath, "utf8")).places, [
+    {
+      placeId: insertedId.toString(),
+      name: "Halfday",
+      changes: [{ field: "openingHours", current: [{ day: "Monday" }], proposed: [MONDAY_STORED] }],
+    },
+  ]);
+});
+
 test("404 goes to notFound and 500 to failed, without a retry", async () => {
   const goneId = await seedPlace("Gone");
   google.status("g-Gone", 404);

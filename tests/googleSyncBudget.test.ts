@@ -141,6 +141,25 @@ test("a run that throws still counts what it sent, releases the rest and is clos
   assert.equal(month.runs[0].planPath, undefined);
 });
 
+test("a run that crashes mid-lookup sends nothing after it is counted: spent covers every request", async () => {
+  await seedPlaces(9);
+  // P00's answer crashes the run while P01 and P02 are still in flight.
+  google.place("g-P00", { regularOpeningHours: { weekdayDescriptions: "not a list" } });
+  google.place("g-P01", {}, { delayMs: 30 });
+  google.place("g-P02", {}, { delayMs: 30 });
+
+  await assert.rejects(plan({ dir, now }));
+  // Lanes still running would keep sending after the rejection.
+  await new Promise((resolve) => setTimeout(resolve, 100));
+
+  const month = await budget({ now });
+  assert.equal(google.calls.length, 3, "nothing new is sent after the crash");
+  assert.equal(month.spent, google.calls.length, "every request sent is counted");
+  assert.equal(month.reserved, 0);
+  assert.equal(month.runs[0].outcome, "error");
+  assert.equal(month.runs[0].sent, google.calls.length);
+});
+
 test("two plans at once that don't fit together: exactly one is refused", async () => {
   await budget({ set: 890, reason: "seed", now });
   await seedPlaces(6);

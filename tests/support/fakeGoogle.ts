@@ -8,7 +8,7 @@
  */
 import { after } from "node:test";
 
-type Answer = { status: number; body?: unknown } | "hang";
+type Answer = { status: number; body?: unknown; delayMs?: number } | "hang";
 
 export interface GoogleCall {
   url: string;
@@ -34,7 +34,8 @@ export function useFakeGoogle() {
     });
     const answer = answers.get(googleId) ?? { status: 404 };
     if (answer === "hang") return new Promise<Response>(() => {});
-    const { status, body = {} } = answer;
+    const { status, body = {}, delayMs } = answer;
+    if (delayMs) await new Promise((resolve) => setTimeout(resolve, delayMs));
     return {
       ok: status >= 200 && status < 300,
       status,
@@ -50,8 +51,8 @@ export function useFakeGoogle() {
   return {
     calls,
     /** Google answers 200 with this Place body (its `id` defaults to `googleId`). */
-    place(googleId: string, body: Record<string, unknown> = {}) {
-      answers.set(googleId, { status: 200, body: { id: googleId, ...body } });
+    place(googleId: string, body: Record<string, unknown> = {}, { delayMs }: { delayMs?: number } = {}) {
+      answers.set(googleId, { status: 200, body: { id: googleId, ...body }, delayMs });
     },
     /** Google answers this status (404, 429, 500…) with an error body. */
     status(googleId: string, status: number) {
