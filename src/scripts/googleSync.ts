@@ -1,4 +1,4 @@
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { config } from "../config/config.js";
 import Place, { BusinessStatus, IOpeningHour } from "../models/Place.js";
@@ -10,6 +10,10 @@ import Place, { BusinessStatus, IOpeningHour } from "../models/Place.js";
  * `plan` looks Places up in the Google Places API (New) by their Google Place
  * ID and writes a Sync plan: one entry per field Google would change. It
  * writes nothing to Places. Every lookup is billed.
+ *
+ * `apply` writes what is left in a reviewed Sync plan to Places, never over a
+ * field edited since the plan was made, and records an Applied sync. It sends
+ * nothing to Google.
  *
  * Google only proposes a field when it returns a value, so data entered by
  * hand is never wiped. Name, address and location are never taken from
@@ -234,4 +238,137 @@ export async function plan({ limit, dir, now }: { limit?: number; dir: string; n
   await writeFile(planPath, `${JSON.stringify(result, null, 2)}\n`);
 
   return { path: planPath, syncPlan: result };
+}
+
+const SYNC_FIELDS: readonly SyncField[] = ["businessStatus", "googleId", "openingHours", "phone", "website"];
+const STALE_PLAN_DAYS = 7;
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/** Refusal: the file was made from another database than the connected one. Nothing is written. */
+export class DatabaseMismatchError extends Error {
+  constructor(
+    readonly file: DatabaseIdentity,
+    readonly connected: DatabaseIdentity,
+  ) {
+    super(
+      `The file was made from database ${file?.name} on ${file?.host}, but this is ${connected.name} on ${connected.host}. Nothing was written.`,
+    );
+    this.name = "DatabaseMismatchError";
+  }
+}
+
+export type SkipReason = "already applied" | "changed since plan";
+
+export interface AppliedSync {
+  meta: {
+    plan: string;
+    planCreatedAt: string;
+    appliedAt: string;
+    database: DatabaseIdentity;
+  };
+  /** Entries written, with `current` as read from the database just before the write. */
+  written: { placeId: string; name: string; field: SyncField; current: unknown; proposed: unknown }[];
+  skipped: { placeId: string; name: string; field: SyncField; reason: SkipReason }[];
+}
+
+// A field's value the way `plan` records it as `current`: a missing status is
+// OPERATIONAL, missing strings are null, hours are plain with ordinary spaces.
+const comparable = (field: SyncField, value: unknown) => {
+  if (field === "businessStatus") return value ?? "OPERATIONAL";
+  if (field === "openingHours") {
+    return plainHours((value ?? []) as IOpeningHour[]).map(({ day, hours }) => ({
+      day,
+      hours: normalizeSpaces(hours),
+    }));
+  }
+  return value ?? null;
+};
+
+const sameValue = (field: SyncField, a: unknown, b: unknown) =>
+  JSON.stringify(comparable(field, a)) === JSON.stringify(comparable(field, b));
+
+const writeJson = (file: string, value: unknown) =>
+  writeFile(file, `${JSON.stringify(value, null, 2)}\n`);
+
+/**
+ * Writes what is left in a reviewed Sync plan to Places, entry by entry, and
+ * records `<datetime>-applied.json` next to the plan, rewritten after each
+ * Place. An entry whose field no longer holds the plan's `current` is skipped.
+ */
+export async function apply(planPath: string, { now }: { now: Date }) {
+  const syncPlan = JSON.parse(await readFile(planPath, "utf8")) as SyncPlan;
+
+  const connected = databaseIdentity(config.mongoUri);
+  const { database } = syncPlan.meta;
+  if (database?.host !== connected.host || database?.name !== connected.name) {
+    throw new DatabaseMismatchError(database, connected);
+  }
+  // A hand-edited plan must not reach fields the sync doesn't own.
+  for (const { name, changes } of syncPlan.places) {
+    for (const { field } of changes) {
+      if (!SYNC_FIELDS.includes(field)) {
+        throw new Error(`Plan entry for ${name} has a field the sync doesn't write: ${field}`);
+      }
+    }
+  }
+
+  const warnings: string[] = [];
+  const age = now.getTime() - new Date(syncPlan.meta.createdAt).getTime();
+  if (age > STALE_PLAN_DAYS * DAY_MS) {
+    warnings.push(
+      `The plan is ${Math.floor(age / DAY_MS)} days old (made ${syncPlan.meta.createdAt}); Google's data may have changed since.`,
+    );
+  }
+
+  const appliedPath = path.join(path.dirname(planPath), `${fileStamp(now)}-applied.json`);
+  const appliedSync: AppliedSync = {
+    meta: {
+      plan: path.basename(planPath),
+      planCreatedAt: syncPlan.meta.createdAt,
+      appliedAt: now.toISOString(),
+      database: syncPlan.meta.database,
+    },
+    written: [],
+    skipped: [],
+  };
+  await writeJson(appliedPath, appliedSync);
+
+  for (const { placeId, name, changes } of syncPlan.places) {
+    if (!changes.length) continue;
+    const stored = (await Place.findById(placeId).lean())?.properties as
+      | Record<string, unknown>
+      | undefined;
+
+    // One compare-and-set per Place: the filter holds every field to write
+    // exactly as just read, so an edit landing in between skips them all.
+    const filter: Record<string, unknown> = { _id: placeId };
+    const update: Record<string, unknown> = {};
+    const toWrite: AppliedSync["written"] = [];
+
+    for (const { field, current, proposed } of changes) {
+      const value = stored?.[field];
+      if (stored && sameValue(field, value, current)) {
+        filter[`properties.${field}`] = value === undefined ? { $exists: false } : value;
+        update[`properties.${field}`] = proposed;
+        toWrite.push({ placeId, name, field, current: comparable(field, value), proposed });
+      } else if (stored && sameValue(field, value, proposed)) {
+        appliedSync.skipped.push({ placeId, name, field, reason: "already applied" });
+      } else {
+        appliedSync.skipped.push({ placeId, name, field, reason: "changed since plan" });
+      }
+    }
+
+    if (toWrite.length) {
+      const { matchedCount } = await Place.updateOne(filter, { $set: update });
+      if (matchedCount) appliedSync.written.push(...toWrite);
+      else {
+        for (const { field } of toWrite) {
+          appliedSync.skipped.push({ placeId, name, field, reason: "changed since plan" });
+        }
+      }
+    }
+    await writeJson(appliedPath, appliedSync);
+  }
+
+  return { path: appliedPath, appliedSync, warnings };
 }
