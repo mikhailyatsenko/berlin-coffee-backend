@@ -15,7 +15,7 @@ import { useFakeGoogle } from "./support/fakeGoogle.js";
 setTestEnv();
 
 const { default: Place } = await import("../src/models/Place.js");
-const { plan } = await import("../src/scripts/googleSync.js");
+const { plan, databaseIdentity } = await import("../src/scripts/googleSync.js");
 
 const google = useFakeGoogle();
 useThrowawayMongod();
@@ -33,7 +33,7 @@ after(() => {
   rmSync(dir, { recursive: true, force: true });
 });
 
-const MONDAY = "Monday: 9:00 AM – 5:30 PM";
+const MONDAY = "Monday: 9:00\u202fAM – 5:30\u202fPM";
 const MONDAY_STORED = { day: "Monday", hours: "9 AM to 5:30 PM" };
 
 async function seedPlace(
@@ -69,9 +69,9 @@ test("each changed field becomes one entry with its current and proposed value",
     websiteUri: "https://bonanza.example",
   });
 
-  const { plan: result } = await plan({ dir, now });
+  const { syncPlan } = await plan({ dir, now });
 
-  assert.deepEqual(result.places, [
+  assert.deepEqual(syncPlan.places, [
     {
       placeId: id,
       name: "Bonanza",
@@ -107,10 +107,10 @@ test("a Place whose Google data matches ours, or that Google leaves blank, has n
   await seedPlace("Closed", { businessStatus: "CLOSED_PERMANENTLY" });
   google.place("g-Closed", { businessStatus: "CLOSED_PERMANENTLY" });
 
-  const { plan: result } = await plan({ dir, now });
+  const { syncPlan } = await plan({ dir, now });
 
-  assert.deepEqual(result.places, []);
-  assert.equal(result.meta.lookedUp, 3);
+  assert.deepEqual(syncPlan.places, []);
+  assert.equal(syncPlan.meta.lookedUp, 3);
 });
 
 test("404 goes to notFound and 500 to failed; a 429 is failed too, not retried", async () => {
@@ -121,21 +121,21 @@ test("404 goes to notFound and 500 to failed; a 429 is failed too, not retried",
   const busyId = await seedPlace("Busy");
   google.status("g-Busy", 429);
 
-  const { plan: result } = await plan({ dir, now });
+  const { syncPlan } = await plan({ dir, now });
 
-  assert.deepEqual(result.notFound, [
+  assert.deepEqual(syncPlan.notFound, [
     { placeId: goneId, name: "Gone", googleId: "g-Gone" },
   ]);
   assert.deepEqual(
-    result.failed.map(({ placeId, name }) => ({ placeId, name })),
+    syncPlan.failed.map(({ placeId, name }) => ({ placeId, name })),
     [
       { placeId: brokenId, name: "Broken" },
       { placeId: busyId, name: "Busy" },
     ],
   );
-  assert.match(result.failed[0].reason, /500/);
-  assert.match(result.failed[1].reason, /429/);
-  assert.deepEqual(result.places, []);
+  assert.match(syncPlan.failed[0].reason, /500/);
+  assert.match(syncPlan.failed[1].reason, /429/);
+  assert.deepEqual(syncPlan.places, []);
   assert.equal(google.calls.length, 3, "one request per Place, no retry");
 });
 
@@ -147,25 +147,25 @@ test("--limit looks up only the first N Places by _id", async () => {
     google.place(`g-${name}`, { internationalPhoneNumber: "+49 30 5" });
   }
 
-  const { plan: result } = await plan({ limit: 2, dir, now });
+  const { syncPlan } = await plan({ limit: 2, dir, now });
 
   assert.deepEqual(
     google.calls.map((call) => call.googleId).sort(),
     ["g-First", "g-Second"],
   );
-  assert.equal(result.meta.lookedUp, 2);
-  assert.equal(result.meta.limit, 2);
-  assert.equal(result.places[0].placeId, first);
+  assert.equal(syncPlan.meta.lookedUp, 2);
+  assert.equal(syncPlan.meta.limit, 2);
+  assert.equal(syncPlan.places[0].placeId, first);
 });
 
 test("Places without a Google Place ID are not looked up", async () => {
   await seedPlace("NoId", { googleId: null });
   await seedPlace("EmptyId", { googleId: "" });
 
-  const { plan: result } = await plan({ dir, now });
+  const { syncPlan } = await plan({ dir, now });
 
   assert.equal(google.calls.length, 0);
-  assert.equal(result.meta.lookedUp, 0);
+  assert.equal(syncPlan.meta.lookedUp, 0);
 });
 
 test("the plan file lands in dir with its meta, and Places stay unchanged", async () => {
@@ -178,12 +178,12 @@ test("the plan file lands in dir with its meta, and Places stay unchanged", asyn
   google.status("g-Gone", 404);
   const before = await snapshot();
 
-  const { path: planPath, plan: result } = await plan({ dir, now });
+  const { path: planPath, syncPlan } = await plan({ dir, now });
 
   assert.deepEqual(readdirSync(dir), ["2026-10-06T12-34-56Z-plan.json"]);
   assert.equal(planPath, path.join(dir, "2026-10-06T12-34-56Z-plan.json"));
   const written = JSON.parse(readFileSync(planPath, "utf8"));
-  assert.deepEqual(written, result);
+  assert.deepEqual(written, syncPlan);
   assert.deepEqual(written.meta, {
     createdAt: now.toISOString(),
     database: {
@@ -223,4 +223,15 @@ test("each request asks for English with today's field mask and the API key", as
         "id,businessStatus,regularOpeningHours.weekdayDescriptions,internationalPhoneNumber,websiteUri",
     },
   ]);
+});
+
+test("the database identity is host and name, never credentials", () => {
+  assert.deepEqual(
+    databaseIdentity("mongodb+srv://admin:s3cr@t@cluster0.abc.mongodb.net/coffee?retryWrites=true"),
+    { host: "cluster0.abc.mongodb.net", name: "coffee" },
+  );
+  assert.deepEqual(
+    databaseIdentity("mongodb://u:p@db1:27017,db2:27017/coffee?replicaSet=rs0"),
+    { host: "db1:27017,db2:27017", name: "coffee" },
+  );
 });

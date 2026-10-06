@@ -51,15 +51,15 @@ const main = async () => {
 
   await mongoose.connect(config.mongoUri);
   try {
-    const { path, plan: result } = await plan({
+    const { path, syncPlan } = await plan({
       limit: command.limit,
       dir: DEFAULT_DIR,
       now: new Date(),
     });
-    console.log(`Looked up ${result.meta.lookedUp} Places`);
-    console.log(`  with changes: ${result.places.length}`);
-    console.log(`  not found:    ${result.notFound.length}`);
-    console.log(`  failed:       ${result.failed.length}`);
+    console.log(`Looked up ${syncPlan.meta.lookedUp} Places`);
+    console.log(`  with changes: ${syncPlan.places.length}`);
+    console.log(`  not found:    ${syncPlan.notFound.length}`);
+    console.log(`  failed:       ${syncPlan.failed.length}`);
     console.log(`\nSync plan: ${path}`);
   } finally {
     await mongoose.disconnect();

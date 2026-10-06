@@ -102,7 +102,7 @@ const fetchPlace = async (googleId: string): Promise<FetchResult> => {
 // "Monday: 9:00 AM – 5:30 PM" -> { day: "Monday", hours: "9 AM to 5:30 PM" },
 // matching the format already stored in the database.
 // Google puts narrow no-break spaces before AM/PM; stored data has them too.
-const normalizeSpaces = (value: string) => value.replace(/[   ]/g, " ");
+const normalizeSpaces = (value: string) => value.replace(/[\u202f\u2009\u00a0]/g, " ");
 
 const toOpeningHours = (descriptions: string[]): IOpeningHour[] =>
   descriptions.map((line) => {
@@ -117,8 +117,11 @@ const toOpeningHours = (descriptions: string[]): IOpeningHour[] =>
     };
   });
 
-const sameHours = (stored: IOpeningHour[] = [], fresh: IOpeningHour[]) =>
-  JSON.stringify(stored.map(({ day, hours }) => ({ day, hours: normalizeSpaces(hours) }))) ===
+// Stored hours as plain { day, hours }, without what mongoose adds.
+const plainHours = (stored: IOpeningHour[] = []) => stored.map(({ day, hours }) => ({ day, hours }));
+
+const sameHours = (stored: IOpeningHour[] | undefined, fresh: IOpeningHour[]) =>
+  JSON.stringify(plainHours(stored).map(({ day, hours }) => ({ day, hours: normalizeSpaces(hours) }))) ===
   JSON.stringify(fresh);
 
 const runPool = async <T>(items: T[], worker: (item: T) => Promise<void>) => {
@@ -155,8 +158,7 @@ const changesFor = (stored: StoredPlace, google: GooglePlace): SyncChange[] => {
   if (descriptions?.length) {
     const hours = toOpeningHours(descriptions);
     if (!sameHours(stored.openingHours, hours)) {
-      const current = (stored.openingHours ?? []).map(({ day, hours }) => ({ day, hours }));
-      changes.push({ field: "openingHours", current, proposed: hours });
+      changes.push({ field: "openingHours", current: plainHours(stored.openingHours), proposed: hours });
     }
   }
 
@@ -193,7 +195,7 @@ export async function plan({ limit, dir, now }: { limit?: number; dir: string; n
       createdAt: now.toISOString(),
       database: databaseIdentity(config.mongoUri),
       lookedUp: places.length,
-      limit: limit ?? null,
+      limit: limit || null,
       fieldMaskVersion: FIELD_MASK_VERSION,
     },
     places: [],
@@ -231,5 +233,5 @@ export async function plan({ limit, dir, now }: { limit?: number; dir: string; n
   const planPath = path.join(dir, `${fileStamp(now)}-plan.json`);
   await writeFile(planPath, `${JSON.stringify(result, null, 2)}\n`);
 
-  return { path: planPath, plan: result };
+  return { path: planPath, syncPlan: result };
 }
