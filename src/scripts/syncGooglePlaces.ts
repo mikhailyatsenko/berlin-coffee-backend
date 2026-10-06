@@ -70,26 +70,15 @@ const parse = (args: string[]): Command => {
   if (subcommand === undefined) return { name: "help" };
   if (subcommand === "budget") return parseBudget(options);
 
-  if (subcommand === "apply") {
+  const theFile = (what: string) => {
     if (options.length !== 1 || options[0].startsWith("-")) {
-      throw new Error("apply takes exactly one argument: the plan file");
+      throw new Error(`${subcommand} takes exactly one argument: the ${what}`);
     }
-    return { name: "apply", planPath: options[0] };
-  }
-
-  if (subcommand === "rollback") {
-    if (options.length !== 1 || options[0].startsWith("-")) {
-      throw new Error("rollback takes exactly one argument: the Applied sync file");
-    }
-    return { name: "rollback", appliedPath: options[0] };
-  }
-
-  if (subcommand === "summary") {
-    if (options.length !== 1 || options[0].startsWith("-")) {
-      throw new Error("summary takes exactly one argument: the plan file");
-    }
-    return { name: "summary", planPath: options[0] };
-  }
+    return options[0];
+  };
+  if (subcommand === "apply") return { name: "apply", planPath: theFile("plan file") };
+  if (subcommand === "rollback") return { name: "rollback", appliedPath: theFile("Applied sync file") };
+  if (subcommand === "summary") return { name: "summary", planPath: theFile("plan file") };
 
   if (subcommand !== "plan") throw new Error(`Unknown subcommand: ${subcommand}`);
 

@@ -182,14 +182,17 @@ type FetchResult =
   | { status: "quota" }
   | { status: "error"; message: string };
 
-export type SyncField =
-  | "businessStatus"
-  | "googleId"
-  | "openingHours"
-  | "phone"
-  | "website"
-  /** The Lost Google match mark: the Google Place ID that answered 404. */
-  | "googleNotFoundId";
+/** The Place fields the sync writes; `googleNotFoundId` is the Lost Google match mark. */
+const SYNC_FIELDS = [
+  "businessStatus",
+  "googleId",
+  "openingHours",
+  "phone",
+  "website",
+  "googleNotFoundId",
+] as const;
+
+export type SyncField = (typeof SYNC_FIELDS)[number];
 
 export interface SyncChange {
   field: SyncField;
@@ -287,9 +290,21 @@ const toOpeningHours = (descriptions: string[]): IOpeningHour[] =>
 // Stored hours as plain { day, hours }, without what mongoose adds.
 const plainHours = (stored: IOpeningHour[] = []) => stored.map(({ day, hours }) => ({ day, hours }));
 
-const sameHours = (stored: IOpeningHour[] | undefined, fresh: IOpeningHour[]) =>
-  JSON.stringify(plainHours(stored).map(({ day, hours }) => ({ day, hours: normalizeSpaces(hours) }))) ===
-  JSON.stringify(fresh);
+// A field's value the way `plan` records it as `current`: a missing status is
+// OPERATIONAL, missing strings are null, hours are plain with ordinary spaces.
+const comparable = (field: SyncField, value: unknown) => {
+  if (field === "businessStatus") return value ?? "OPERATIONAL";
+  if (field === "openingHours") {
+    return plainHours((value ?? []) as IOpeningHour[]).map(({ day, hours }) => ({
+      day,
+      hours: normalizeSpaces(hours),
+    }));
+  }
+  return value ?? null;
+};
+
+const sameValue = (field: SyncField, a: unknown, b: unknown) =>
+  JSON.stringify(comparable(field, a)) === JSON.stringify(comparable(field, b));
 
 /**
  * Runs `worker` over `items`, CONCURRENCY at a time. The first throw stops
@@ -311,6 +326,8 @@ const runPool = async <T>(items: T[], worker: (item: T) => Promise<void>) => {
   await Promise.all(lanes);
   if (failure) throw failure.error;
 };
+
+const isClosed = (status: unknown) => status === "CLOSED_TEMPORARILY" || status === "CLOSED_PERMANENTLY";
 
 type StoredPlace = {
   businessStatus?: BusinessStatus;
@@ -338,7 +355,7 @@ const changesFor = (stored: StoredPlace, google: GooglePlace): SyncChange[] => {
   const descriptions = google.regularOpeningHours?.weekdayDescriptions;
   if (descriptions?.length) {
     const hours = toOpeningHours(descriptions);
-    if (!sameHours(stored.openingHours, hours)) {
+    if (!sameValue("openingHours", stored.openingHours, hours)) {
       changes.push({ field: "openingHours", current: plainHours(stored.openingHours), proposed: hours });
     }
   }
@@ -353,6 +370,9 @@ const changesFor = (stored: StoredPlace, google: GooglePlace): SyncChange[] => {
 
   return changes;
 };
+
+const writeJson = (file: string, value: unknown) =>
+  writeFile(file, `${JSON.stringify(value, null, 2)}\n`);
 
 // 2026-10-06T12:34:56.789Z -> 2026-10-06T12-34-56Z: sortable, and safe in file names.
 const fileStamp = (now: Date) => now.toISOString().replace(/\.\d+Z$/, "Z").replace(/:/g, "-");
@@ -558,7 +578,7 @@ async function lookUp(
 
   await mkdir(dir, { recursive: true });
   const planPath = path.join(dir, `${fileStamp(now)}-plan.json`);
-  await writeFile(planPath, `${JSON.stringify(result, null, 2)}\n`);
+  await writeJson(planPath, result);
   const { path: summaryPath } = await summary(planPath);
 
   return { path: planPath, summaryPath, syncPlan: result };
@@ -566,8 +586,6 @@ async function lookUp(
 
 const googleMapsSearch = (name: string, address: string) =>
   `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${name}, ${address}`)}`;
-
-const isClosed = (status: unknown) => status === "CLOSED_TEMPORARILY" || status === "CLOSED_PERMANENTLY";
 
 const show = (value: unknown) =>
   value === null || value === undefined || value === "" ? "(none)" : `\`${String(value)}\``;
@@ -704,15 +722,6 @@ export async function summary(planPath: string) {
   return { path: summaryPath, markdown };
 }
 
-const SYNC_FIELDS: readonly SyncField[] = [
-  "businessStatus",
-  "googleId",
-  "openingHours",
-  "phone",
-  "website",
-  "googleNotFoundId",
-];
-
 /**
  * The `$set` for writing `value` to `field`. The Lost Google match mark sets
  * two properties: setting it stamps `googleNotFoundAt` with `now`, clearing it
@@ -738,6 +747,23 @@ export class DatabaseMismatchError extends Error {
   }
 }
 
+/**
+ * Refuses a file `apply` or `rollback` is about to write from: made from
+ * another database than the configured one, or (hand-edited) reaching a
+ * field the sync doesn't own.
+ */
+const checkFile = (kind: string, database: DatabaseIdentity, entries: { name: string; field: string }[]) => {
+  const connected = databaseIdentity(config.mongoUri);
+  if (database?.host !== connected.host || database?.name !== connected.name) {
+    throw new DatabaseMismatchError(database, connected);
+  }
+  for (const { name, field } of entries) {
+    if (!(SYNC_FIELDS as readonly string[]).includes(field)) {
+      throw new Error(`${kind} entry for ${name} has a field the sync doesn't write: ${field}`);
+    }
+  }
+};
+
 export type SkipReason = "already applied" | "changed since plan";
 
 export interface AppliedSync {
@@ -752,25 +778,6 @@ export interface AppliedSync {
   skipped: { placeId: string; name: string; field: SyncField; reason: SkipReason }[];
 }
 
-// A field's value the way `plan` records it as `current`: a missing status is
-// OPERATIONAL, missing strings are null, hours are plain with ordinary spaces.
-const comparable = (field: SyncField, value: unknown) => {
-  if (field === "businessStatus") return value ?? "OPERATIONAL";
-  if (field === "openingHours") {
-    return plainHours((value ?? []) as IOpeningHour[]).map(({ day, hours }) => ({
-      day,
-      hours: normalizeSpaces(hours),
-    }));
-  }
-  return value ?? null;
-};
-
-const sameValue = (field: SyncField, a: unknown, b: unknown) =>
-  JSON.stringify(comparable(field, a)) === JSON.stringify(comparable(field, b));
-
-const writeJson = (file: string, value: unknown) =>
-  writeFile(file, `${JSON.stringify(value, null, 2)}\n`);
-
 /**
  * Writes what is left in a reviewed Sync plan to Places, entry by entry, and
  * records `<datetime>-applied.json` next to the plan, rewritten after each
@@ -779,19 +786,11 @@ const writeJson = (file: string, value: unknown) =>
 export async function apply(planPath: string, { now }: { now: Date }) {
   const syncPlan = JSON.parse(await readFile(planPath, "utf8")) as SyncPlan;
 
-  const connected = databaseIdentity(config.mongoUri);
-  const { database } = syncPlan.meta;
-  if (database?.host !== connected.host || database?.name !== connected.name) {
-    throw new DatabaseMismatchError(database, connected);
-  }
-  // A hand-edited plan must not reach fields the sync doesn't own.
-  for (const { name, changes } of syncPlan.places) {
-    for (const { field } of changes) {
-      if (!SYNC_FIELDS.includes(field)) {
-        throw new Error(`Plan entry for ${name} has a field the sync doesn't write: ${field}`);
-      }
-    }
-  }
+  checkFile(
+    "Plan",
+    syncPlan.meta.database,
+    syncPlan.places.flatMap(({ name, changes }) => changes.map(({ field }) => ({ name, field }))),
+  );
 
   const warnings: string[] = [];
   const age = now.getTime() - new Date(syncPlan.meta.createdAt).getTime();
@@ -868,17 +867,7 @@ export interface RollbackResult {
 export async function rollback(appliedPath: string): Promise<RollbackResult> {
   const appliedSync = JSON.parse(await readFile(appliedPath, "utf8")) as AppliedSync;
 
-  const connected = databaseIdentity(config.mongoUri);
-  const { database } = appliedSync.meta;
-  if (database?.host !== connected.host || database?.name !== connected.name) {
-    throw new DatabaseMismatchError(database, connected);
-  }
-  // A hand-edited Applied sync must not reach fields the sync doesn't own.
-  for (const { name, field } of appliedSync.written) {
-    if (!SYNC_FIELDS.includes(field)) {
-      throw new Error(`Applied sync entry for ${name} has a field the sync doesn't write: ${field}`);
-    }
-  }
+  checkFile("Applied sync", appliedSync.meta.database, appliedSync.written);
 
   // Entries of one Place are rolled back together, in the file's order.
   const byPlace = new Map<string, AppliedSync["written"]>();
