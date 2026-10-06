@@ -1,13 +1,13 @@
 import { config } from "../config/config.js";
 import mongoose from "mongoose";
-import { apply, plan } from "./googleSync.js";
+import { apply, plan, rollback } from "./googleSync.js";
 
 /**
  * The Google sync CLI: parses arguments, connects to MONGO_URI, calls the
  * googleSync module and prints what it did. No arguments print help.
  *
  * Only run it with the owner's go-ahead: every Place looked up is billed, and
- * `apply` writes to the database MONGO_URI points at.
+ * `apply` and `rollback` write to the database MONGO_URI points at.
  * Full guide, costs and pitfalls: docs/google-places-sync.md
  */
 
@@ -24,13 +24,17 @@ Subcommands:
   apply <plan.json>    Write what is left in a reviewed Sync plan to Places, skipping
                        fields edited since the plan, and record an Applied sync in
                        <datetime>-applied.json next to the plan. Sends nothing to Google.
+  rollback <applied.json>
+                       Write back the values an Applied sync replaced, leaving alone
+                       fields edited since the apply. Sends nothing to Google.
 
 Guide: docs/google-places-sync.md`;
 
 type Command =
   | { name: "help" }
   | { name: "plan"; limit?: number }
-  | { name: "apply"; planPath: string };
+  | { name: "apply"; planPath: string }
+  | { name: "rollback"; appliedPath: string };
 
 const parse = (args: string[]): Command => {
   const [subcommand, ...options] = args;
@@ -41,6 +45,13 @@ const parse = (args: string[]): Command => {
       throw new Error("apply takes exactly one argument: the plan file");
     }
     return { name: "apply", planPath: options[0] };
+  }
+
+  if (subcommand === "rollback") {
+    if (options.length !== 1 || options[0].startsWith("-")) {
+      throw new Error("rollback takes exactly one argument: the Applied sync file");
+    }
+    return { name: "rollback", appliedPath: options[0] };
   }
 
   if (subcommand !== "plan") throw new Error(`Unknown subcommand: ${subcommand}`);
@@ -80,6 +91,18 @@ const runApply = async (planPath: string) => {
   console.log(`\nApplied sync: ${path}`);
 };
 
+const runRollback = async (appliedPath: string) => {
+  const { restored, leftAlone } = await rollback(appliedPath);
+  for (const { name, field, replaced, restored: value } of restored) {
+    console.log(`restored             ${name}: ${field} ${JSON.stringify(replaced)} -> ${JSON.stringify(value)}`);
+  }
+  for (const { name, field, reason } of leftAlone) {
+    console.log(`${reason.padEnd(21)}${name}: ${field}`);
+  }
+  console.log(`\nRestored: ${restored.length}`);
+  console.log(`Changed since apply (left alone): ${leftAlone.length}`);
+};
+
 const main = async () => {
   let command: Command;
   try {
@@ -93,7 +116,8 @@ const main = async () => {
   await mongoose.connect(config.mongoUri);
   try {
     if (command.name === "plan") await runPlan(command.limit);
-    else await runApply(command.planPath);
+    else if (command.name === "apply") await runApply(command.planPath);
+    else await runRollback(command.appliedPath);
   } finally {
     await mongoose.disconnect();
   }

@@ -15,6 +15,9 @@ import Place, { BusinessStatus, IOpeningHour } from "../models/Place.js";
  * field edited since the plan was made, and records an Applied sync. It sends
  * nothing to Google.
  *
+ * `rollback` writes an Applied sync's previous values back to Places, never
+ * over a field edited since the apply. It sends nothing to Google.
+ *
  * Google only proposes a field when it returns a value, so data entered by
  * hand is never wiped. Name, address and location are never taken from
  * Google: ours are formatted differently on purpose.
@@ -371,4 +374,72 @@ export async function apply(planPath: string, { now }: { now: Date }) {
   }
 
   return { path: appliedPath, appliedSync, warnings };
+}
+
+export interface RollbackResult {
+  /** Entries whose field held what `apply` wrote and got `restored` (the Applied sync's `current`) back. */
+  restored: { placeId: string; name: string; field: SyncField; restored: unknown; replaced: unknown }[];
+  leftAlone: { placeId: string; name: string; field: SyncField; reason: "changed since apply" }[];
+}
+
+/**
+ * Writes an Applied sync's previous values back to Places. An entry whose
+ * field no longer holds what `apply` wrote is left alone and reported.
+ * Skipped entries of the Applied sync are ignored. Sends nothing to Google.
+ */
+export async function rollback(appliedPath: string): Promise<RollbackResult> {
+  const appliedSync = JSON.parse(await readFile(appliedPath, "utf8")) as AppliedSync;
+
+  const connected = databaseIdentity(config.mongoUri);
+  const { database } = appliedSync.meta;
+  if (database?.host !== connected.host || database?.name !== connected.name) {
+    throw new DatabaseMismatchError(database, connected);
+  }
+  // A hand-edited Applied sync must not reach fields the sync doesn't own.
+  for (const { name, field } of appliedSync.written) {
+    if (!SYNC_FIELDS.includes(field)) {
+      throw new Error(`Applied sync entry for ${name} has a field the sync doesn't write: ${field}`);
+    }
+  }
+
+  // Entries of one Place are rolled back together, in the file's order.
+  const byPlace = new Map<string, AppliedSync["written"]>();
+  for (const entry of appliedSync.written) {
+    byPlace.set(entry.placeId, [...(byPlace.get(entry.placeId) ?? []), entry]);
+  }
+
+  const result: RollbackResult = { restored: [], leftAlone: [] };
+  for (const [placeId, entries] of byPlace) {
+    const stored = (await Place.findById(placeId).lean())?.properties as
+      | Record<string, unknown>
+      | undefined;
+
+    // One compare-and-set per Place, as in `apply`.
+    const filter: Record<string, unknown> = { _id: placeId };
+    const update: Record<string, unknown> = {};
+    const toRestore: RollbackResult["restored"] = [];
+
+    for (const { name, field, current, proposed } of entries) {
+      const value = stored?.[field];
+      if (stored && sameValue(field, value, proposed)) {
+        filter[`properties.${field}`] = value === undefined ? { $exists: false } : value;
+        update[`properties.${field}`] = current;
+        toRestore.push({ placeId, name, field, restored: current, replaced: proposed });
+      } else {
+        result.leftAlone.push({ placeId, name, field, reason: "changed since apply" });
+      }
+    }
+
+    if (toRestore.length) {
+      const { matchedCount } = await Place.updateOne(filter, { $set: update });
+      if (matchedCount) result.restored.push(...toRestore);
+      else {
+        for (const { name, field } of toRestore) {
+          result.leftAlone.push({ placeId, name, field, reason: "changed since apply" });
+        }
+      }
+    }
+  }
+
+  return result;
 }
