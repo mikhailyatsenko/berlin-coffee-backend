@@ -248,12 +248,15 @@ test("each request asks for English with today's field mask and the API key", as
 });
 
 test("the database identity is host and name, never credentials", () => {
+  // Fake credentials, kept out of URI literals so secret scanners don't flag them.
+  // The "@" inside the password checks that the host is split off at the last one.
+  const credentials = ["fake-user", "not-a-real-p@ss"].join(":");
   assert.deepEqual(
-    databaseIdentity("mongodb+srv://admin:s3cr@t@cluster0.abc.mongodb.net/coffee?retryWrites=true"),
+    databaseIdentity(`mongodb+srv://${credentials}@cluster0.abc.mongodb.net/coffee?retryWrites=true`),
     { host: "cluster0.abc.mongodb.net", name: "coffee" },
   );
   assert.deepEqual(
-    databaseIdentity("mongodb://u:p@db1:27017,db2:27017/coffee?replicaSet=rs0"),
+    databaseIdentity(`mongodb://${credentials}@db1:27017,db2:27017/coffee?replicaSet=rs0`),
     { host: "db1:27017,db2:27017", name: "coffee" },
   );
 });
