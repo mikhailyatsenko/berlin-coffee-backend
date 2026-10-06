@@ -130,3 +130,21 @@ test("closed Places are left out", async () => {
 
   assert.deepEqual(await namesFor(["Wi-Fi"]), ["Open"]);
 });
+
+async function shortlistIdsByName() {
+  const { places } = await callResolver(filteredPlacesResolver, {}, {});
+  return Object.fromEntries(
+    places.map((p) => [p.properties.name, p.properties.shortlistIds]),
+  );
+}
+
+test("shortlistIds lists every Shortlist whose Amenities a Place has, through any spelling", async () => {
+  await seedPlace("Free Wifi Laptop", {
+    Amenities: ["Free Wi-Fi"],
+    Planning: ["Good for working on laptop"],
+  });
+
+  assert.deepEqual(await shortlistIdsByName(), {
+    "Free Wifi Laptop": ["work"],
+  });
+});

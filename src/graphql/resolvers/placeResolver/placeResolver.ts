@@ -63,6 +63,7 @@ export const placeResolver: QueryResolvers["place"] = async (
       openingHours: place.properties.openingHours || [],
       phone: place.properties.phone || null,
       website: place.properties.website || null,
+      shortlistIds: [],
     },
   };
 };

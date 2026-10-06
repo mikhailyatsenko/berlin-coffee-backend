@@ -36,6 +36,7 @@ export const placesResolver: QueryResolvers["places"] = async (
         isFavorite: place.isFavorite,
         googleId: place.properties.googleId || null,
         neighborhood: place.properties.neighborhood || null,
+        shortlistIds: [],
       },
     };
   });

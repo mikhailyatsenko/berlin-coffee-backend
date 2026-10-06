@@ -1,8 +1,9 @@
 /**
  * The Shortlists of a Neighborhood: the id, the order and the Amenities of
  * each. A Place makes a Shortlist when it has all of its Amenities, each one
- * through its synonyms (see synonyms.ts). The frontend owns the titles, the
- * anchors and the card questions.
+ * through its synonyms (see synonyms.ts). A Place's shortlistIds names every
+ * Shortlist whose Amenities it has, whatever its Average rating. The frontend
+ * owns the titles, the anchors and the card questions.
  *
  * Amenities are canonical names, spelled as Google lists them in
  * availableAdditionalInfoTags. To add a Shortlist (Kids, Vegan), add a row and

@@ -65,6 +65,8 @@ type PlaceProperties {
   ownRating: Int
   "The Characteristics the caller marked in their own Review. Filled by filteredPlaces and neighborhoodShortlists only, null elsewhere."
   ownCharacteristics: [Characteristic!]
+  "The Shortlists whose Amenities the Place has, in Shortlist order; the Shortlists' Average rating threshold does not apply. Filled by filteredPlaces and neighborhoodShortlists only, empty elsewhere."
+  shortlistIds: [ShortlistId!]!
   "How many Reviews marked each Characteristic. Filled by place only, null elsewhere."
   characteristicCounts: CharacteristicCounts
   additionalInfo: JSON
