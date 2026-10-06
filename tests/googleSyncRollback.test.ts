@@ -100,7 +100,7 @@ test("rollback restores the previous values and leaves alone a field edited sinc
   const stored = await propertiesOf(id);
   assert.equal(stored.businessStatus, "OPERATIONAL");
   assert.deepEqual(
-    stored.openingHours.map(({ day, hours }) => ({ day, hours })),
+    stored.openingHours?.map(({ day, hours }) => ({ day, hours })),
     [{ day: "Monday", hours: "10 AM to 6 PM" }],
   );
   assert.equal(stored.phone, "+49 30 1");
