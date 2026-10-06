@@ -162,7 +162,9 @@ Applied sync переписывается после каждого места, 
 - Заголовок: когда сделан план, из какой базы, с каким `--limit`.
 - Счётчики: Looked up, With changes, Unchanged, Not found, Failed, Skipped as
   Lost Google match. Место, у которого все записи удалены из JSON, считается
-  Unchanged.
+  Unchanged. В частичном плане Looked up считает только отправленные запросы и
+  говорит, сколько из выбранных мест не отправлено (`meta.notSent`); они же
+  отмечены в Failed («N of them not sent»).
 - **Status changes** — закрытия (`closes`), потом открытия (`reopens`). Смотрите
   первыми: они скрывают и возвращают места на карте.
 - **Google Place ID changes** — Google перевёл место на новый ID.
@@ -258,7 +260,8 @@ minute` (600) не трогается. У Text Search свои строки кв
 Место, на чей `googleId` Google ответил 404 (не знает такой Place ID).
 
 - В плане оно попадает в `notFound` и получает запись `googleNotFoundId:
-  null → <Place ID с 404>`. Это обычная запись плана: её можно удалить из JSON,
+  <текущая метка или null> → <Place ID с 404>` (обычно `null`; старая метка
+  бывает, если место уже помечали под другим ID). Это обычная запись плана: её можно удалить из JSON,
   если считаете 404 временным сбоем Google, тогда следующий `plan` запросит
   место снова.
 - После `apply` у места стоят `googleNotFoundId` и `googleNotFoundAt`. Пока
@@ -378,8 +381,9 @@ Google возвращает `Monday: 9:00 AM – 5:30 PM`. Синхрониза�
 - Ключ: `coffeemap-server places sync`, ограничен **только** Places API (New),
   без ограничения по IP (скрипт запускается и локально, и на сервере).
   Хранится в `.env` как `GOOGLE_PLACES_API_KEY`, в git не коммитится.
-- Квота: `GetPlaceRequest per day` = **500** (по умолчанию было 125 000),
-  `GetPlaceRequest per minute` = 600. Где: Google Cloud console → проект
+- Квота: `GetPlaceRequest per day` сейчас **125 000** (значение по умолчанию);
+  целевое значение **500** ставит владелец в шаге 4 чеклиста раскатки, после
+  этого обновите здесь. `GetPlaceRequest per minute` = 600. Где: Google Cloud console → проект
   `berlin-coffee-f0bf8` → Places API (New) → Quotas & System Limits.
 - Бюджет: `coffeemap minimal budget`, $1/мес, только оповещения.
 - В проекте есть старый ключ `API key 2` (июль 2025) **без ограничений**. С включённым
