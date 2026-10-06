@@ -17,7 +17,7 @@ import {
  * Write the repaired counts:
  *   node dist/scripts/repairReviewPhotoCounts.js --apply
  *
- * Only run --apply with the owner's explicit go-ahead, same as syncGooglePlaces.
+ * Only run --apply with the owner's explicit go-ahead, same as the Google sync's apply.
  * Counts are only ever lowered; no file is touched. A Review whose count
  * changed between listing and writing is skipped and reported.
  */
