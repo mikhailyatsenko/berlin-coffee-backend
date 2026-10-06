@@ -46,7 +46,8 @@ _Avoid_: Quota, allowance, limit, ledger
 
 **Lost Google match**:
 A Place whose Google Place ID Google no longer recognises. The Google sync stops looking it up, so its details are no longer refreshed, until the admin gives it a new Place ID. Stays on the map: it says nothing about whether the Place is open.
-_Avoid_: Not found, missing, broken ID
+A single 404 in a Sync plan is not yet a Lost Google match: the plan lists the Place under "not found" (a list of the plan, `notFound`) with a proposed mark, and the Place becomes a Lost Google match only once that mark is applied. Use "not found" only for that plan list, never for the Place itself.
+_Avoid_: Not found (for the Place), missing, broken ID
 
 **Inaccuracy report**:
 A message from anyone that a Place's details are wrong, such as its opening hours or address.
@@ -116,3 +117,7 @@ The database and code predate the glossary in places. Use the glossary term in p
 | Photo                   | `reviewImages` (a count on the Interaction; the client renders `image_1..image_N` from it, so it only grows after the file is stored) |
 | Guest identity          | `GuestIdentity` model                                                   |
 | Place suggestion        | `PlaceSuggestion` model (`src/models/PlaceSuggestion.ts`); its status is `pending`, `published` or `rejected`; its photos are Place photos, never Photos |
+| Sync budget             | `SyncBudgetMonth` model (one document per US Pacific month: `spent`, `reserved`) and `SyncRun` model (one record per `plan` run or `budget --set` correction) |
+| Lost Google match       | `properties.googleNotFoundId` equal to `properties.googleId`, stamped with `properties.googleNotFoundAt` |
+| Sync plan               | `untracked/google-sync/<datetime>-plan.json`, with its readable summary `<datetime>-plan.md` beside it |
+| Applied sync            | `untracked/google-sync/<datetime>-applied.json`, next to the plan it was applied from |
