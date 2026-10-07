@@ -27,14 +27,18 @@ Google sync спрашивает Google Places API (New) об актуальны
 | `properties.website`          | `websiteUri`                              | если Google вернул сайт и он отличается         |
 | `properties.businessStatus`   | `businessStatus`                          | если отличается (закрытые скрываются, см. ниже) |
 | `properties.googleId`         | `id`                                      | если Google перевёл место на новый Place ID     |
+| `properties.description`      | `editorialSummary.text`                   | **только если описание пустое**; своё не заменяется |
 | `properties.googleNotFoundId` | Place ID, на который Google ответил 404   | метка Lost Google match, см. ниже               |
 | `properties.googleNotFoundAt` | дата `apply` этой метки                   | ставится и снимается вместе с `googleNotFoundId` |
 
 В плане поле называется без префикса: `businessStatus`, `googleId`,
-`openingHours`, `phone`, `website`, `googleNotFoundId`. `googleNotFoundAt`
+`openingHours`, `phone`, `website`, `description`, `googleNotFoundId`. `googleNotFoundAt`
 отдельной записью в плане не бывает. Обоих полей метки нет в GraphQL.
 
-Не трогает: `name`, `address`, `geometry.coordinates`, `description`, `image`,
+Описание Google (`editorialSummary`) есть не у всех мест. Если описание
+вписали руками уже после `plan`, `apply` его не перезапишет («changed since plan»).
+
+Не трогает: `name`, `address`, `geometry.coordinates`, `image`,
 `instagram`, `additionalInfo`, `neighborhood`. Ничего не удаляет. `apply`
 отказывается применять план, в котором руками вписано поле не из таблицы.
 
@@ -184,11 +188,15 @@ Applied sync переписывается после каждого места, 
 
 ## Деньги и квоты: главное ограничение
 
-Запрашиваемые поля (часы, телефон, сайт) относятся к SKU
-**Places API Place Details Enterprise**:
+Запрос тарифицируется по самому дорогому полю маски. Часы, телефон и сайт —
+это Enterprise, а `editorialSummary` — **Enterprise + Atmosphere**, поэтому с
+маской версии 2 (с 2026-10-06) каждый запрос идёт в SKU
+**Places API Place Details Enterprise + Atmosphere**:
 
-- **1000 запросов в месяц бесплатно**, дальше **$20 за 1000** (цены проверены
-  в октябре 2026, могут измениться).
+- **1000 запросов в месяц бесплатно**, дальше **$25 за 1000** (цены проверены
+  в октябре 2026, могут измениться). У SKU свой бесплатный лимит: запросы,
+  сделанные до перехода на маску версии 2, шли в Enterprise ($20 за 1000) и в
+  этот лимит не входят.
 - Бесплатные 1000 — **на весь billing account**, общие для всех его проектов.
 - Один запрос = одно место. Полный прогон = столько запросов, сколько мест с
   `googleId` без метки Lost Google match (на сентябрь 2026 это 446). Безопасный

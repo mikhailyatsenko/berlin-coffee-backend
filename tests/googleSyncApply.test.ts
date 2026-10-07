@@ -107,6 +107,25 @@ test("each entry is written, already applied, or skipped as changed since plan; 
   assert.equal(stored.website, "https://by-hand.example", "a manual edit is never overwritten");
 });
 
+test("a description fills only while it is still empty: one written by hand since the plan is kept", async () => {
+  const empty = await seedPlace("Empty");
+  const filledSince = await seedPlace("FilledSince");
+  for (const name of ["Empty", "FilledSince"]) {
+    google.place(`g-${name}`, { editorialSummary: { text: `Google about ${name}.` } });
+  }
+  const planPath = await makePlan();
+  await Place.updateOne({ _id: filledSince }, { $set: { "properties.description": "Written by hand." } });
+
+  const { appliedSync: { skipped } } = await apply(planPath, { now: applyTime });
+
+  assert.equal((await propertiesOf(empty)).description, "Google about Empty.");
+  assert.equal((await propertiesOf(filledSince)).description, "Written by hand.");
+  assert.deepEqual(
+    skipped.map(({ name, field, reason }) => ({ name, field, reason })),
+    [{ name: "FilledSince", field: "description", reason: "changed since plan" }],
+  );
+});
+
 test("an old document without status, phone or website, and hours stored with narrow spaces, still matches its plan", async () => {
   const { insertedId } = await Place.collection.insertOne({
     type: "Feature",

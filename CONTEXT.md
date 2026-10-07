@@ -29,7 +29,7 @@ A proposal from a User or Guest to add a Place that is not yet on the map, with 
 _Avoid_: Submission, request, new place
 
 **Google sync**:
-Refreshing Places' opening hours, phone, website and closed-or-open status from Google, by each Place's Google Place ID. Every Place looked up costs money beyond a monthly free allowance, so it runs rarely and by hand. Name, address and location are never taken from Google.
+Refreshing Places' opening hours, phone, website and closed-or-open status from Google, by each Place's Google Place ID, and filling in Google's description where a Place has none (a description already there is never replaced). Every Place looked up costs money beyond a monthly free allowance, so it runs rarely and by hand. Name, address and location are never taken from Google.
 _Avoid_: Update script, refresh, import
 
 **Sync plan**:

@@ -163,9 +163,11 @@ const FIELD_MASK = [
   "regularOpeningHours.weekdayDescriptions",
   "internationalPhoneNumber",
   "websiteUri",
+  // Moves every request to the Place Details Enterprise + Atmosphere SKU.
+  "editorialSummary",
 ].join(",");
 /** Bump when FIELD_MASK changes, so plans made with another mask can be told apart. */
-const FIELD_MASK_VERSION = 1;
+const FIELD_MASK_VERSION = 2;
 
 interface GooglePlace {
   id: string;
@@ -173,6 +175,7 @@ interface GooglePlace {
   regularOpeningHours?: { weekdayDescriptions?: string[] };
   internationalPhoneNumber?: string;
   websiteUri?: string;
+  editorialSummary?: { text?: string };
 }
 
 type FetchResult =
@@ -189,6 +192,7 @@ const SYNC_FIELDS = [
   "openingHours",
   "phone",
   "website",
+  "description",
   "googleNotFoundId",
 ] as const;
 
@@ -335,6 +339,7 @@ type StoredPlace = {
   openingHours?: IOpeningHour[];
   phone?: string | null;
   website?: string | null;
+  description?: string | null;
   googleNotFoundId?: string | null;
 };
 
@@ -366,6 +371,12 @@ const changesFor = (stored: StoredPlace, google: GooglePlace): SyncChange[] => {
 
   if (google.websiteUri && google.websiteUri !== stored.website) {
     changes.push({ field: "website", current: stored.website ?? null, proposed: google.websiteUri });
+  }
+
+  // Google's description only fills an empty one: ours may be written by hand.
+  const summary = google.editorialSummary?.text;
+  if (summary && !stored.description?.trim()) {
+    changes.push({ field: "description", current: stored.description ?? null, proposed: summary });
   }
 
   return changes;
